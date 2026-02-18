@@ -4,14 +4,14 @@ interface Props {
   categories: string[];
   stats: Record<string, number>;
   onNewNote: () => void;
-  onSearch: (value: string) => void;
-  onCategoryChange: (value: string) => void;
-  onSortChange: (value: string) => void;
+  onSearch: (v: string) => void;
+  onCategoryChange: (v: string) => void;
+  onSortChange: (v: string) => void;
   searchValue: string;
   selectedCategory: string;
   sortBy: string;
   onExport?: () => void;
-  onImport?: (file: File) => void;
+  onImport?: (f: File) => void;
   onClearAll?: () => void;
 }
 
