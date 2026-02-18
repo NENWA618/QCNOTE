@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 
@@ -17,10 +18,13 @@ const Contact: React.FC = () => {
             href="/"
             className="flex gap-3 items-center text-2xl font-bold text-primary-dark hover:text-accent-pink transition-colors"
           >
-            <img
+            <Image
               src="/images/icons/note_icon.png"
               alt="NOTE"
-              className="w-12 h-12 rounded-lg shadow-light"
+              width={48}
+              height={48}
+              className="rounded-lg shadow-light"
+              priority
             />
             <span>NOTE</span>
           </Link>
@@ -62,9 +66,11 @@ const Contact: React.FC = () => {
               <div className="flex flex-col items-center gap-8">
                 <div>
                   <h3 className="text-primary-dark font-bold mb-6 text-2xl">扫一扫支持我们</h3>
-                  <img
+                  <Image
                     src="/QR.png"
                     alt="收款码"
+                    width={400}
+                    height={400}
                     className="max-w-sm w-full rounded-2xl shadow-dark border-4 border-primary-light transition-all hover:scale-105 cursor-pointer"
                     onClick={() => window.open('/QR.png', '_blank')}
                   />

@@ -15,6 +15,7 @@ const Dashboard: React.FC = () => {
   const [sortBy, setSortBy] = useState('date');
   const [categories, setCategories] = useState<string[]>([]);
   const [stats, setStats] = useState<Record<string, number> | any>({});
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // editor state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -120,35 +121,53 @@ const Dashboard: React.FC = () => {
       <Header />
 
       <div className="container">
-        <main>
-          <Sidebar
-            categories={categories}
-            stats={stats}
-            onNewNote={handleNewNote}
-            onSearch={(v) => setSearch(v)}
-            onCategoryChange={(v) => setCategory(v)}
-            onSortChange={(v) => setSortBy(v)}
-            searchValue={search}
-            selectedCategory={category}
-            sortBy={sortBy}
-            onExport={handleExport}
-            onImport={handleImport}
-            onClearAll={handleClearAll}
-          />
+        <main className="flex flex-col md:flex-row gap-6 md:gap-8">
+          {/* Mobile sidebar toggle button */}
+          <button
+            className="md:hidden px-4 py-2 bg-primary-light text-primary-dark rounded-lg font-semibold self-start"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            {sidebarOpen ? '✕ 关闭菜单' : '☰ 打开菜单'}
+          </button>
+
+          {/* Sidebar - shown on desktop or when mobile menu is open */}
+          <div
+            className={`${sidebarOpen ? 'block' : 'hidden md:block'} w-full md:w-64 flex-shrink-0`}
+          >
+            <Sidebar
+              categories={categories}
+              stats={stats}
+              onNewNote={handleNewNote}
+              onSearch={(v) => setSearch(v)}
+              onCategoryChange={(v) => setCategory(v)}
+              onSortChange={(v) => setSortBy(v)}
+              searchValue={search}
+              selectedCategory={category}
+              sortBy={sortBy}
+              onExport={handleExport}
+              onImport={handleImport}
+              onClearAll={handleClearAll}
+            />
+          </div>
 
           <section className="flex-1">
-            <h2 className="text-primary-dark mb-6 text-3xl font-bold">📝 我的笔记</h2>
+            <h2 className="text-primary-dark mb-6 text-2xl md:text-3xl font-bold">📝 我的笔记</h2>
             <div id="notes-container">
               {filtered.length === 0 && (
-                <div className="empty-state">
-                  <p className="text-2xl font-semibold text-primary-dark mb-2">暂无笔记</p>
-                  <p className="text-text-light mb-6">还没有笔记，点击新建或导入开始。</p>
-                  <div className="flex gap-2 justify-center">
-                    <button className="btn btn-primary" onClick={handleNewNote}>
+                <div className="empty-state px-4 md:px-8 py-12 md:py-16">
+                  <div className="mb-4 text-5xl md:text-6xl">📝</div>
+                  <p className="text-xl md:text-2xl font-semibold text-primary-dark mb-2">
+                    暂无笔记
+                  </p>
+                  <p className="text-text-light mb-8 text-sm md:text-base">
+                    还没有笔记，点击新建或导入开始。
+                  </p>
+                  <div className="flex flex-col md:flex-row gap-3 md:gap-2 justify-center">
+                    <button className="btn btn-primary w-full md:w-auto" onClick={handleNewNote}>
                       ✏️ 新建笔记
                     </button>
                     <button
-                      className="btn btn-secondary"
+                      className="btn btn-secondary w-full md:w-auto"
                       onClick={() => {
                         // trigger a hidden import input via DOM
                         const input = document.createElement('input');
@@ -204,7 +223,7 @@ const Dashboard: React.FC = () => {
       {editorVisible && editingNote && (
         <div
           id="editor-panel"
-          className="fixed right-5 top-20 w-96 bg-white p-6 rounded-2xl shadow-dark border border-primary-light/50 z-50 backdrop-blur-sm"
+          className="fixed inset-0 md:right-5 md:top-20 md:w-96 w-full h-full md:h-auto md:rounded-2xl bg-white p-6 rounded-none shadow-dark md:shadow-dark border border-primary-light/50 z-50 backdrop-blur-sm overflow-y-auto md:overflow-y-visible flex flex-col md:flex md:max-h-[calc(100vh-100px)]"
         >
           <div className="flex justify-between items-center mb-4 pb-4 border-b border-primary-light">
             <h2 className="text-xl font-bold text-primary-dark">✏️ 编辑笔记</h2>

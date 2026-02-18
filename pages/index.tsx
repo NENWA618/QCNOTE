@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 
@@ -18,10 +19,13 @@ export default function Home() {
             href="/"
             className="flex gap-3 items-center text-2xl font-bold text-primary-dark hover:text-accent-pink transition-colors hover:scale-105"
           >
-            <img
+            <Image
               src="/images/icons/note_icon.png"
               alt="NOTE"
-              className="w-12 h-12 rounded-lg shadow-light"
+              width={48}
+              height={48}
+              className="rounded-lg shadow-light"
+              priority
             />
             <span>NOTE</span>
           </Link>
@@ -47,22 +51,28 @@ export default function Home() {
       </header>
 
       <div className="container">
-        <section className="text-center py-20">
+        <section className="text-center py-12 md:py-20">
           <div className="mb-8 inline-block">
-            <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-accent-pink to-accent-purple rounded-2xl flex items-center justify-center shadow-medium transform hover:scale-110 transition-transform">
-              <span className="text-4xl emoji">📝</span>
+            <div className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-6 bg-gradient-to-br from-accent-pink to-accent-purple rounded-2xl flex items-center justify-center shadow-medium transform hover:scale-110 transition-transform">
+              <span className="text-3xl md:text-4xl emoji">📝</span>
             </div>
           </div>
-          <h1 className="text-6xl font-bold text-primary-dark mb-6">NOTE</h1>
-          <p className="text-2xl text-text-light mb-8">用心记录，思考每一刻</p>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary-dark mb-4 md:mb-6">
+            NOTE
+          </h1>
+          <p className="text-lg md:text-xl lg:text-2xl text-text-light mb-6 md:mb-8">
+            用心记录，思考每一刻
+          </p>
           <Link href="/dashboard" className="btn btn-primary">
             ✨ 开始记录
           </Link>
         </section>
 
-        <section id="features" className="mt-16">
-          <h2 className="text-center text-primary-dark mb-12 text-4xl font-bold">✨ 核心功能</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <section id="features" className="mt-12 md:mt-16">
+          <h2 className="text-center text-primary-dark mb-8 md:mb-12 text-2xl md:text-4xl font-bold">
+            ✨ 核心功能
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
             <div className="card">
               <h3 className="text-accent-pink text-4xl mb-2">📝</h3>
               <h4 className="text-primary-dark mb-4 text-lg font-semibold">轻量化编辑</h4>
@@ -103,10 +113,10 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="guide" className="mt-16">
+        <section id="guide" className="mt-12 md:mt-16">
           <div className="card">
-            <h2 className="text-primary-dark mb-6 text-3xl font-bold">📖 快速开始</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <h2 className="text-primary-dark mb-6 text-2xl md:text-3xl font-bold">📖 快速开始</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
               <div>
                 <h3 className="text-accent-pink mb-2 font-semibold">1️⃣ 创建笔记</h3>
                 <p className="text-text-light">
@@ -133,9 +143,9 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="about" className="mt-16">
+        <section id="about" className="mt-12 md:mt-16">
           <div className="card">
-            <h2 className="text-primary-dark mb-6 text-3xl font-bold">❓ 关于 NOTE</h2>
+            <h2 className="text-primary-dark mb-6 text-2xl md:text-3xl font-bold">❓ 关于 NOTE</h2>
             <p className="text-text-light leading-relaxed">
               NOTE
               是一个简洁而优雅的个人笔记应用。我们相信，记录是思考的开始，而思考是成长的源动力。无论你是在记录日常的点滴，还是在思考人生的意义，NOTE
@@ -152,8 +162,10 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="faq" className="mt-16">
-          <h2 className="text-center text-primary-dark mb-12 text-4xl font-bold">❓ 常见问题</h2>
+        <section id="faq" className="mt-12 md:mt-16">
+          <h2 className="text-center text-primary-dark mb-8 md:mb-12 text-2xl md:text-4xl font-bold">
+            ❓ 常见问题
+          </h2>
           <div className="max-w-2xl mx-auto">
             <div className="card mb-4">
               <h3 className="text-primary-dark mb-4 font-bold">我的笔记会被云备份吗？</h3>

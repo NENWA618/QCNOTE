@@ -5,7 +5,13 @@
 @layer components {
   /* Button components */
   .btn {
-    @apply inline-block px-7 py-2 rounded-full font-semibold transition-all shadow-light hover:shadow-dark hover:scale-105 cursor-pointer border-none text-base;
+    @apply inline-block px-7 py-3 rounded-full font-semibold transition-all shadow-light hover:shadow-dark hover:scale-105 cursor-pointer border-none text-base min-h-[2.75rem];
+  }
+
+  @screen md {
+    .btn {
+      @apply py-2;
+    }
   }
 
   .btn-primary {
@@ -17,7 +23,7 @@
   }
 
   .btn-icon {
-    @apply w-9 h-9 rounded-full bg-transparent border-0 cursor-pointer text-xl transition-all flex items-center justify-center hover:bg-primary-light hover:scale-125;
+    @apply w-10 h-10 rounded-full bg-transparent border-0 cursor-pointer text-xl transition-all flex items-center justify-center hover:bg-primary-light hover:scale-125;
   }
 
   .btn-icon.delete-btn:hover {
@@ -25,7 +31,7 @@
   }
 
   .btn-sm {
-    @apply px-3 py-1 text-sm rounded-md transition-all hover:scale-105;
+    @apply px-3 py-2 text-sm rounded-md transition-all hover:scale-105 min-h-[2.25rem];
   }
 
   /* Card component */
@@ -35,7 +41,7 @@
 
   /* Note card */
   .note-card {
-    @apply bg-white bg-opacity-97 rounded-lg p-5 mb-4 shadow-light transition-all cursor-pointer border-l-4 border-accent-pink relative overflow-hidden hover:-translate-y-2 hover:shadow-medium;
+    @apply bg-white bg-opacity-97 rounded-lg p-5 mb-4 shadow-light transition-all cursor-pointer border-l-4 border-accent-pink relative overflow-hidden hover:-translate-y-2 hover:shadow-medium min-h-[5rem];
   }
 
   .note-card::before {
@@ -47,7 +53,7 @@
   }
 
   .favorite-btn {
-    @apply bg-none border-0 cursor-pointer text-2xl transition-transform hover:scale-125 flex-shrink-0;
+    @apply bg-none border-0 cursor-pointer text-2xl transition-transform hover:scale-125 flex-shrink-0 w-10 h-10 flex items-center justify-center;
   }
 
   .favorite-btn.active {
@@ -88,21 +94,21 @@
 
   /* Input and form elements */
   .input {
-    @apply w-full px-3 py-2 border-2 border-primary-light rounded-lg text-sm text-primary-dark bg-white/50 transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light;
+    @apply w-full px-4 py-3 border-2 border-primary-light rounded-lg text-base text-primary-dark bg-white/50 transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light min-h-[2.75rem];
   }
 
   textarea.input {
-    @apply w-full px-3 py-2 border-2 border-primary-light rounded-lg text-sm text-primary-dark bg-white/50 transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light resize-y;
+    @apply w-full px-4 py-3 border-2 border-primary-light rounded-lg text-base text-primary-dark bg-white/50 transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light resize-y;
     min-height: 10rem;
     font-family: monospace;
   }
 
   .select {
-    @apply w-full px-3 py-2 border-2 border-primary-light rounded-lg bg-white/50 text-primary-dark cursor-pointer transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light;
+    @apply w-full px-4 py-3 border-2 border-primary-light rounded-lg bg-white/50 text-primary-dark cursor-pointer transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light min-h-[2.75rem];
   }
 
   .search-box {
-    @apply w-full px-3 py-2 border-2 border-primary-light rounded-full text-sm bg-white/50 transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light;
+    @apply w-full px-4 py-3 border-2 border-primary-light rounded-full text-base bg-white/50 transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light min-h-[2.75rem];
   }
 
   /* Sidebar */
