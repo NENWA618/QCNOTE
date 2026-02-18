@@ -1,0 +1,46 @@
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lighthouse:
+    name: Run Lighthouse CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Start production server
+        run: |
+          # start Next.js in production (background)
+          nohup npm run start -- -p 3000 > /tmp/next.log 2>&1 & echo $! > /tmp/next.pid
+
+      - name: Wait for server
+        run: npx wait-on http://localhost:3000
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v8
+        with:
+          urls: http://localhost:3000
+          uploadArtifacts: 'true'
+
+      - name: Stop production server
+        run: |
+          if [ -f /tmp/next.pid ]; then
+            kill $(cat /tmp/next.pid) || true
+          fi
