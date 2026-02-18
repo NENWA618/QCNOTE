@@ -1,0 +1,38 @@
+[
+  {
+    "id": "note_1",
+    "title": "欢迎使用 NOTE",
+    "content": "这是你的第一条笔记！\n\nNOTE 是一个简洁而优雅的个人笔记应用。所有笔记都存储在你的浏览器本地，完全隐私和安全。\n\n你可以：\n- 📝 创建、编辑和删除笔记\n- 🏷️ 使用分类和标签组织笔记\n- 🔍 快速搜索你的笔记\n- ❤️ 收藏重要的笔记\n- 💾 自动保存你的内容\n\n开始记录吧！✨",
+    "category": "生活",
+    "tags": ["欢迎", "指南"],
+    "color": "#dc96b4",
+    "isFavorite": true,
+    "createdAt": 1708262400000,
+    "updatedAt": 1708262400000,
+    "isArchived": false
+  },
+  {
+    "id": "note_2",
+    "title": "我的想法",
+    "content": "这是一个思考笔记的示例。\n\n记录想法的好处：\n1. 帮助理清思路\n2. 创建个人知识库\n3. 追踪个人成长\n4. 灵感的来源",
+    "category": "学习",
+    "tags": ["思考", "个人成长"],
+    "color": "#b0a8c0",
+    "isFavorite": false,
+    "createdAt": 1708262500000,
+    "updatedAt": 1708262500000,
+    "isArchived": false
+  },
+  {
+    "id": "note_3",
+    "title": "项目灵感",
+    "content": "今天想到的几个有趣的想法：\n\n1. 创意想法 A\n   - 细节1\n   - 细节2\n\n2. 创意想法 B\n   - 细节1\n   - 细节2\n\n需要进一步开发和研究...",
+    "category": "灵感",
+    "tags": ["创意", "项目"],
+    "color": "#d4b5d1",
+    "isFavorite": false,
+    "createdAt": 1708262600000,
+    "updatedAt": 1708262600000,
+    "isArchived": false
+  }
+]

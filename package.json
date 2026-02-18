@@ -1,0 +1,45 @@
+{
+  "name": "NOTE",
+  "version": "1.0.0",
+  "description": "一个简洁而优雅的个人笔记应用",
+  "main": "index.html",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/NOTE"
+  },
+  "keywords": [
+    "notes",
+    "note-taking",
+    "personal-wiki",
+    "markdown",
+    "web-app"
+  ],
+  "author": "NOTE Contributors",
+  "license": "MIT",
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "autoprefixer": "^10.4.24",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0",
+    "postcss": "^8.5.6",
+    "prettier": "^2.8.0",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.2.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier --write ."
+  }
+}
