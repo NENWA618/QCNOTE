@@ -33,15 +33,6 @@ const Footer: React.FC = () => {
           <p className="text-sm space-y-1">
             <div>📧 i24026878@student.newinti.edu.my</div>
             <div>
-              🐙{' '}
-              <a
-                href="#"
-                className="text-primary-light no-underline hover:text-white transition-colors"
-              >
-                GitHub Project
-              </a>
-            </div>
-            <div>
               💬{' '}
               <Link
                 href="/contact"

@@ -79,45 +79,6 @@ const Contact: React.FC = () => {
               </div>
             </div>
 
-            <div className="card mb-8">
-              <h2 className="text-primary-dark mb-8 text-3xl font-bold">📞 其他联系方式</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <div className="text-center p-6 rounded-lg bg-gradient-to-br from-accent-pink from-10% to-accent-purple to-90% bg-opacity-5">
-                  <h3 className="text-accent-pink mb-2 text-3xl">📧</h3>
-                  <p className="text-primary-dark font-bold mb-2">邮件</p>
-                  <p className="text-text-light">
-                    <a
-                      href="mailto:i24026878@student.newinti.edu.my"
-                      className="text-accent-pink no-underline hover:underline"
-                    >
-                      i24026878@student.newinti.edu.my
-                    </a>
-                  </p>
-                </div>
-
-                <div className="text-center p-6 rounded-lg bg-gradient-to-br from-accent-pink from-10% to-accent-purple to-90% bg-opacity-5">
-                  <h3 className="text-accent-pink mb-2 text-3xl">🐙</h3>
-                  <p className="text-primary-dark font-bold mb-2">GitHub</p>
-                  <p className="text-text-light">
-                    <a
-                      href="https://github.com"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-accent-pink no-underline hover:underline"
-                    >
-                      github.com/note-project
-                    </a>
-                  </p>
-                </div>
-
-                <div className="text-center p-6 rounded-lg bg-gradient-to-br from-accent-pink from-10% to-accent-purple to-90% bg-opacity-5">
-                  <h3 className="text-accent-pink mb-2 text-3xl">💬</h3>
-                  <p className="text-primary-dark font-bold mb-2">反馈</p>
-                  <p className="text-text-light">提交 Issue 或 Pull Request</p>
-                </div>
-              </div>
-            </div>
-
             <div className="card">
               <h2 style={{ color: 'var(--primary-dark)', marginBottom: '1.5rem' }}>
                 🎯 为什么支持 NOTE？
@@ -234,8 +195,6 @@ const Contact: React.FC = () => {
             <h4 className="text-white mb-4 font-bold">📞 联系我们</h4>
             <p className="text-sm">
               📧 i24026878@student.newinti.edu.my
-              <br />
-              🐙 GitHub Project
               <br />
               💬 扫码支持
             </p>
