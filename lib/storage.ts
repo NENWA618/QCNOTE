@@ -1,4 +1,5 @@
 import Utils from './utils';
+import IDB from './idb';
 
 export interface NoteItem {
   id: string;
@@ -23,11 +24,61 @@ export interface UserSettings {
 export class NoteStorage {
   storageKey: string;
   settingsKey: string;
+  useIndexedDB: boolean;
 
   constructor() {
     this.storageKey = 'NOTE_STORAGE';
     this.settingsKey = 'NOTE_SETTINGS';
+    this.useIndexedDB = false;
     this.init();
+  }
+
+  // enable IndexedDB backend and migrate existing localStorage data into it
+  async enableIndexedDB() {
+    if (typeof window === 'undefined') return false;
+    try {
+      const notes = this.getData() || [];
+      const settings = this.getSettings() || null;
+      await IDB.setItem(this.storageKey, notes);
+      if (settings) await IDB.setItem(this.settingsKey, settings);
+      this.useIndexedDB = true;
+      return true;
+    } catch (e) {
+      console.error('启用IndexedDB失败:', e);
+      return false;
+    }
+  }
+
+  // disable IndexedDB usage (keeps data in place)
+  disableIndexedDB() {
+    this.useIndexedDB = false;
+  }
+
+  // async accessors that respect IndexedDB when enabled
+  async getDataAsync(): Promise<NoteItem[] | null> {
+    try {
+      if (this.useIndexedDB) {
+        const v = await IDB.getItem(this.storageKey);
+        return v || null;
+      }
+      return this.getData();
+    } catch (e) {
+      console.error('读取存储失败:', e);
+      return null;
+    }
+  }
+
+  async setDataAsync(notes: NoteItem[]) {
+    try {
+      if (this.useIndexedDB) {
+        await IDB.setItem(this.storageKey, notes);
+        return true;
+      }
+      return this.setData(notes);
+    } catch (e) {
+      console.error('保存存储失败:', e);
+      return false;
+    }
   }
 
   init() {
