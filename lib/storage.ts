@@ -54,15 +54,31 @@ export class NoteStorage {
     if (typeof window === 'undefined') return false;
     if (this.useIndexedDB) return true; // 已启用，跳过
     try {
-      const notes = this.getData() || [];
+      // 如果 IndexedDB 已有数据，则不要覆盖
+      const existing = await IDB.getItem(this.storageKey);
+      if (existing && Array.isArray(existing) && existing.length > 0) {
+        this.useIndexedDB = true;
+        console.log('✓ IndexedDB 已有数据，保留现有数据，启用索引存储');
+        return true;
+      }
+
+      // 否则从 localStorage 迁移（如果有）
+      const notes = this.getData();
       const settings = this.getSettings() || null;
-      await IDB.setItem(this.storageKey, notes);
-      if (settings) await IDB.setItem(this.settingsKey, settings);
+      if (notes && notes.length > 0) {
+        await IDB.setItem(this.storageKey, notes);
+        if (settings) await IDB.setItem(this.settingsKey, settings);
+        this.useIndexedDB = true;
+        // 清空 localStorage
+        localStorage.removeItem(this.storageKey);
+        localStorage.removeItem(this.settingsKey);
+        console.log('✓ IndexedDB 已启用，数据迁移成功');
+        return true;
+      }
+
+      // 两边均无数据：启用 IndexedDB（但不写入空数组）
       this.useIndexedDB = true;
-      // 清空 localStorage
-      localStorage.removeItem(this.storageKey);
-      localStorage.removeItem(this.settingsKey);
-      console.log('✓ IndexedDB 已启用，数据已迁移');
+      console.log('✓ IndexedDB 已启用（无需迁移）');
       return true;
     } catch (e) {
       console.error('启用IndexedDB失败:', e);
