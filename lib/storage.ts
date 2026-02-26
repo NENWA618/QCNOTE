@@ -78,24 +78,43 @@ export class NoteStorage {
   // async accessors that respect IndexedDB when enabled
   async getDataAsync(): Promise<NoteItem[] | null> {
     try {
-      if (this.useIndexedDB) {
-        const v = (await IDB.getItem(this.storageKey)) as NoteItem[] | null;
-        return v || null;
+      // 优先尝试 IndexedDB（防止竞态条件）
+      const idbData = await IDB.getItem(this.storageKey);
+      if (idbData) {
+        this.useIndexedDB = true; // 确保标志正确设置
+        return idbData as NoteItem[];
       }
-      return this.getData();
+      // IndexedDB 无数据，尝试 localStorage
+      const lsData = this.getData();
+      if (lsData) {
+        return lsData;
+      }
+      return null;
     } catch (e) {
       console.error('读取存储失败:', e);
-      return null;
+      // IndexedDB 出错，回退到 localStorage
+      return this.getData();
     }
   }
 
   async setDataAsync(notes: NoteItem[]) {
     try {
+      // 优先 IndexedDB，次之 localStorage
       if (this.useIndexedDB) {
         await IDB.setItem(this.storageKey, notes);
         return true;
       }
-      return this.setData(notes);
+      // 尝试写入 IndexedDB（可能在启用过程中）
+      try {
+        await IDB.setItem(this.storageKey, notes);
+        this.useIndexedDB = true;
+        // 清空 localStorage
+        localStorage.removeItem(this.storageKey);
+        return true;
+      } catch (_) {
+        // IndexedDB 失败，回退到 localStorage
+        return this.setData(notes);
+      }
     } catch (e) {
       console.error('保存存储失败:', e);
       return false;
@@ -167,14 +186,18 @@ export class NoteStorage {
 
   async getSettingsAsync(): Promise<UserSettings | null> {
     try {
-      if (this.useIndexedDB) {
-        const v = (await IDB.getItem(this.settingsKey)) as UserSettings | null;
-        return v || null;
+      // 优先尝试 IndexedDB
+      const idbSettings = await IDB.getItem(this.settingsKey);
+      if (idbSettings) {
+        this.useIndexedDB = true;
+        return idbSettings as UserSettings;
       }
+      // IndexedDB 无数据，尝试 localStorage
       return this.getSettings();
     } catch (e) {
       console.error('读取设置失败:', e);
-      return null;
+      // IndexedDB 出错，回退到 localStorage
+      return this.getSettings();
     }
   }
 
@@ -184,7 +207,15 @@ export class NoteStorage {
         await IDB.setItem(this.settingsKey, settings);
         return true;
       }
-      return this.setSettings(settings);
+      // 尝试写入 IndexedDB
+      try {
+        await IDB.setItem(this.settingsKey, settings);
+        this.useIndexedDB = true;
+        localStorage.removeItem(this.settingsKey);
+        return true;
+      } catch (_) {
+        return this.setSettings(settings);
+      }
     } catch (e) {
       console.error('保存设置失败:', e);
       return false;
