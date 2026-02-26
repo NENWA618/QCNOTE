@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 /* Lightweight IndexedDB helper - small wrapper for key/value storage */
 const DB_NAME = 'NOTE_DB_V1';
 const STORE_NAME = 'keyval';
@@ -19,8 +20,8 @@ async function withStore<T>(mode: IDBTransactionMode, cb: (store: IDBObjectStore
   const db = await openDB();
   return new Promise<T>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, mode);
-    const store = tx.objectStore(STORE_NAME);
-    Promise.resolve(cb(store))
+    const _store = tx.objectStore(STORE_NAME);
+    Promise.resolve(cb(_store))
       .then((v) => {
         tx.oncomplete = () => resolve(v);
         tx.onerror = () => reject(tx.error);
@@ -79,4 +80,6 @@ export async function clearStore() {
   );
 }
 
-export default { openDB, getItem, setItem, deleteItem, getAllKeys, clearStore };
+const idb = { openDB, getItem, setItem, deleteItem, getAllKeys, clearStore };
+
+export default idb;
