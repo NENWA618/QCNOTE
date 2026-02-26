@@ -11,11 +11,19 @@
 - **样式**：内联 CSS → **Tailwind CSS 3.4.1**（实用优先 CSS 框架）
 - **页面**：`pages/` 下的三个主要页面（`index.tsx`、`dashboard.tsx`、`contact.tsx`）
 - **组件化**：`Header`、`Sidebar`、`Footer` React 组件
-- **存储层**：`NoteStorage` 类与 React hooks 集成
+- **存储层**：`NoteStorage` 类与 React hooks 集成（支持 localStorage 和可选 IndexedDB）
+- **Markdown 渲染**：安全渲染组件 (`react-markdown` + GFM + `rehype-sanitize`)
 - **工具链**：ESLint + Prettier 代码检查与格式化
-- **工作流**：GitHub Actions CI/CD（类型检查、构建验证）
+- **测试 & CI**：Vitest 单元测试；GitHub Actions 运行 lint、类型检查、测试与构建
+- **性能 & 质量**：Lighthouse CI 配置、字体优化、lazy-loading 图像、可访问性改进
 
 ## 🚀 快速开始
+
+### 准备
+
+```bash
+npm install  # 安装依赖（包括 rehype-sanitize、vitest 等）
+```
 
 ### 本地开发
 
@@ -39,11 +47,12 @@ npm run build    # 构建生产版本
 npm start        # 启动生产服务器
 ```
 
-### 代码检查与格式化
+### 代码检查、格式化与测试
 
 ```bash
 npm run lint     # 运行 ESLint 代码检查
 npm run format   # 运行 Prettier 自动格式化
+npm run test     # 运行 Vitest 单元测试
 npx tsc --noEmit # TypeScript 类型检查
 ```
 
@@ -59,11 +68,34 @@ NOTE/
 │   ├── _app.tsx            # 应用入口（导入 Tailwind globals）
 │   ├── index.tsx           # 首页
 │   ├── dashboard.tsx       # 笔记管理页面
-│   └── contact.tsx         # 联系页面
+│   ├── contact.tsx         # 联系页面
+│   ├── privacy.tsx         # 隐私政策
+│   └── terms.tsx           # 使用条款
 ├── components/             # React 可复用组件 (TSX)
 │   ├── Header.tsx          # 导航栏
 │   ├── Sidebar.tsx         # 侧边栏（分类、排序、统计）
-│   └── Footer.tsx          # 页脚
+│   ├── Footer.tsx          # 页脚
+│   └── MarkdownView.tsx    # 安全渲染 Markdown
+├── lib/                    # 业务逻辑与工具 (TS)
+│   ├── idb.ts              # IndexedDB helper
+│   ├── storage.ts          # 存储层（localStorage/IndexedDB）
+│   ├── utils.ts            # 工具函数
+│   └── types/global.d.ts   # 全局类型声明
+├── styles/                 # Tailwind CSS 样式
+│   └── globals.css         # 全局 Tailwind 配置
+├── public/                 # 静态资源
+│   └── images/
+├── data/                   # 示例数据
+│   └── sample-notes.json
+├── .github/                # CI 配置
+├── .eslintrc.json          # ESLint 配置
+├── .prettierrc             # Prettier 配置
+├── tailwind.config.js      # Tailwind 自定义
+├── postcss.config.js       # PostCSS 配置
+├── tsconfig.json           # TypeScript 配置
+├── package.json            # 项目依赖与脚本
+└── README.md               # 本文档
+```│   └── Footer.tsx          # 页脚
 ├── lib/                    # 业务逻辑与工具 (TS)
 │   ├── storage.ts          # 存储层（localStorage 管理）
 │   ├── utils.ts            # 工具函数
@@ -87,6 +119,9 @@ NOTE/
 
 ## 🎨 设计系统（Tailwind CSS）
 
+> 字体：全局使用 Google 的 `Inter` 字体，通过 `next/font` 优化加载，已在 `_app.tsx` 应用。
+
+
 ### 自定义主题配置
 
 在 `tailwind.config.js` 中定义的设计令牌：
@@ -98,7 +133,7 @@ NOTE/
 - `primary-dark`: #c8b8c8（深粉紫）
 - `accent-pink`: #dc96b4（强调粉色）
 - `accent-purple`: #b0a8c0（强调紫色）
-- `text-light`: #7a7a7a（浅灰文字）
+- `text-light`: #5c5c5c（浅灰文字，已加深提高对比度）
 
 **组件层类**（在 `styles/globals.css` 中定义）
 
@@ -183,6 +218,9 @@ NOTE/
    }
    ```
 
+> 额外提示：全局已通过 `next/font` 加载谷歌的 Inter 字体，样式中可使用 `className={inter.className}` 应用。
+
+
 ### 响应式设计
 
 使用 Tailwind 的断点前缀：
@@ -193,6 +231,10 @@ NOTE/
 ```tsx
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">响应式网格</div>
 ```
+
+## 📦 发布与贡献
+
+项目托管于 GitHub，欢迎 Fork、Issue 和 Pull Request。您可以自由修改并部署在自己的服务器或静态站点。
 
 ## 许可证
 
