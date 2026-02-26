@@ -66,6 +66,14 @@ export class NoteStorage {
       const notes = this.getData();
       const settings = this.getSettings() || null;
       if (notes && notes.length > 0) {
+        // 备份当前 localStorage 内容到 IndexedDB 备份键，防止意外覆盖
+        try {
+          const backupKey = `${this.storageKey}_backup_${Date.now()}`;
+          await IDB.setItem(backupKey, notes);
+          console.log('✓ 本地数据已备份到 IndexedDB 键：', backupKey);
+        } catch (bkErr) {
+          console.warn('备份 localStorage 数据到 IndexedDB 失败，继续迁移：', bkErr);
+        }
         await IDB.setItem(this.storageKey, notes);
         if (settings) await IDB.setItem(this.settingsKey, settings);
         this.useIndexedDB = true;
