@@ -47,19 +47,19 @@ const Footer: React.FC = () => {
       <hr className="border-0 border-t border-white border-opacity-20 my-8" />
       <p>© 2026 NOTE. 用心记录每一刻。</p>
       <p className="mt-4 text-sm">
-        <a
+        <Link
           href="/privacy"
           className="text-primary-light no-underline hover:text-white transition-colors"
         >
           隐私政策
-        </a>{' '}
+        </Link>{' '}
         |{' '}
-        <a
+        <Link
           href="/terms"
           className="text-primary-light no-underline hover:text-white transition-colors"
         >
           使用条款
-        </a>
+        </Link>
       </p>
     </footer>
   );

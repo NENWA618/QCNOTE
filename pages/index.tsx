@@ -210,13 +210,13 @@ export default function Home() {
       <footer>
         <p className="text-center text-white">© 2026 NOTE. 用心记录每一刻。</p>
         <p className="text-center text-white text-sm mt-4">
-          <a href="/privacy" className="no-underline hover:underline">
+          <Link href="/privacy" className="no-underline hover:underline">
             隐私政策
-          </a>{' '}
+          </Link>{' '}
           |{' '}
-          <a href="/terms" className="no-underline hover:underline">
+          <Link href="/terms" className="no-underline hover:underline">
             使用条款
-          </a>
+          </Link>
         </p>
       </footer>
     </>

@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import React from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -44,7 +45,7 @@ export default function Terms() {
 
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">5. 联系我们</h2>
           <p className="text-text-light mb-4">
-            如有问题或需要法律相关说明，请访问我们的 <a href="/contact" className="text-accent-pink hover:underline">联系页</a>。
+            如有问题或需要法律相关说明，请访问我们的 <Link href="/contact" className="text-accent-pink hover:underline">联系页</Link>。
           </p>
 
           <p className="text-text-light text-sm mt-6">最后更新：2026 年 2 月 18 日</p>
