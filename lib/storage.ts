@@ -58,7 +58,7 @@ export class NoteStorage {
   async getDataAsync(): Promise<NoteItem[] | null> {
     try {
       if (this.useIndexedDB) {
-        const v = await IDB.getItem(this.storageKey);
+        const v = (await IDB.getItem(this.storageKey)) as NoteItem[] | null;
         return v || null;
       }
       return this.getData();
