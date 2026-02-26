@@ -71,6 +71,7 @@ const Contact: React.FC = () => {
                     alt="收款码"
                     width={400}
                     height={400}
+                    loading="lazy"
                     className="max-w-sm w-full rounded-2xl shadow-dark border-4 border-primary-light transition-all hover:scale-105 cursor-pointer"
                     onClick={() => window.open('/QR.png', '_blank')}
                   />
