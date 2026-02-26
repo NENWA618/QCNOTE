@@ -177,7 +177,7 @@ export default function Home() {
             <div className="card mb-4">
               <h3 className="text-primary-dark mb-4 font-bold">能否支持Markdown？</h3>
               <p className="text-text-light">
-                已完全支持！你可以在笔记中使用 Markdown 语法（包括表格、代码块、粗体等）。编辑时可在"编辑"和"预览"之间切换，实时查看渲染效果。
+                已完全支持！你可以在笔记中使用 Markdown 语法（包括表格、代码块、粗体等）。编辑时可在&quot;编辑&quot;和&quot;预览&quot;之间切换，实时查看渲染效果。
               </p>
             </div>
             <div className="card">
