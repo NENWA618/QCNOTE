@@ -203,11 +203,11 @@ const Contact: React.FC = () => {
         <hr className="border-0 border-t border-white border-opacity-20 my-8" />
         <p className="text-center text-white">© 2026 NOTE. 用心记录每一刻。</p>
         <p className="text-center text-white text-sm mt-4">
-          <a href="/privacy.html" className="no-underline hover:underline">
+          <a href="/privacy" className="no-underline hover:underline">
             隐私政策
           </a>{' '}
           |{' '}
-          <a href="/terms.html" className="no-underline hover:underline">
+          <a href="/terms" className="no-underline hover:underline">
             使用条款
           </a>
         </p>

@@ -48,14 +48,14 @@ const Footer: React.FC = () => {
       <p>© 2026 NOTE. 用心记录每一刻。</p>
       <p className="mt-4 text-sm">
         <a
-          href="/privacy.html"
+          href="/privacy"
           className="text-primary-light no-underline hover:text-white transition-colors"
         >
           隐私政策
         </a>{' '}
         |{' '}
         <a
-          href="/terms.html"
+          href="/terms"
           className="text-primary-light no-underline hover:text-white transition-colors"
         >
           使用条款
