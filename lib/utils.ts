@@ -105,10 +105,10 @@ export const Utils = {
 
   debounce(func: (...args: any[]) => void, wait = 300) {
     let timeout: any;
-    return function executedFunction(...args: any[]) {
+    return function executedFunction(..._args: any[]) {
       const later = () => {
         clearTimeout(timeout);
-        func(...args);
+        func(..._args);
       };
       clearTimeout(timeout);
       timeout = setTimeout(later, wait);
@@ -117,9 +117,9 @@ export const Utils = {
 
   throttle(func: (...args: any[]) => void, limit = 300) {
     let inThrottle: boolean;
-    return function (this: any, ...args: any[]) {
+    return function (this: any, ..._args: any[]) {
       if (!inThrottle) {
-        func.apply(this, args);
+        func.apply(this, _args);
         inThrottle = true;
         setTimeout(() => (inThrottle = false), limit);
       }
