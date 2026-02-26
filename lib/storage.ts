@@ -31,6 +31,22 @@ export class NoteStorage {
     this.settingsKey = 'NOTE_SETTINGS';
     this.useIndexedDB = false;
     this.init();
+    // 自动检查 IndexedDB 是否可用
+    this.detectIndexedDB();
+  }
+
+  // 自动检测 IndexedDB 是否已初始化
+  async detectIndexedDB() {
+    if (typeof window === 'undefined') return;
+    try {
+      const data = await IDB.getItem(this.storageKey);
+      if (data) {
+        this.useIndexedDB = true;
+        console.log('✓ 检测到 IndexedDB 数据，自动启用');
+      }
+    } catch (e) {
+      // IndexedDB 不可用或出错，保持 useIndexedDB = false
+    }
   }
 
   // enable IndexedDB backend and migrate existing localStorage data into it
@@ -46,6 +62,7 @@ export class NoteStorage {
       // 清空 localStorage
       localStorage.removeItem(this.storageKey);
       localStorage.removeItem(this.settingsKey);
+      console.log('✓ IndexedDB 已启用，数据已迁移');
       return true;
     } catch (e) {
       console.error('启用IndexedDB失败:', e);
@@ -86,6 +103,12 @@ export class NoteStorage {
   }
 
   init() {
+    // 如果已启用 IndexedDB，跳过 localStorage 初始化
+    // 因为数据已经在 IndexedDB 中了
+    if (this.useIndexedDB) {
+      return;
+    }
+    
     if (!this.getData()) {
       this.setData([]);
     }
@@ -434,6 +457,10 @@ export class NoteStorage {
 
 export function initWindowStorage() {
   if (typeof window === 'undefined') return null;
+  // 检查是否已经存在全局 storage，避免重复创建
+  if ((window as any).storage instanceof NoteStorage) {
+    return (window as any).storage;
+  }
   const s = new NoteStorage();
   (window as any).storage = s;
   // optionally expose Utils
