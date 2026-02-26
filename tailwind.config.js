@@ -24,7 +24,7 @@ module.exports = {
         'primary-dark': '#c8b8c8',
         'accent-pink': '#dc96b4',
         'accent-purple': '#b0a8c0',
-        'text-light': '#7a7a7a',
+        'text-light': '#5c5c5c',  // slightly darker for better contrast
       },
       fontSize: {
         xs: '0.75rem',

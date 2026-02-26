@@ -17,6 +17,7 @@ const Header: React.FC = () => {
             alt="NOTE"
             width={48}
             height={48}
+            quality={75}
             className="rounded-lg shadow-light"
             priority
           />

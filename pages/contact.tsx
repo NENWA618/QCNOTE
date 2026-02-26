@@ -23,6 +23,7 @@ const Contact: React.FC = () => {
               alt="NOTE"
               width={48}
               height={48}
+              quality={75}
               className="rounded-lg shadow-light"
               priority
             />
@@ -71,6 +72,7 @@ const Contact: React.FC = () => {
                     alt="收款码"
                     width={400}
                     height={400}
+                    quality={75}
                     loading="lazy"
                     className="max-w-sm w-full rounded-2xl shadow-dark border-4 border-primary-light transition-all hover:scale-105 cursor-pointer"
                     onClick={() => window.open('/QR.png', '_blank')}

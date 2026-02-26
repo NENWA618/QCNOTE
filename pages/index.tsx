@@ -24,6 +24,7 @@ export default function Home() {
               alt="NOTE"
               width={48}
               height={48}
+              quality={75}
               className="rounded-lg shadow-light"
               priority
             />
