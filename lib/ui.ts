@@ -15,7 +15,7 @@ export class NoteUI {
       initWindowStorage();
     }
     this.setupEventListeners();
-    this.renderNotesList();
+    this.renderNotesListAsync();
   }
 
   setupEventListeners() {
@@ -24,7 +24,7 @@ export class NoteUI {
       searchInput.addEventListener('input', (e: Event) => {
         const target = e.target as HTMLInputElement;
         this.searchKeyword = target.value;
-        this.renderNotesList();
+        this.renderNotesListAsync();
       });
     }
 
@@ -33,7 +33,7 @@ export class NoteUI {
       categoryFilter.addEventListener('change', (e: Event) => {
         const target = e.target as HTMLSelectElement;
         this.selectedCategory = target.value;
-        this.renderNotesList();
+        this.renderNotesListAsync();
       });
     }
 
@@ -42,7 +42,7 @@ export class NoteUI {
       sortSelect.addEventListener('change', (e: Event) => {
         const target = e.target as HTMLSelectElement;
         localStorage.setItem('NOTE_SORT', target.value);
-        this.renderNotesList();
+        this.renderNotesListAsync();
       });
     }
 
@@ -60,6 +60,42 @@ export class NoteUI {
         e.preventDefault();
         if (searchInput) searchInput.focus();
       }
+    });
+  }
+
+  async renderNotesListAsync() {
+    const container = document.getElementById('notes-container') as HTMLElement | null;
+    if (!container) return;
+
+    const storage = (window as any).storage;
+    let notes = (await storage?.getDataAsync?.()) || [];
+
+    if (this.searchKeyword) {
+      notes = await storage.searchNotesAsync(this.searchKeyword);
+    }
+
+    if (this.selectedCategory !== 'all') {
+      notes = notes.filter((n: any) => n.category === this.selectedCategory);
+    }
+
+    const sortBy = localStorage.getItem('NOTE_SORT') || 'date';
+    notes = Utils.sortNotes(notes, sortBy);
+
+    container.innerHTML = '';
+
+    if (notes.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>还没有笔记呢</p>
+          <p>点击下方按钮创建第一条笔记吧 ✨</p>
+        </div>
+      `;
+      return;
+    }
+
+    notes.forEach((note: any) => {
+      const card = this.createNoteCard(note);
+      container.appendChild(card);
     });
   }
 
@@ -143,7 +179,7 @@ export class NoteUI {
     favBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
       (window as any).storage.toggleFavorite(note.id);
-      this.renderNotesList();
+      this.renderNotesListAsync();
     });
 
     const editBtn = card.querySelector('.edit-btn') as HTMLElement | null;
@@ -157,7 +193,7 @@ export class NoteUI {
       e.stopPropagation();
       if (confirm('确定要删除这条笔记吗？')) {
         (window as any).storage.deleteNote(note.id);
-        this.renderNotesList();
+        this.renderNotesListAsync();
       }
     });
 
@@ -232,7 +268,7 @@ export class NoteUI {
     });
 
     this.showNotification('笔记已保存 ✓');
-    this.renderNotesList();
+    this.renderNotesListAsync();
   }
 
   closeEditor() {

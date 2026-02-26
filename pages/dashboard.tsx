@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Footer from '../components/Footer';
 import { NoteItem, NoteStorage, initWindowStorage } from '../lib/storage';
+import IDB from '../lib/idb';
 
 const Dashboard: React.FC = () => {
   const storageRef = useRef<NoteStorage | null>(null);
@@ -26,48 +27,51 @@ const Dashboard: React.FC = () => {
     if (typeof window === 'undefined') return;
     const s = initWindowStorage() || new NoteStorage();
     storageRef.current = s;
-    loadNotes();
+    // 使用 IIFE 包装异步调用
+    (async () => {
+      await loadNotes();
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function loadNotes() {
+  async function loadNotes() {
     const s = storageRef.current;
     if (!s) return;
-    const all = s.getData() || [];
+    const all = (await s.getDataAsync()) || [];
     setNotes(all);
-    setCategories(s.getCategories());
-    setStats(s.getStats());
+    setCategories(await s.getCategoriesAsync());
+    setStats(await s.getStatsAsync());
   }
 
-  function handleNewNote() {
+  async function handleNewNote() {
     const s = storageRef.current;
     if (!s) return;
-    const newNote = s.addNote({ title: '新笔记', content: '' });
-    loadNotes();
+    const newNote = await s.addNoteAsync({ title: '新笔记', content: '' });
+    await loadNotes();
     setEditingNote(newNote);
     setEditorVisible(true);
   }
 
-  function handleSave() {
+  async function handleSave() {
     const s = storageRef.current;
     if (!s || !editingNote) return;
-    s.updateNote(editingNote.id, editingNote);
-    loadNotes();
+    await s.updateNoteAsync(editingNote.id, editingNote);
+    await loadNotes();
     setEditorVisible(false);
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     const s = storageRef.current;
     if (!s) return;
-    s.deleteNote(id);
-    loadNotes();
+    await s.deleteNoteAsync(id);
+    await loadNotes();
   }
 
   // Export notes to JSON file
-  function handleExport() {
+  async function handleExport() {
     const s = storageRef.current;
     if (!s) return;
-    s.exportToJSON();
+    await s.exportToJSON();
   }
 
   // Import notes from JSON file
@@ -86,8 +90,17 @@ const Dashboard: React.FC = () => {
   function handleClearAll() {
     const s = storageRef.current;
     if (!s) return;
-    const ok = s.clearAll();
-    if (ok) loadNotes();
+    if (confirm('确定要删除所有笔记吗？此操作无法撤销。')) {
+      if (s.useIndexedDB) {
+        IDB.clearStore().then(() => {
+          s.init();
+          loadNotes();
+        });
+      } else {
+        const ok = s.clearAll();
+        if (ok) loadNotes();
+      }
+    }
   }
 
   const filtered = notes

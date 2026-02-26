@@ -11,7 +11,7 @@
 - **样式**：内联 CSS → **Tailwind CSS 3.4.1**（实用优先 CSS 框架）
 - **页面**：`pages/` 下的三个主要页面（`index.tsx`、`dashboard.tsx`、`contact.tsx`）
 - **组件化**：`Header`、`Sidebar`、`Footer` React 组件
-- **存储层**：`NoteStorage` 类与 React hooks 集成（支持 localStorage 和可选 IndexedDB）
+- **存储层**：`NoteStorage` 类与 React hooks 集成（支持 localStorage 和 **IndexedDB**）
 - **Markdown 渲染**：安全渲染组件 (`react-markdown` + GFM + `rehype-sanitize`)
 - **工具链**：ESLint + Prettier 代码检查与格式化
 - **测试 & CI**：Vitest 单元测试；GitHub Actions 运行 lint、类型检查、测试与构建
@@ -78,7 +78,7 @@ NOTE/
 │   └── MarkdownView.tsx    # 安全渲染 Markdown
 ├── lib/                    # 业务逻辑与工具 (TS)
 │   ├── idb.ts              # IndexedDB helper
-│   ├── storage.ts          # 存储层（localStorage/IndexedDB）
+│   ├── storage.ts          # 存储层（IndexedDB + localStorage 兼容）
 │   ├── utils.ts            # 工具函数
 │   └── types/global.d.ts   # 全局类型声明
 ├── styles/                 # Tailwind CSS 样式
@@ -97,7 +97,8 @@ NOTE/
 └── README.md               # 本文档
 ```│   └── Footer.tsx          # 页脚
 ├── lib/                    # 业务逻辑与工具 (TS)
-│   ├── storage.ts          # 存储层（localStorage 管理）
+│   ├── idb.ts              # IndexedDB 助手（键值对存储）
+│   ├── storage.ts          # 存储层（IndexedDB + localStorage 兼容）
 │   ├── utils.ts            # 工具函数
 │   └── types/global.d.ts   # 全局类型声明
 ├── styles/                 # Tailwind CSS 样式
@@ -156,6 +157,9 @@ NOTE/
 | UI     | React             | 18      |
 | 语言   | TypeScript        | 5.2     |
 | 样式   | Tailwind CSS      | 3.4.1   |
+| 存储   | IndexedDB         | 原生    |
+| Markdown| react-markdown + remark-gfm | 10.1.0 + 4.0.1 |
+| 安全   | rehype-sanitize   | -       |
 | 格式化 | Prettier          | 2.8     |
 | 检查   | ESLint            | 8.x     |
 | 构建   | Webpack (Next.js) | -       |
@@ -182,11 +186,13 @@ NOTE/
 ## ✨ 核心功能
 
 - 📝 创建、编辑、删除笔记
+- ✏️ **Markdown 支持** — 包括表格、代码块、列表等语法；编辑/预览模式切换
 - 🏷️ 按分类和标签组织
 - 🔍 强大的搜索功能
 - ❤️ 收藏重要笔记
 - 📊 笔记统计与可视化
-- 💾 完全本地存储（隐私优先）
+- 💾 完全本地存储（**IndexedDB 优先**，自动迁移 localStorage 数据，隐私优先）
+- 📥 导入/导出 JSON 备份
 
 ## 🛠️ 开发指南
 
@@ -246,7 +252,7 @@ NOTE 由热爱笔记的开发者创建于 2026 年。
 
 ---
 
-**更新日期**：2026 年 2 月 18 日  
-**版本**：2.0.0（Next.js + TypeScript + Tailwind CSS 完全迁移）
+**更新日期**：2026 年 2 月 26 日  
+**版本**：2.1.0（完整 IndexedDB 迁移 + Markdown 支持）
 
 享受记录的过程，让思考变成力量。✨

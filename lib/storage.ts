@@ -36,12 +36,16 @@ export class NoteStorage {
   // enable IndexedDB backend and migrate existing localStorage data into it
   async enableIndexedDB() {
     if (typeof window === 'undefined') return false;
+    if (this.useIndexedDB) return true; // 已启用，跳过
     try {
       const notes = this.getData() || [];
       const settings = this.getSettings() || null;
       await IDB.setItem(this.storageKey, notes);
       if (settings) await IDB.setItem(this.settingsKey, settings);
       this.useIndexedDB = true;
+      // 清空 localStorage
+      localStorage.removeItem(this.storageKey);
+      localStorage.removeItem(this.settingsKey);
       return true;
     } catch (e) {
       console.error('启用IndexedDB失败:', e);
@@ -138,6 +142,32 @@ export class NoteStorage {
     }
   }
 
+  async getSettingsAsync(): Promise<UserSettings | null> {
+    try {
+      if (this.useIndexedDB) {
+        const v = (await IDB.getItem(this.settingsKey)) as UserSettings | null;
+        return v || null;
+      }
+      return this.getSettings();
+    } catch (e) {
+      console.error('读取设置失败:', e);
+      return null;
+    }
+  }
+
+  async setSettingsAsync(settings: UserSettings) {
+    try {
+      if (this.useIndexedDB) {
+        await IDB.setItem(this.settingsKey, settings);
+        return true;
+      }
+      return this.setSettings(settings);
+    } catch (e) {
+      console.error('保存设置失败:', e);
+      return false;
+    }
+  }
+
   addNote(note: Partial<NoteItem>) {
     const notes = this.getData() || [];
     const newNote: NoteItem = {
@@ -157,6 +187,25 @@ export class NoteStorage {
     return newNote;
   }
 
+  async addNoteAsync(note: Partial<NoteItem>) {
+    const notes = (await this.getDataAsync()) || [];
+    const newNote: NoteItem = {
+      id: `note_${Date.now()}`,
+      title: note.title || '无标题',
+      content: note.content || '',
+      category: note.category || '生活',
+      tags: note.tags || [],
+      color: note.color || '#dc96b4',
+      isFavorite: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isArchived: false,
+    };
+    notes.unshift(newNote);
+    await this.setDataAsync(notes);
+    return newNote;
+  }
+
   updateNote(id: string, updates: Partial<NoteItem>) {
     const notes = this.getData() || [];
     const index = notes.findIndex((n) => n.id === id);
@@ -172,10 +221,32 @@ export class NoteStorage {
     return null;
   }
 
+  async updateNoteAsync(id: string, updates: Partial<NoteItem>) {
+    const notes = (await this.getDataAsync()) || [];
+    const index = notes.findIndex((n) => n.id === id);
+    if (index !== -1) {
+      notes[index] = {
+        ...notes[index],
+        ...updates,
+        updatedAt: Date.now(),
+      };
+      await this.setDataAsync(notes);
+      return notes[index];
+    }
+    return null;
+  }
+
   deleteNote(id: string) {
     const notes = this.getData() || [];
     const filteredNotes = notes.filter((n) => n.id !== id);
     this.setData(filteredNotes);
+    return true;
+  }
+
+  async deleteNoteAsync(id: string) {
+    const notes = (await this.getDataAsync()) || [];
+    const filteredNotes = notes.filter((n) => n.id !== id);
+    await this.setDataAsync(filteredNotes);
     return true;
   }
 
@@ -184,8 +255,26 @@ export class NoteStorage {
     return notes.find((n) => n.id === id);
   }
 
+  async getNoteAsync(id: string) {
+    const notes = (await this.getDataAsync()) || [];
+    return notes.find((n) => n.id === id);
+  }
+
   searchNotes(keyword?: string) {
     const notes = this.getData() || [];
+    if (!keyword) return notes;
+
+    const lowerKeyword = keyword.toLowerCase();
+    return notes.filter(
+      (note) =>
+        note.title.toLowerCase().includes(lowerKeyword) ||
+        note.content.toLowerCase().includes(lowerKeyword) ||
+        note.tags.some((tag) => tag.toLowerCase().includes(lowerKeyword)),
+    );
+  }
+
+  async searchNotesAsync(keyword?: string) {
+    const notes = (await this.getDataAsync()) || [];
     if (!keyword) return notes;
 
     const lowerKeyword = keyword.toLowerCase();
@@ -225,6 +314,12 @@ export class NoteStorage {
     return Array.from(categories).sort();
   }
 
+  async getCategoriesAsync() {
+    const notes = (await this.getDataAsync()) || [];
+    const categories = new Set(notes.map((n) => n.category));
+    return Array.from(categories).sort();
+  }
+
   getAllTags() {
     const notes = this.getData() || [];
     const tagsSet = new Set<string>();
@@ -234,8 +329,17 @@ export class NoteStorage {
     return Array.from(tagsSet).sort();
   }
 
-  exportToJSON() {
-    const notes = this.getData() || [];
+  async getAllTagsAsync() {
+    const notes = (await this.getDataAsync()) || [];
+    const tagsSet = new Set<string>();
+    notes.forEach((note) => {
+      note.tags.forEach((tag) => tagsSet.add(tag));
+    });
+    return Array.from(tagsSet).sort();
+  }
+
+  async exportToJSON() {
+    const notes = (await this.getDataAsync()) || [];
     const dataStr = JSON.stringify(notes, null, 2);
     if (typeof window === 'undefined') return;
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -255,8 +359,12 @@ export class NoteStorage {
           const result = e.target?.result as string;
           const notes = JSON.parse(result);
           if (Array.isArray(notes)) {
-            this.setData(notes);
-            resolve(notes.length);
+            if (this.useIndexedDB) {
+              IDB.setItem(this.storageKey, notes).then(() => resolve(notes.length));
+            } else {
+              this.setData(notes);
+              resolve(notes.length);
+            }
           } else {
             reject('无效的JSON格式');
           }
@@ -294,6 +402,28 @@ export class NoteStorage {
       archivedNotes: notes.filter((n) => n.isArchived).length,
       categories: categoryStats,
       totalTags: this.getAllTags().length,
+      createdToday: notes.filter((n) => {
+        const today = new Date().toDateString();
+        return new Date(n.createdAt).toDateString() === today;
+      }).length,
+    };
+  }
+
+  async getStatsAsync() {
+    const notes = (await this.getDataAsync()) || [];
+    const categories = await this.getCategoriesAsync();
+    const categoryStats: Record<string, number> = {};
+
+    categories.forEach((cat) => {
+      categoryStats[cat] = notes.filter((n) => n.category === cat).length;
+    });
+
+    return {
+      totalNotes: notes.length,
+      favoriteNotes: notes.filter((n) => n.isFavorite).length,
+      archivedNotes: notes.filter((n) => n.isArchived).length,
+      categories: categoryStats,
+      totalTags: (await this.getAllTagsAsync()).length,
       createdToday: notes.filter((n) => {
         const today = new Date().toDateString();
         return new Date(n.createdAt).toDateString() === today;

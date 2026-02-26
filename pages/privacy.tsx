@@ -25,7 +25,7 @@ export default function Privacy() {
 
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">1. 本地存储为优先</h2>
           <p className="text-text-light mb-4">
-            NOTE 将笔记保存在你的浏览器本地（localStorage）。默认情况下我们不会将任何笔记、标签或元数据上报或存储到服务器。
+            NOTE 将笔记保存在你的浏览器本地（IndexedDB）。默认情况下我们不会将任何笔记、标签或元数据上报或存储到服务器。
           </p>
 
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">2. 导入与导出</h2>
@@ -48,7 +48,7 @@ export default function Privacy() {
             如有隐私方面的疑问或请求，请访问我们的 <Link href="/contact" className="text-accent-pink hover:underline">联系页</Link> 获取支持。
           </p>
 
-          <p className="text-text-light text-sm mt-6">最后更新：2026 年 2 月 18 日</p>
+          <p className="text-text-light text-sm mt-6">最后更新：2026 年 2 月 26 日</p>
         </div>
       </main>
 
