@@ -386,6 +386,17 @@ export class NoteStorage {
     return null;
   }
 
+  async toggleFavoriteAsync(id: string): Promise<boolean | null> {
+    const notes = (await this.getDataAsync()) || [];
+    const note = notes.find((n) => n.id === id);
+    if (note) {
+      note.isFavorite = !note.isFavorite;
+      await this.setDataAsync(notes);
+      return note.isFavorite;
+    }
+    return null;
+  }
+
   getCategories() {
     const notes = this.getData() || [];
     const categories = new Set(notes.map((n) => n.category));
@@ -459,6 +470,22 @@ export class NoteStorage {
     if (typeof window === 'undefined') return false;
     if (confirm('确定要删除所有笔记吗？此操作无法撤销。')) {
       localStorage.removeItem(this.storageKey);
+      this.init();
+      return true;
+    }
+    return false;
+  }
+
+  async clearAllAsync() {
+    if (typeof window === 'undefined') return false;
+    // avoid confirm inside storage layer? we can keep it for parity
+    if (confirm('确定要删除所有笔记吗？此操作无法撤销。')) {
+      if (this.useIndexedDB) {
+        await IDB.clearStore();
+        // IndexedDB data removed; leave storage keys alone
+      } else {
+        localStorage.removeItem(this.storageKey);
+      }
       this.init();
       return true;
     }

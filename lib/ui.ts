@@ -15,6 +15,7 @@ export class NoteUI {
       initWindowStorage();
     }
     this.setupEventListeners();
+    // 首次渲染（异步）
     this.renderNotesListAsync();
   }
 
@@ -48,7 +49,7 @@ export class NoteUI {
 
     const newNoteBtn = document.getElementById('new-note-btn') as HTMLElement | null;
     if (newNoteBtn) {
-      newNoteBtn.addEventListener('click', () => this.createNewNote());
+      newNoteBtn.addEventListener('click', () => { void this.createNewNote(); });
     }
 
     document.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -99,6 +100,9 @@ export class NoteUI {
     });
   }
 
+  /**
+   * 旧版同步渲染逻辑，已弃用。使用 renderNotesListAsync 替代。
+   */
   renderNotesList() {
     const container = document.getElementById('notes-container') as HTMLElement | null;
     if (!container) return;
@@ -176,23 +180,23 @@ export class NoteUI {
     `;
 
     const favBtn = card.querySelector('.favorite-btn') as HTMLElement | null;
-    favBtn?.addEventListener('click', (e) => {
+    favBtn?.addEventListener('click', async (e) => {
       e.stopPropagation();
-      (window as any).storage.toggleFavorite(note.id);
+      await (window as any).storage.toggleFavoriteAsync?.(note.id);
       this.renderNotesListAsync();
     });
 
     const editBtn = card.querySelector('.edit-btn') as HTMLElement | null;
     editBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.editNote(note.id);
+      void this.editNote(note.id);
     });
 
     const deleteBtn = card.querySelector('.delete-btn') as HTMLElement | null;
-    deleteBtn?.addEventListener('click', (e) => {
+    deleteBtn?.addEventListener('click', async (e) => {
       e.stopPropagation();
       if (confirm('确定要删除这条笔记吗？')) {
-        (window as any).storage.deleteNote(note.id);
+        await (window as any).storage.deleteNoteAsync?.(note.id);
         this.renderNotesListAsync();
       }
     });
@@ -202,18 +206,22 @@ export class NoteUI {
     return card;
   }
 
-  createNewNote() {
-    const note = (window as any).storage.addNote({
+  async createNewNote() {
+    const settings = await (window as any).storage.getSettingsAsync?.();
+    const defaultCat = settings?.defaultCategory ||
+      localStorage.getItem('NOTE_DEFAULT_CATEGORY') ||
+      '生活';
+    const note = await (window as any).storage.addNoteAsync({
       title: '新笔记',
       content: '',
-      category: localStorage.getItem('NOTE_DEFAULT_CATEGORY') || '生活',
+      category: defaultCat,
     });
     this.editNote(note.id);
   }
 
-  editNote(noteId: string) {
+  async editNote(noteId: string) {
     this.currentNoteId = noteId;
-    const note = (window as any).storage.getNote(noteId);
+    const note = await (window as any).storage.getNoteAsync?.(noteId);
     if (!note) return;
 
     const editorPanel = document.getElementById('editor-panel') as HTMLElement | null;
@@ -239,7 +247,7 @@ export class NoteUI {
     if (tagsInput) tagsInput.value = note.tags.join(', ');
   }
 
-  saveCurrentNote() {
+  async saveCurrentNote() {
     if (!this.currentNoteId) return;
 
     const titleInput = document.getElementById('note-title-input') as HTMLInputElement | null;
@@ -260,7 +268,7 @@ export class NoteUI {
         .map((t) => t.trim())
         .filter((t) => t) || [];
 
-    (window as any).storage.updateNote(this.currentNoteId, {
+    await (window as any).storage.updateNoteAsync?.(this.currentNoteId, {
       title,
       content,
       category,
@@ -271,8 +279,8 @@ export class NoteUI {
     this.renderNotesListAsync();
   }
 
-  closeEditor() {
-    this.saveCurrentNote();
+  async closeEditor() {
+    await this.saveCurrentNote();
     const editorPanel = document.getElementById('editor-panel') as HTMLElement | null;
     if (editorPanel) {
       editorPanel.style.display = 'none';
@@ -280,8 +288,8 @@ export class NoteUI {
     this.currentNoteId = null;
   }
 
-  updateCategoryFilter() {
-    const categories = (window as any).storage.getCategories();
+  async updateCategoryFilter() {
+    const categories = await (window as any).storage.getCategoriesAsync?.();
     const filterSelect = document.getElementById('category-filter') as HTMLSelectElement | null;
     if (!filterSelect) return;
 
@@ -310,8 +318,8 @@ export class NoteUI {
     }, duration);
   }
 
-  updateStats() {
-    const stats = (window as any).storage.getStats();
+  async updateStats() {
+    const stats = await (window as any).storage.getStatsAsync?.();
     const statsContainer = document.getElementById('stats-container') as HTMLElement | null;
     if (!statsContainer) return;
 

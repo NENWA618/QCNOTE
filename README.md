@@ -194,6 +194,53 @@ NOTE/
 - 💾 完全本地存储（**IndexedDB 优先**，自动迁移 localStorage 数据，隐私优先）
 - 📥 导入/导出 JSON 备份
 
+
+## 🔒 存储细节 & 调试
+
+NOTE 的存储逻辑位于 `lib/storage.ts`：
+
+1. 使用同步方法（`getData()`、`addNote()` 等）
+   在组件间共享的全局 `window.storage` 实例上可用。
+2. 为了与 IndexedDB 配合，所有核心操作也提供了对应的异步版本（`getDataAsync()`、`addNoteAsync()`、`toggleFavoriteAsync()` 等）。
+   应用中已经把所有新业务逻辑改为调用这些 `*Async` 方法。
+   **请勿混用同步和异步接口**，否则可能产生竞态写入、旧数据覆盖的情况。
+
+### 启动时的迁移流程
+
+`pages/_app.tsx` 在客户端首次加载时会：
+
+```tsx
+const storage = initWindowStorage();
+await storage.enableIndexedDB(); // 等待完成后再渲染页面
+```
+
+这能确保 localStorage 数据在首次访问时被迁移并且不会被后续同步写回本地存储。
+
+### 自检 & 浏览器存储查看
+
+如果你怀疑笔记丢失或出现覆盖：
+
+1. 打开 DevTools → Application（存储）
+2. 在 **Local Storage** 节点下查找 `NOTE_STORAGE` 和 `NOTE_SETTINGS` 键
+3. 在 **IndexedDB → note-db → keyvaluepairs** 里查找相同键
+4. 若两者同时存在，后一方应当包含最新数据；若看到带 `_backup_` 后缀的键，则说明迁移时做了备份
+
+可使用 `window.storage.getDataAsync()` 在控制台手动读取当前数据。
+
+> Tip：在 Sidebar 或编辑器打开笔记时发生突然刷新，说明某处仍在使用同步方法，请检查 `lib/ui.ts` 或新增的插件是否调用了 `storage.*`。
+
+### 日志信息
+
+应用会在控制台打印状态信息，例如
+
+```
+✓ 检测到 IndexedDB 数据，自动启用
+✓ 本地数据已备份到 IndexedDB 键： NOTE_STORAGE_backup_167... 
+✓ IndexedDB 已启用，数据迁移成功
+```
+
+这些有助于追踪首次访问的迁移过程。
+
 ## 🛠️ 开发指南
 
 ### 添加新的 Tailwind 样式
