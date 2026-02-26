@@ -6,7 +6,9 @@
     "node": true
   },
   "rules": {
-    "no-unused-vars": "warn",
+    // unused vars often occur in type definitions or placeholder parameters,
+    // we rely on TypeScript for unused detection and disable ESLint rule entirely.
+    "no-unused-vars": "off",
     "react/react-in-jsx-scope": "off"
   }
 }
