@@ -64,13 +64,13 @@ const Header: React.FC = () => {
             </Link>
           </li>
           <li>
-            <a
-              href="#about"
+            <Link
+              href="/#about"
               className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
               onClick={() => setMenuOpen(false)}
             >
               帮助
-            </a>
+            </Link>
           </li>
         </ul>
       </nav>
