@@ -11,7 +11,7 @@ interface Props {
 const MarkdownView: React.FC<Props> = ({ source, className }) => {
   return (
     <div className={className}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize as any]}>
         {source}
       </ReactMarkdown>
     </div>

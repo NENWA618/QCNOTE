@@ -16,7 +16,7 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-async function withStore<T>(mode: IDBTransactionMode, cb: (store: IDBObjectStore) => Promise<T> | T) {
+async function withStore<T>(mode: IDBTransactionMode, cb: (_store: IDBObjectStore) => Promise<T> | T) {
   const db = await openDB();
   return new Promise<T>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, mode);
