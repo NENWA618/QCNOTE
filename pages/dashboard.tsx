@@ -94,19 +94,12 @@ const Dashboard: React.FC = () => {
     }
   }
 
-  function handleClearAll() {
+  async function handleClearAll() {
     const s = storageRef.current;
     if (!s) return;
     if (confirm('确定要删除所有笔记吗？此操作无法撤销。')) {
-      if (s.useIndexedDB) {
-        IDB.clearStore().then(() => {
-          s.init();
-          loadNotes();
-        });
-      } else {
-        const ok = s.clearAll();
-        if (ok) loadNotes();
-      }
+      const ok = await s.clearAllAsync();
+      if (ok) await loadNotes();
     }
   }
 

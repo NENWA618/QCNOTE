@@ -105,44 +105,11 @@ export class NoteUI {
   }
 
   /**
-   * 旧版同步渲染逻辑，已弃用。使�?renderNotesListAsync 替代�?
+   * 旧版同步渲染逻辑，已弃用。使用 renderNotesListAsync 代替。
    */
   renderNotesList() {
-    // synchronous version is retained for compatibility but uses typed storage
-    const container = document.getElementById('notes-container') as HTMLElement | null;
-    if (!container) return;
-
-    const storage = window.storage as NoteStorage | undefined;
-    if (!storage) return;
-    let notes: NoteItem[] = storage.getData() || [];
-
-    if (this.searchKeyword) {
-      notes = storage.searchNotes(this.searchKeyword);
-    }
-
-    if (this.selectedCategory !== 'all') {
-      notes = notes.filter((n) => n.category === this.selectedCategory);
-    }
-
-    const sortBy = localStorage.getItem('NOTE_SORT') || 'date';
-    notes = Utils.sortNotes(notes, sortBy);
-
-    container.innerHTML = '';
-
-    if (notes.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <p>还没有笔记呢</p>
-          <p>点击下方按钮创建第一条笔记吧 �?/p>
-        </div>
-      `;
-      return;
-    }
-
-    notes.forEach((note: NoteItem) => {
-      const card = this.createNoteCard(note);
-      container.appendChild(card);
-    });
+    // Delegate to async implementation to avoid duplicating logic and sync calls.
+    void this.renderNotesListAsync();
   }
 
   createNoteCard(note: NoteItem) {

@@ -192,11 +192,73 @@ NOTE/
 
 NOTE 的存储逻辑位于 `lib/storage.ts`：
 
-1. 使用同步方法（`getData()`、`addNote()` 等）
-   在组件间共享的全局 `window.storage` 实例上可用。
-2. 为了与 IndexedDB 配合，所有核心操作也提供了对应的异步版本（`getDataAsync()`、`addNoteAsync()`、`toggleFavoriteAsync()` 等）。
-   应用中已经把所有新业务逻辑改为调用这些 `*Async` 方法。
-   **请勿混用同步和异步接口**，否则可能产生竞态写入、旧数据覆盖的情况。
+### 异步优先（推荐）
+
+所有核心操作均提供异步版本（`getDataAsync()`、`addNoteAsync()`、`updateNoteAsync()` 等），支持 IndexedDB。
+应用中所有新业务逻辑都调用这些 `*Async` 方法。**这是首选方式**。
+
+```typescript
+// ✅ 推荐用法
+const notes = await storage.getDataAsync();
+const newNote = await storage.addNoteAsync({ title: 'Test' });
+await storage.updateNoteAsync(id, { title: 'Updated' });
+```
+
+### 同步方法（已弃用）
+
+同步方法（`getData()`、`addNote()` 等）虽然保留备降级之用，但**已标记为 `@deprecated`**：
+- 阻塞 UI 线程，影响性能
+- 不支持 IndexedDB（仅限 localStorage）  
+- 在控制台会打印警告
+
+```typescript
+// ❌ 已弃用 - 避免使用
+const notes = storage.getData(); // ⚠️ [NoteStorage] Deprecated sync method used: getData
+```
+
+**请勿混用同步和异步接口**，否则可能产生竞态写入、旧数据覆盖的情况。
+
+### 迁移指南：从同步到异步
+
+如果你在代码中发现了同步 storage 方法调用，按照以下步骤迁移：
+
+| 同步方法 | 异步替代 |
+| --- | --- |
+| `storage.getData()` | `await storage.getDataAsync()` |
+| `storage.setData(notes)` | `await storage.setDataAsync(notes)` |
+| `storage.getSettings()` | `await storage.getSettingsAsync()` |
+| `storage.setSettings(s)` | `await storage.setSettingsAsync(s)` |
+| `storage.addNote(n)` | `await storage.addNoteAsync(n)` |
+| `storage.updateNote(id, u)` | `await storage.updateNoteAsync(id, u)` |
+| `storage.deleteNote(id)` | `await storage.deleteNoteAsync(id)` |
+| `storage.getNote(id)` | `await storage.getNoteAsync(id)` |
+| `storage.searchNotes(kw)` | `await storage.searchNotesAsync(kw)` |
+| `storage.getNotesByCategory(cat)` | `await storage.getNotesByCategoryAsync(cat)` |
+| `storage.toggleFavorite(id)` | `await storage.toggleFavoriteAsync(id)` |
+| `storage.getCategories()` | `await storage.getCategoriesAsync()` |
+| `storage.getAllTags()` | `await storage.getAllTagsAsync()` |
+| `storage.getStats()` | `await storage.getStatsAsync()` |
+| `storage.getFavoriteNotes()` | `await storage.getFavoriteNotesAsync()` |
+| `storage.clearAll()` | `await storage.clearAllAsync()` |
+
+**示例**：
+```typescript
+// 旧的同步方式
+function handleSave() {
+  const notes = storage.getData() || [];
+  notes.push(newNote);
+  storage.setData(notes);
+}
+
+// 新的异步方式
+async function handleSave() {
+  const notes = await storage.getDataAsync() || [];
+  notes.push(newNote);
+  await storage.setDataAsync(notes);
+}
+```
+
+**注意**：所有调用 storage 方法的函数都需要标记为 `async` 并使用 `await`。
 
 ### 启动时的迁移流程
 

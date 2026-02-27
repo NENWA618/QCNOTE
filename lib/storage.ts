@@ -44,6 +44,13 @@ export class NoteStorage {
     this.detectIndexedDB();
   }
 
+  private _warnSyncUsage(method: string) {
+    if (typeof window !== 'undefined') {
+      // keep message concise to aid debugging during migration
+      console.warn(`[NoteStorage] Deprecated sync method used: ${method}. Prefer using the async variant (e.g. ${method}Async).`);
+    }
+  }
+
   // 自动检测 IndexedDB 是否已初始化
   async detectIndexedDB() {
     if (typeof window === 'undefined') return;
@@ -174,7 +181,11 @@ export class NoteStorage {
     }
   }
 
+  /**
+   * @deprecated Use getDataAsync() instead. Synchronous access blocks the UI and doesn't support IndexedDB.
+   */
   getData(): NoteItem[] | null {
+    this._warnSyncUsage('getData');
     try {
       const data = typeof window !== 'undefined' ? localStorage.getItem(this.storageKey) : null;
       return data ? (JSON.parse(data) as NoteItem[]) : null;
@@ -184,7 +195,11 @@ export class NoteStorage {
     }
   }
 
+  /**
+   * @deprecated Use setDataAsync() instead. Synchronous writes block the UI and don't support IndexedDB.
+   */
   setData(notes: NoteItem[]) {
+    this._warnSyncUsage('setData');
     try {
       if (typeof window !== 'undefined')
         localStorage.setItem(this.storageKey, JSON.stringify(notes));
@@ -195,7 +210,11 @@ export class NoteStorage {
     }
   }
 
+  /**
+   * @deprecated Use getSettingsAsync() instead.
+   */
   getSettings(): UserSettings | null {
+    this._warnSyncUsage('getSettings');
     try {
       const settings =
         typeof window !== 'undefined' ? localStorage.getItem(this.settingsKey) : null;
@@ -206,7 +225,11 @@ export class NoteStorage {
     }
   }
 
+  /**
+   * @deprecated Use setSettingsAsync() instead.
+   */
   setSettings(settings: UserSettings) {
+    this._warnSyncUsage('setSettings');
     try {
       if (typeof window !== 'undefined')
         localStorage.setItem(this.settingsKey, JSON.stringify(settings));
@@ -255,7 +278,11 @@ export class NoteStorage {
     }
   }
 
+  /**
+   * @deprecated Use addNoteAsync() instead.
+   */
   addNote(note: Partial<NoteItem>) {
+    this._warnSyncUsage('addNote');
     const notes = this.getData() || [];
     const newNote: NoteItem = {
       id: `note_${Date.now()}`,
@@ -293,7 +320,11 @@ export class NoteStorage {
     return newNote;
   }
 
+  /**
+   * @deprecated Use updateNoteAsync() instead.
+   */
   updateNote(id: string, updates: Partial<NoteItem>) {
+    this._warnSyncUsage('updateNote');
     const notes = this.getData() || [];
     const index = notes.findIndex((n) => n.id === id);
     if (index !== -1) {
@@ -323,7 +354,11 @@ export class NoteStorage {
     return null;
   }
 
+  /**
+   * @deprecated Use deleteNoteAsync() instead.
+   */
   deleteNote(id: string) {
+    this._warnSyncUsage('deleteNote');
     const notes = this.getData() || [];
     const filteredNotes = notes.filter((n) => n.id !== id);
     this.setData(filteredNotes);
@@ -337,7 +372,11 @@ export class NoteStorage {
     return true;
   }
 
+  /**
+   * @deprecated Use getNoteAsync() instead.
+   */
   getNote(id: string) {
+    this._warnSyncUsage('getNote');
     const notes = this.getData() || [];
     return notes.find((n) => n.id === id);
   }
@@ -347,7 +386,11 @@ export class NoteStorage {
     return notes.find((n) => n.id === id);
   }
 
+  /**
+   * @deprecated Use searchNotesAsync() instead.
+   */
   searchNotes(keyword?: string) {
+    this._warnSyncUsage('searchNotes');
     const notes = this.getData() || [];
     if (!keyword) return notes;
 
@@ -373,18 +416,41 @@ export class NoteStorage {
     );
   }
 
+  /**
+   * @deprecated Use getNotesByCategoryAsync() instead.
+   */
   getNotesByCategory(category: string) {
+    this._warnSyncUsage('getNotesByCategory');
     const notes = this.getData() || [];
     if (category === 'all') return notes;
     return notes.filter((n) => n.category === category);
   }
 
+  async getNotesByCategoryAsync(category: string) {
+    const notes = (await this.getDataAsync()) || [];
+    if (category === 'all') return notes;
+    return notes.filter((n) => n.category === category);
+  }
+
+  /**
+   * @deprecated Use getFavoriteNotesAsync() instead.
+   */
   getFavoriteNotes() {
+    this._warnSyncUsage('getFavoriteNotes');
     const notes = this.getData() || [];
     return notes.filter((n) => n.isFavorite);
   }
 
+  async getFavoriteNotesAsync() {
+    const notes = (await this.getDataAsync()) || [];
+    return notes.filter((n) => n.isFavorite);
+  }
+
+  /**
+   * @deprecated Use toggleFavoriteAsync() instead.
+   */
   toggleFavorite(id: string) {
+    this._warnSyncUsage('toggleFavorite');
     const notes = this.getData() || [];
     const note = notes.find((n) => n.id === id);
     if (note) {
@@ -406,7 +472,11 @@ export class NoteStorage {
     return null;
   }
 
+  /**
+   * @deprecated Use getCategoriesAsync() instead.
+   */
   getCategories() {
+    this._warnSyncUsage('getCategories');
     const notes = this.getData() || [];
     const categories = new Set(notes.map((n) => n.category));
     return Array.from(categories).sort();
@@ -418,7 +488,11 @@ export class NoteStorage {
     return Array.from(categories).sort();
   }
 
+  /**
+   * @deprecated Use getAllTagsAsync() instead.
+   */
   getAllTags() {
+    this._warnSyncUsage('getAllTags');
     const notes = this.getData() || [];
     const tagsSet = new Set<string>();
     notes.forEach((note) => {
@@ -476,32 +550,33 @@ export class NoteStorage {
     });
   }
 
+  /**
+   * @deprecated Use clearAllAsync() instead. Always call the async version.
+   */
   clearAll() {
     if (typeof window === 'undefined') return false;
-    if (confirm('确定要删除所有笔记吗？此操作无法撤销。')) {
-      localStorage.removeItem(this.storageKey);
-      this.init();
-      return true;
-    }
-    return false;
+    // Storage layer should not perform UI confirmation prompts.
+    localStorage.removeItem(this.storageKey);
+    this.init();
+    return true;
   }
 
   async clearAllAsync() {
     if (typeof window === 'undefined') return false;
-    // avoid confirm inside storage layer? we can keep it for parity
-    if (confirm('确定要删除所有笔记吗？此操作无法撤销。')) {
-      if (this.useIndexedDB) {
-        await IDB.clearStore();
-        // IndexedDB data removed; leave storage keys alone
-      } else {
-        localStorage.removeItem(this.storageKey);
-      }
-      this.init();
-      return true;
+    // Storage layer should not perform UI confirmation prompts.
+    if (this.useIndexedDB) {
+      await IDB.clearStore();
+      // IndexedDB data removed; leave storage keys alone
+    } else {
+      localStorage.removeItem(this.storageKey);
     }
-    return false;
+    this.init();
+    return true;
   }
 
+  /**
+   * @deprecated Use getStatsAsync() instead.
+   */
   getStats(): Stats {
     const notes = this.getData() || [];
     const categories = this.getCategories();
