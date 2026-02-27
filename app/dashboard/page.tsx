@@ -1,14 +1,15 @@
-import Head from 'next/head';
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import Header from '../components/Header';
-import Sidebar from '../components/Sidebar';
-import Footer from '../components/Footer';
-import { NoteItem, NoteStorage, Stats, initWindowStorage } from '../lib/storage';
-import IDB from '../lib/idb';
+import Sidebar from '../../components/Sidebar';
+import { NoteItem, NoteStorage, Stats, initWindowStorage } from '../../lib/storage';
+import IDB from '../../lib/idb';
 
-const Dashboard: React.FC = () => {
+export const metadata = {
+  title: '笔记列表 - NOTE',
+};
+
+const DashboardPage: React.FC = () => {
   const storageRef = useRef<NoteStorage | null>(null);
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [search, setSearch] = useState('');
@@ -34,7 +35,6 @@ const Dashboard: React.FC = () => {
     if (typeof window === 'undefined') return;
     const s = initWindowStorage() || new NoteStorage();
     storageRef.current = s;
-    // 使用 IIFE 包装异步调用
     (async () => {
       await loadNotes();
     })();
@@ -125,14 +125,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <>
-      <Head>
-        <title>笔记列表 - NOTE</title>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      </Head>
-
-      <Header />
-
       <div className="container">
         <main className="flex flex-col md:flex-row gap-6 md:gap-8">
           {/* Mobile sidebar toggle button */}
@@ -182,7 +174,6 @@ const Dashboard: React.FC = () => {
                     <button
                       className="btn btn-secondary w-full md:w-auto"
                       onClick={() => {
-                        // trigger a hidden import input via DOM
                         const input = document.createElement('input');
                         input.type = 'file';
                         input.accept = 'application/json';
@@ -350,9 +341,8 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <Footer />
     </>
   );
 };
 
-export default Dashboard;
+export default DashboardPage;

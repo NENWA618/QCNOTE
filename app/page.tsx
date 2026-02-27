@@ -1,56 +1,14 @@
-import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 
-export default function Home() {
+export const metadata = {
+  title: 'NOTE - 个人笔记网站',
+};
+
+export default function HomePage() {
   return (
     <>
-      <Head>
-        <title>NOTE - 个人笔记网站</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta charSet="utf-8" />
-        <link rel="icon" href="/images/icons/note_icon.png" />
-      </Head>
-
-      <header>
-        <nav className="max-w-6xl mx-auto flex justify-between items-center px-8 py-4">
-          <Link
-            href="/"
-            className="flex gap-3 items-center text-2xl font-bold text-primary-dark hover:text-accent-pink transition-colors hover:scale-105"
-          >
-            <Image
-              src="/images/icons/note_icon.png"
-              alt="NOTE"
-              width={48}
-              height={48}
-              quality={75}
-              className="rounded-lg shadow-light"
-              priority
-            />
-            <span>NOTE</span>
-          </Link>
-          <ul className="flex gap-8 list-none">
-            <li>
-              <a
-                href="#features"
-                className="text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-              >
-                功能
-              </a>
-            </li>
-            <li>
-              <Link
-                href="/dashboard"
-                className="text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-              >
-                开始使用
-              </Link>
-            </li>
-          </ul>
-        </nav>
-      </header>
-
       <div className="container">
         <section className="text-center py-12 md:py-20">
           <div className="mb-8 inline-block">
@@ -148,9 +106,7 @@ export default function Home() {
           <div className="card">
             <h2 className="text-primary-dark mb-6 text-2xl md:text-3xl font-bold">❓ 关于 NOTE</h2>
             <p className="text-text-light leading-relaxed">
-              NOTE
-              是一个简洁而优雅的个人笔记应用。我们相信，记录是思考的开始，而思考是成长的源动力。无论你是在记录日常的点滴，还是在思考人生的意义，NOTE
-              都为你提供一个安静而温暖的空间。
+              NOTE 是一个简洁而优雅的个人笔记应用。我们相信，记录是思考的开始，而思考是成长的源动力。无论你是在记录日常的点滴，还是在思考人生的意义，NOTE 都为你提供一个安静而温暖的空间。
             </p>
             <p className="text-text-light leading-relaxed mt-4">
               <strong>设计理念：</strong>
@@ -177,7 +133,7 @@ export default function Home() {
             <div className="card mb-4">
               <h3 className="text-primary-dark mb-4 font-bold">能否支持Markdown？</h3>
               <p className="text-text-light">
-                已完全支持！你可以在笔记中使用 Markdown 语法（包括表格、代码块、粗体等）。编辑时可在&quot;编辑&quot;和&quot;预览&quot;之间切换，实时查看渲染效果。
+                已完全支持！你可以在笔记中使用 Markdown 语法（包括表格、代码块、粗体等）。编辑时可在"编辑"和"预览"之间切换，实时查看渲染效果。
               </p>
             </div>
             <div className="card">
@@ -207,19 +163,6 @@ export default function Home() {
           </div>
         </section>
       </div>
-
-      <footer>
-        <p className="text-center text-white">© 2026 NOTE. 用心记录每一刻。</p>
-        <p className="text-center text-white text-sm mt-4">
-          <Link href="/privacy" className="no-underline hover:underline">
-            隐私政策
-          </Link>{' '}
-          |{' '}
-          <Link href="/terms" className="no-underline hover:underline">
-            使用条款
-          </Link>
-        </p>
-      </footer>
     </>
   );
 }

@@ -78,14 +78,28 @@ npx tsc --noEmit  # TypeScript 类型检查
 
 ```
 NOTE/
-├── pages/                   # Next.js 页面 (TSX)
-│   ├── _app.tsx            # 应用入口（导入 Tailwind globals）
-│   ├── index.tsx           # 首页
-│   ├── dashboard.tsx       # 笔记管理页面
-│   ├── contact.tsx         # 联系页面
-│   ├── privacy.tsx         # 隐私政策
-│   └── terms.tsx           # 使用条款
+├── app/                     # Next.js App Router 页面（RSC/Client）
+│   ├── layout.tsx          # 根布局与初始化逻辑
+│   ├── page.tsx            # 首页
+│   ├── dashboard/page.tsx  # 笔记管理页面
+│   ├── contact/page.tsx    # 联系页面
+│   ├── privacy/page.tsx    # 隐私政策
+│   └── terms/page.tsx      # 使用条款
+├── pages/                   # 传统 Pages Router (兼容，正在迁移中)
+│   ├── _app.tsx            # 应用入口（Tailwind, storage init）
+│   ├── index.tsx           # 首页（备用）
+│   ├── dashboard.tsx       # 笔记管理页面（备用）
+│   ├── contact.tsx         # 联系页面（备用）
+│   ├── privacy.tsx         # 隐私政策（备用）
+│   └── terms.tsx           # 使用条款（备用）
 ├── components/             # React 可复用组件 (TSX)
+
+**迁移说明**：
+
+- `app/` 目录包含使用 Next.js 14 App Router 的页面和布局, 支持 React Server Components 和异步数据获取。
+- `pages/` 目录仍保留作为兼容层，在迁移完成前可并存；新页面应优先在 `app/` 下创建。
+- 参考 [App Router 迁移指南](#app-router-迁移) 了解详细步骤。
+
 │   ├── Header.tsx          # 导航栏
 │   ├── Sidebar.tsx         # 侧边栏（分类、排序、统计）
 │   ├── Footer.tsx          # 页脚
