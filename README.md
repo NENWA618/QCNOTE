@@ -109,27 +109,6 @@ NOTE/
 ├── tsconfig.json           # TypeScript 配置
 ├── package.json            # 项目依赖与脚本
 └── README.md               # 本文档
-```│   └── Footer.tsx          # 页脚
-├── lib/                    # 业务逻辑与工具 (TS)
-│   ├── idb.ts              # IndexedDB 助手（键值对存储）
-│   ├── storage.ts          # 存储层（IndexedDB + localStorage 兼容）
-│   ├── utils.ts            # 工具函数
-│   └── types/global.d.ts   # 全局类型声明
-├── styles/                 # Tailwind CSS 样式
-│   └── globals.css         # 全局 Tailwind 配置 (@tailwind 指令，@layer 组件）
-├── public/                 # 静态资源
-│   └── images/
-├── data/                   # 示例数据
-│   └── sample-notes.json
-├── docs/                   # 文档
-├── .eslintrc.json         # ESLint 配置（next/core-web-vitals）
-├── .prettierrc             # Prettier 代码格式化配置
-├── tailwind.config.js      # Tailwind CSS 自定义主题和扩展
-├── postcss.config.js       # PostCSS 配置（Tailwind 处理）
-├── tsconfig.json           # TypeScript 配置
-├── next.config.js          # Next.js 配置
-├── package.json            # 项目依赖与脚本
-└── README.md               # 本文档
 ```
 
 ## 🎨 设计系统（Tailwind CSS）

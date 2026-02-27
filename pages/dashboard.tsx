@@ -244,7 +244,7 @@ const Dashboard: React.FC = () => {
       {editorVisible && editingNote && (
         <div
           id="editor-panel"
-          className="fixed inset-0 md:right-5 md:top-20 md:w-96 w-full h-full md:h-auto md:rounded-2xl bg-white p-6 rounded-none shadow-dark md:shadow-dark border border-primary-light/50 z-50 backdrop-blur-sm overflow-y-auto md:overflow-y-visible flex flex-col md:flex md:max-h-[calc(100vh-100px)]"
+          className="fixed inset-0 md:right-5 md:top-20 md:w-96 w-full h-full md:h-auto md:rounded-2xl bg-white p-6 rounded-none shadow-dark md:shadow-dark border border-primary-light/50 z-50 backdrop-blur-sm overflow-y-auto md:overflow-visible flex flex-col md:max-h-[calc(100vh-100px)]"
         >
           <div className="flex justify-between items-center mb-4 pb-4 border-b border-primary-light">
             <h2 className="text-xl font-bold text-primary-dark">✏️ 编辑笔记</h2>

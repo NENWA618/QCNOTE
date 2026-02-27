@@ -93,7 +93,7 @@ const Sidebar: React.FC<Props> = ({
           </div>
           <div className="stat-item">
             <span className="stat-value">{stats?.totalTags ?? 0}</span>
-            <span className="stat-label">标签</span>
+            <span className="stat-label">标签数</span>
           </div>
         </div>
       </div>
