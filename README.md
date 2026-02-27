@@ -1,5 +1,10 @@
 # NOTE - 个人笔记应用
 
+[![build](https://github.com/NENWA618/NOTE/actions/workflows/ci.yml/badge.svg)](https://github.com/NENWA618/NOTE/actions)
+[![version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/NENWA618/NOTE)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![issues](https://img.shields.io/github/issues/NENWA618/NOTE)](https://github.com/NENWA618/NOTE/issues)
+
 一个简洁而优雅的个人笔记应用。完全本地存储，100% 隐私保护。现已迁移至 **Next.js 14 + TypeScript + Tailwind CSS**。
 
 ## 🎯 项目状态
@@ -17,44 +22,53 @@
 - **测试 & CI**：Vitest 单元测试；GitHub Actions 运行 lint、类型检查、测试与构建
 - **性能 & 质量**：Lighthouse CI 配置、字体优化、lazy-loading 图像、可访问性改进
 
-## 🚀 快速开始
 
-### 准备
+## 🚀 快速开始（5 分钟上手）
+
+### 前置要求
+
+- Node.js 18+（推荐）和 npm
+- 代码编辑器（推荐 VS Code）
+
+### 安装依赖
 
 ```bash
-npm install  # 安装依赖（包括 rehype-sanitize、vitest 等）
-```
-
-### 本地开发
-
-```bash
-# 1. 安装依赖
 npm install
-
-# 2. 启动开发服务器（默认 http://localhost:3000，如被占用自动选择下一个可用端口）
-npm run dev
-
-# 3. 在浏览器打开（替换 3000 为实际端口）
-# http://localhost:3000 — 首页
-# http://localhost:3000/dashboard — 笔记管理
-# http://localhost:3000/contact — 联系和支持
 ```
+
+### 启动开发服务器
+
+```bash
+npm run dev
+```
+
+开发服务器默认运行于 http://localhost:3000（若被占用会自动选择下一个可用端口）。
+
+在浏览器打开以下页面：
+
+| 页面 | URL |
+| ---- | --- |
+| 首页 | http://localhost:3000 |
+| 笔记 | http://localhost:3000/dashboard |
+| 支持 | http://localhost:3000/contact |
 
 ### 生产构建
 
 ```bash
-npm run build    # 构建生产版本
-npm start        # 启动生产服务器
+npm run build
+npm start
 ```
 
-### 代码检查、格式化与测试
+### 代码检查与开发工具
 
 ```bash
-npm run lint     # 运行 ESLint 代码检查
-npm run format   # 运行 Prettier 自动格式化
-npm run test     # 运行 Vitest 单元测试
-npx tsc --noEmit # TypeScript 类型检查
+npm run lint      # ESLint
+npm run format    # Prettier
+npm run test      # Vitest 单元测试
+npx tsc --noEmit  # TypeScript 类型检查
 ```
+
+提示：请定期导出重要笔记，清除浏览器缓存会删除本地数据。
 
 ### 快捷键
 
@@ -299,7 +313,7 @@ NOTE 由热爱笔记的开发者创建于 2026 年。
 
 ---
 
-**更新日期**：2026 年 2 月 26 日  
-**版本**：2.1.0（完整 IndexedDB 迁移 + Markdown 支持）
+**更新日期**：2026 年 2 月 27 日  
+**版本**：1.0.0（以 `package.json` 为准）
 
 享受记录的过程，让思考变成力量。✨

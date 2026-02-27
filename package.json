@@ -2,7 +2,6 @@
   "name": "NOTE",
   "version": "1.0.0",
   "description": "一个简洁而优雅的个人笔记应用",
-  "main": "index.html",
   "repository": {
     "type": "git",
     "url": "https://github.com/yourusername/NOTE"
