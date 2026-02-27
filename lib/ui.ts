@@ -300,7 +300,7 @@ export class NoteUI {
   async updateCategoryFilter() {
     const categories = await this.storage?.getCategoriesAsync?.();
     const filterSelect = document.getElementById('category-filter') as HTMLSelectElement | null;
-    if (!filterSelect) return;
+    if (!filterSelect || !categories) return;
 
     filterSelect.innerHTML = '<option value="all">全部分类</option>';
     categories.forEach((cat: string) => {
