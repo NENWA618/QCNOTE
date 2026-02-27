@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Footer from '../components/Footer';
-import { NoteItem, NoteStorage, initWindowStorage } from '../lib/storage';
+import { NoteItem, NoteStorage, Stats, initWindowStorage } from '../lib/storage';
 import IDB from '../lib/idb';
 
 const Dashboard: React.FC = () => {
@@ -15,7 +15,14 @@ const Dashboard: React.FC = () => {
   const [category, setCategory] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [categories, setCategories] = useState<string[]>([]);
-  const [stats, setStats] = useState<Record<string, number> | any>({});
+  const [stats, setStats] = useState<Stats>({
+    totalNotes: 0,
+    favoriteNotes: 0,
+    archivedNotes: 0,
+    categories: {},
+    totalTags: 0,
+    createdToday: 0,
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // editor state
@@ -186,7 +193,7 @@ const Dashboard: React.FC = () => {
                         const input = document.createElement('input');
                         input.type = 'file';
                         input.accept = 'application/json';
-                        input.onchange = (e: any) => {
+                        input.onchange = (e: React.ChangeEvent<HTMLInputElement>) => {
                           const f = e.target.files && e.target.files[0];
                           if (f) handleImport(f);
                         };

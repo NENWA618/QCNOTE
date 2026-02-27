@@ -30,19 +30,19 @@ async function withStore<T>(mode: IDBTransactionMode, cb: (_store: IDBObjectStor
   });
 }
 
-export async function getItem(key: string) {
+export async function getItem<T = unknown>(key: string): Promise<T | undefined> {
   return withStore('readonly', (store) =>
-    new Promise((res, rej) => {
+    new Promise<T | undefined>((res, rej) => {
       const req = store.get(key);
-      req.onsuccess = () => res(req.result);
+      req.onsuccess = () => res(req.result as T);
       req.onerror = () => rej(req.error);
     }),
   );
 }
 
-export async function setItem(key: string, value: any) {
+export async function setItem<T = unknown>(key: string, value: T): Promise<boolean> {
   return withStore('readwrite', (store) =>
-    new Promise((res, rej) => {
+    new Promise<boolean>((res, rej) => {
       const req = store.put(value, key);
       req.onsuccess = () => res(true);
       req.onerror = () => rej(req.error);

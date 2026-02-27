@@ -1,6 +1,8 @@
 /**
  * 工具函数模块 (TypeScript)
  */
+import type { NoteItem } from './storage';
+
 export const Utils = {
   formatDate(timestamp: number) {
     const date = new Date(timestamp);
@@ -49,10 +51,10 @@ export const Utils = {
   },
 
   escapeHtml(text: string) {
-    const div =
+    const div: HTMLDivElement =
       typeof document !== 'undefined'
         ? document.createElement('div')
-        : ({ textContent: '' } as any);
+        : ({ textContent: '' } as HTMLDivElement);
     if (typeof document !== 'undefined') div.textContent = text;
     return div.innerHTML || '';
   },
@@ -72,7 +74,7 @@ export const Utils = {
     return this.truncateText(text.replace(/\s+/g, ' '), length);
   },
 
-  sortNotes(notes: any[], sortBy = 'date') {
+  sortNotes(notes: NoteItem[], sortBy = 'date') {
     const sorted = [...notes];
 
     switch (sortBy) {
@@ -103,23 +105,23 @@ export const Utils = {
     );
   },
 
-  debounce(func: (...args: any[]) => void, wait = 300) {
-    let timeout: any;
-    return function executedFunction(..._args: any[]) {
+  debounce<T extends (...args: unknown[]) => void>(func: T, wait = 300) {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    return function executedFunction(..._args: Parameters<T>) {
       const later = () => {
-        clearTimeout(timeout);
-        func(..._args);
+        if (timeout) clearTimeout(timeout);
+        func(...(_args as Parameters<T>));
       };
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
       timeout = setTimeout(later, wait);
     };
   },
 
-  throttle(func: (...args: any[]) => void, limit = 300) {
-    let inThrottle: boolean;
-    return function (this: any, ..._args: any[]) {
+  throttle<T extends (...args: unknown[]) => void>(func: T, limit = 300) {
+    let inThrottle = false;
+    return function (this: unknown, ..._args: Parameters<T>) {
       if (!inThrottle) {
-        func.apply(this, _args);
+        func.apply(this, _args as Parameters<T>);
         inThrottle = true;
         setTimeout(() => (inThrottle = false), limit);
       }

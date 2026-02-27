@@ -14,6 +14,15 @@ export interface NoteItem {
   isArchived: boolean;
 }
 
+export interface Stats {
+  totalNotes: number;
+  favoriteNotes: number;
+  archivedNotes: number;
+  categories: Record<string, number>;
+  totalTags: number;
+  createdToday: number;
+}
+
 export interface UserSettings {
   theme: string;
   sortBy: string;
@@ -88,7 +97,7 @@ export class NoteStorage {
       this.useIndexedDB = true;
       console.log('✓ IndexedDB 已启用（无需迁移）');
       return true;
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('启用IndexedDB失败:', e);
       return false;
     }
@@ -121,7 +130,7 @@ export class NoteStorage {
     }
   }
 
-  async setDataAsync(notes: NoteItem[]) {
+  async setDataAsync(notes: NoteItem[]): Promise<boolean> {
     try {
       // 优先 IndexedDB，次之 localStorage
       if (this.useIndexedDB) {
@@ -169,7 +178,7 @@ export class NoteStorage {
     try {
       const data = typeof window !== 'undefined' ? localStorage.getItem(this.storageKey) : null;
       return data ? (JSON.parse(data) as NoteItem[]) : null;
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('读取存储失败:', e);
       return null;
     }
@@ -191,7 +200,7 @@ export class NoteStorage {
       const settings =
         typeof window !== 'undefined' ? localStorage.getItem(this.settingsKey) : null;
       return settings ? (JSON.parse(settings) as UserSettings) : null;
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('读取设置失败:', e);
       return null;
     }
@@ -457,8 +466,9 @@ export class NoteStorage {
           } else {
             reject('无效的JSON格式');
           }
-        } catch (error: any) {
-          reject('导入失败: ' + (error.message || error));
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          reject('导入失败: ' + msg);
         }
       };
       reader.onerror = () => reject('读取文件失败');
@@ -492,7 +502,7 @@ export class NoteStorage {
     return false;
   }
 
-  getStats() {
+  getStats(): Stats {
     const notes = this.getData() || [];
     const categories = this.getCategories();
     const categoryStats: Record<string, number> = {};
@@ -514,7 +524,7 @@ export class NoteStorage {
     };
   }
 
-  async getStatsAsync() {
+  async getStatsAsync(): Promise<Stats> {
     const notes = (await this.getDataAsync()) || [];
     const categories = await this.getCategoriesAsync();
     const categoryStats: Record<string, number> = {};
@@ -540,13 +550,13 @@ export class NoteStorage {
 export function initWindowStorage() {
   if (typeof window === 'undefined') return null;
   // 检查是否已经存在全局 storage，避免重复创建
-  if ((window as any).storage instanceof NoteStorage) {
-    return (window as any).storage;
+  if (window.storage instanceof NoteStorage) {
+    return window.storage;
   }
   const s = new NoteStorage();
-  (window as any).storage = s;
+  window.storage = s;
   // optionally expose Utils
-  (window as any).Utils = Utils;
+  window.Utils = Utils;
   return s;
 }
 

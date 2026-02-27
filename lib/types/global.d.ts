@@ -1,4 +1,8 @@
 /* eslint-disable no-unused-vars */
+import type { NoteStorage, Stats } from '../storage';
+import type { Utils as UtilsType } from '../utils';
+import type { NoteUI } from '../ui';
+
 export {};
 
 declare global {
@@ -23,8 +27,8 @@ declare global {
   }
 
   interface Window {
-    storage?: any;
-    Utils?: any;
-    noteUI?: any;
+    storage?: NoteStorage;
+    Utils?: typeof UtilsType;
+    noteUI?: NoteUI;
   }
 }

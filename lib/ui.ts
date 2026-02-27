@@ -1,7 +1,9 @@
-import { initWindowStorage } from './storage';
+import { initWindowStorage, NoteItem, NoteStorage, UserSettings, Stats } from './storage';
 import Utils from './utils';
 
 export class NoteUI {
+  // declare typed storage to avoid repeated casts
+  storage?: NoteStorage;
   currentNoteId: string | null = null;
   selectedCategory = 'all';
   searchKeyword = '';
@@ -11,7 +13,7 @@ export class NoteUI {
   }
 
   init() {
-    if (typeof window !== 'undefined' && !(window as any).storage) {
+    if (typeof window !== 'undefined' && !window.storage) {
       initWindowStorage();
     }
     this.setupEventListeners();
@@ -68,15 +70,16 @@ export class NoteUI {
     const container = document.getElementById('notes-container') as HTMLElement | null;
     if (!container) return;
 
-    const storage = (window as any).storage;
-    let notes = (await storage?.getDataAsync?.()) || [];
+    const storage = window.storage as NoteStorage | undefined;
+    this.storage = storage;
+    let notes: NoteItem[] = (await storage?.getDataAsync?.()) || [];
 
     if (this.searchKeyword) {
       notes = await storage.searchNotesAsync(this.searchKeyword);
     }
 
     if (this.selectedCategory !== 'all') {
-      notes = notes.filter((n: any) => n.category === this.selectedCategory);
+      notes = notes.filter((n) => n.category === this.selectedCategory);
     }
 
     const sortBy = localStorage.getItem('NOTE_SORT') || 'date';
@@ -88,34 +91,35 @@ export class NoteUI {
       container.innerHTML = `
         <div class="empty-state">
           <p>还没有笔记呢</p>
-          <p>点击下方按钮创建第一条笔记吧 ✨</p>
+          <p>点击下方按钮创建第一条笔记吧 �?/p>
         </div>
       `;
       return;
     }
 
-    notes.forEach((note: any) => {
+    notes.forEach((note: NoteItem) => {
       const card = this.createNoteCard(note);
       container.appendChild(card);
     });
   }
 
   /**
-   * 旧版同步渲染逻辑，已弃用。使用 renderNotesListAsync 替代。
+   * 旧版同步渲染逻辑，已弃用。使�?renderNotesListAsync 替代�?
    */
   renderNotesList() {
+    // synchronous version is retained for compatibility but uses typed storage
     const container = document.getElementById('notes-container') as HTMLElement | null;
     if (!container) return;
 
-    const storage = (window as any).storage;
-    let notes = storage?.getData() || [];
+    const storage = window.storage as NoteStorage | undefined;
+    let notes: NoteItem[] = storage?.getData() || [];
 
     if (this.searchKeyword) {
       notes = storage.searchNotes(this.searchKeyword);
     }
 
     if (this.selectedCategory !== 'all') {
-      notes = notes.filter((n: any) => n.category === this.selectedCategory);
+      notes = notes.filter((n) => n.category === this.selectedCategory);
     }
 
     const sortBy = localStorage.getItem('NOTE_SORT') || 'date';
@@ -127,19 +131,19 @@ export class NoteUI {
       container.innerHTML = `
         <div class="empty-state">
           <p>还没有笔记呢</p>
-          <p>点击下方按钮创建第一条笔记吧 ✨</p>
+          <p>点击下方按钮创建第一条笔记吧 �?/p>
         </div>
       `;
       return;
     }
 
-    notes.forEach((note: any) => {
+    notes.forEach((note: NoteItem) => {
       const card = this.createNoteCard(note);
       container.appendChild(card);
     });
   }
 
-  createNoteCard(note: any) {
+  createNoteCard(note: NoteItem) {
     const card = document.createElement('div');
     card.className = 'note-card';
     card.style.borderLeftColor = note.color;
@@ -175,16 +179,14 @@ export class NoteUI {
 
       <div class="note-actions">
         <button class="btn-icon edit-btn" title="编辑">✏️</button>
-        <button class="btn-icon delete-btn" title="删除">🗑️</button>
+        <button class="btn-icon delete-btn" title="删除">🗑�?/button>
       </div>
     `;
 
     const favBtn = card.querySelector('.favorite-btn') as HTMLElement | null;
     favBtn?.addEventListener('click', async (e) => {
       e.stopPropagation();
-      await (window as any).storage.toggleFavoriteAsync?.(note.id);
-      this.renderNotesListAsync();
-    });
+      await this.storage?.toggleFavoriteAsync?.(note.id);
 
     const editBtn = card.querySelector('.edit-btn') as HTMLElement | null;
     editBtn?.addEventListener('click', (e) => {
@@ -195,11 +197,8 @@ export class NoteUI {
     const deleteBtn = card.querySelector('.delete-btn') as HTMLElement | null;
     deleteBtn?.addEventListener('click', async (e) => {
       e.stopPropagation();
-      if (confirm('确定要删除这条笔记吗？')) {
-        await (window as any).storage.deleteNoteAsync?.(note.id);
-        this.renderNotesListAsync();
-      }
-    });
+      if (confirm('确定要删除这条笔记吗�?)) {
+        await this.storage?.deleteNoteAsync?.(note.id);
 
     card.addEventListener('click', () => this.editNote(note.id));
 
@@ -207,12 +206,13 @@ export class NoteUI {
   }
 
   async createNewNote() {
-    const settings = await (window as any).storage.getSettingsAsync?.();
+    // create note using storage type guarantees
+    const settings = await this.storage?.getSettingsAsync?.() as UserSettings | undefined;
     const defaultCat = settings?.defaultCategory ||
       localStorage.getItem('NOTE_DEFAULT_CATEGORY') ||
       '生活';
-    const note = await (window as any).storage.addNoteAsync({
-      title: '新笔记',
+    const note = await this.storage?.addNoteAsync({
+      title: '新笔�?,
       content: '',
       category: defaultCat,
     });
@@ -221,7 +221,7 @@ export class NoteUI {
 
   async editNote(noteId: string) {
     this.currentNoteId = noteId;
-    const note = await (window as any).storage.getNoteAsync?.(noteId);
+    const note = await this.storage?.getNoteAsync?.(noteId);
     if (!note) return;
 
     const editorPanel = document.getElementById('editor-panel') as HTMLElement | null;
@@ -231,7 +231,7 @@ export class NoteUI {
     }
   }
 
-  loadNoteIntoEditor(note: any) {
+  loadNoteIntoEditor(note: NoteItem) {
     const titleInput = document.getElementById('note-title-input') as HTMLInputElement | null;
     const contentInput = document.getElementById(
       'note-content-input',
@@ -268,7 +268,7 @@ export class NoteUI {
         .map((t) => t.trim())
         .filter((t) => t) || [];
 
-    await (window as any).storage.updateNoteAsync?.(this.currentNoteId, {
+    await this.storage?.updateNoteAsync?.(this.currentNoteId, {
       title,
       content,
       category,
@@ -289,7 +289,7 @@ export class NoteUI {
   }
 
   async updateCategoryFilter() {
-    const categories = await (window as any).storage.getCategoriesAsync?.();
+    const categories = await this.storage?.getCategoriesAsync?.();
     const filterSelect = document.getElementById('category-filter') as HTMLSelectElement | null;
     if (!filterSelect) return;
 
@@ -319,7 +319,7 @@ export class NoteUI {
   }
 
   async updateStats() {
-    const stats = await (window as any).storage.getStatsAsync?.();
+    const stats: Stats | undefined = await this.storage?.getStatsAsync?.();
     const statsContainer = document.getElementById('stats-container') as HTMLElement | null;
     if (!statsContainer) return;
 
@@ -330,11 +330,11 @@ export class NoteUI {
       </div>
       <div class="stat-item">
         <span class="stat-value">${stats.favoriteNotes}</span>
-        <span class="stat-label">收藏数</span>
+        <span class="stat-label">收藏�?/span>
       </div>
       <div class="stat-item">
         <span class="stat-value">${stats.totalTags}</span>
-        <span class="stat-label">标签数</span>
+        <span class="stat-label">标签�?/span>
       </div>
       <div class="stat-item">
         <span class="stat-value">${stats.createdToday}</span>
@@ -348,7 +348,7 @@ export function initNoteUI() {
   if (typeof document === 'undefined') return null;
   if (!document.getElementById('notes-container')) return null;
   const ui = new NoteUI();
-  // NOTE: do not attach `noteUI` to window anymore — prefer importing the module
+  // NOTE: do not attach `noteUI` to window anymore �?prefer importing the module
   // for React-driven components. Returning the instance for compatibility.
   return ui;
 }
