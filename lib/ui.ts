@@ -329,6 +329,7 @@ export class NoteUI {
 
   async updateStats() {
     const stats: Stats | undefined = await this.storage?.getStatsAsync?.();
+    if (!stats) return;
     const statsContainer = document.getElementById('stats-container') as HTMLElement | null;
     if (!statsContainer) return;
 
