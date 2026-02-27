@@ -71,8 +71,9 @@ export class NoteUI {
     if (!container) return;
 
     const storage = window.storage as NoteStorage | undefined;
+    if (!storage) return; // nothing we can do without storage
     this.storage = storage;
-    let notes: NoteItem[] = (await storage?.getDataAsync?.()) || [];
+    let notes: NoteItem[] = (await storage.getDataAsync()) || [];
 
     if (this.searchKeyword) {
       notes = await storage.searchNotesAsync(this.searchKeyword);
@@ -112,7 +113,8 @@ export class NoteUI {
     if (!container) return;
 
     const storage = window.storage as NoteStorage | undefined;
-    let notes: NoteItem[] = storage?.getData() || [];
+    if (!storage) return;
+    let notes: NoteItem[] = storage.getData() || [];
 
     if (this.searchKeyword) {
       notes = storage.searchNotes(this.searchKeyword);
