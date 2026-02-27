@@ -179,7 +179,7 @@ export class NoteUI {
 
       <div class="note-actions">
         <button class="btn-icon edit-btn" title="编辑">✏️</button>
-        <button class="btn-icon delete-btn" title="删除">🗑�?/button>
+        <button class="btn-icon delete-btn" title="删除">🗑️</button>
       </div>
     `;
 
@@ -187,6 +187,8 @@ export class NoteUI {
     favBtn?.addEventListener('click', async (e) => {
       e.stopPropagation();
       await this.storage?.toggleFavoriteAsync?.(note.id);
+      this.renderNotesListAsync();
+    });
 
     const editBtn = card.querySelector('.edit-btn') as HTMLElement | null;
     editBtn?.addEventListener('click', (e) => {
@@ -197,8 +199,11 @@ export class NoteUI {
     const deleteBtn = card.querySelector('.delete-btn') as HTMLElement | null;
     deleteBtn?.addEventListener('click', async (e) => {
       e.stopPropagation();
-      if (confirm('确定要删除这条笔记吗�?)) {
+      if (confirm('确定要删除这条笔记吗？')) {
         await this.storage?.deleteNoteAsync?.(note.id);
+        this.renderNotesListAsync();
+      }
+    });
 
     card.addEventListener('click', () => this.editNote(note.id));
 
@@ -212,7 +217,7 @@ export class NoteUI {
       localStorage.getItem('NOTE_DEFAULT_CATEGORY') ||
       '生活';
     const note = await this.storage?.addNoteAsync({
-      title: '新笔�?,
+      title: '新笔记',
       content: '',
       category: defaultCat,
     });
