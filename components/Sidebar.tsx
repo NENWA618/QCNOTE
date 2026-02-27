@@ -1,9 +1,11 @@
 /* eslint-disable no-unused-vars */
 import React from 'react';
 
+import type { Stats } from '../lib/storage';
+
 interface Props {
   categories: string[];
-  stats: Record<string, number>;
+  stats?: Stats;
   onNewNote: () => void;
   onSearch: (_value: string) => void;
   onCategoryChange: (_value: string) => void;
