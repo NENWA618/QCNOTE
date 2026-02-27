@@ -193,8 +193,9 @@ const Dashboard: React.FC = () => {
                         const input = document.createElement('input');
                         input.type = 'file';
                         input.accept = 'application/json';
-                        input.onchange = (e: React.ChangeEvent<HTMLInputElement>) => {
-                          const f = e.target.files && e.target.files[0];
+                        input.onchange = (e: Event) => {
+                          const target = e.target as HTMLInputElement;
+                          const f = target.files && target.files[0];
                           if (f) handleImport(f);
                         };
                         input.click();
