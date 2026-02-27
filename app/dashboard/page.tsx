@@ -1,13 +1,11 @@
+'use client';
+
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Sidebar from '../../components/Sidebar';
 import { NoteItem, NoteStorage, Stats, initWindowStorage } from '../../lib/storage';
 import IDB from '../../lib/idb';
-
-export const metadata = {
-  title: '笔记列表 - NOTE',
-};
 
 const DashboardPage: React.FC = () => {
   const storageRef = useRef<NoteStorage | null>(null);
