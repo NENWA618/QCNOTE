@@ -223,7 +223,9 @@ export class NoteUI {
       content: '',
       category: defaultCat,
     });
-    this.editNote(note.id);
+    if (note) {
+      this.editNote(note.id);
+    }
   }
 
   async editNote(noteId: string) {
