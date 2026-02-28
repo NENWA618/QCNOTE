@@ -4,7 +4,7 @@
   "description": "Backend server for NOTE application",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "tsx index.js",
     "dev": "node index.js"
   },
   "dependencies": {
@@ -12,5 +12,8 @@
     "fastify": "^4.24.0",
     "lunr": "^2.3.9",
     "sentiment": "^5.0.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0"
   }
 }
