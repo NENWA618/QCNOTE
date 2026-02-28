@@ -16,8 +16,10 @@
   "author": "NOTE Contributors",
   "license": "MIT",
   "dependencies": {
+    "live2d-widget": "^3.1.4",
     "lunr": "^2.3.9",
     "next": "^14.0.0",
+    "pixi.js": "^8.16.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
