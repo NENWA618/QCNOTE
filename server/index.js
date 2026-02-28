@@ -253,31 +253,6 @@ function generateReplyFromMemory(message, memory, persona, noteSnippet) {
   return { reply, mood };
 }
 
-fastify.post('/reply', async (request, reply) => {
-  const body = request.body || {};
-  const { message, memory } = body;
-  let persona;
-  try {
-    persona = require(path.resolve(__dirname, './characterData')).persona;
-  } catch (e) {
-    persona = require(path.resolve(__dirname, '../lib/characterData')).persona;
-  }
-  
-  // Search for relevant notes
-  let noteSnippet = null;
-  const searchResults = searchServerNotes(message);
-  if (searchResults.length > 0) {
-    const topResultId = searchResults[0].id;
-    const topNote = serverNotes.find((n) => n.id === topResultId);
-    if (topNote) {
-      noteSnippet = topNote.content.slice(0, 150) + (topNote.content.length > 150 ? '...' : '');
-    }
-  }
-  
-  const result = generateReplyFromMemory(message || '', memory || {}, persona, noteSnippet);
-  return result;
-});
-
 // accept note syncs, update server-side structures
 fastify.post('/syncNote', async (request, reply) => {
   const note = request.body;
