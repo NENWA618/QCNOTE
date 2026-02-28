@@ -44,7 +44,7 @@ export async function scheduleReminderFromText(text: string) {
   const serverBase = (process.env.NEXT_PUBLIC_CHARACTER_SERVER_URL || '').replace(/\/$/, '');
   const url = (serverBase || '') + '/reminders';
   // always save locally first
-  const localRec: ReminderItem = { title, body, targetAt };
+  const localRec: ReminderItem = { title, body, targetAt: target };
   const locals = await getLocalReminders();
   locals.push(localRec);
   await saveLocalReminders(locals);

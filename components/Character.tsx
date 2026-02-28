@@ -131,6 +131,7 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
     } catch (e) {
       // memory computation failed
     }
+    }
 
     if (!usedReply) {
       const result = await generateReply(userText);
