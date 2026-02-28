@@ -64,7 +64,8 @@ export async function scheduleReminderFromText(text: string) {
     return { ok: false, message: 'server-failed' };
   } catch (e) {
     // network error, keep local only
-    return { ok: false, message: e && e.message };
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, message: msg };
   }
 }
 
