@@ -20,10 +20,93 @@ let serverIndex = { lunr: null, vectors: {}, sentiments: {} };
 
 const NOTES_PERSIST_PATH = path.join(__dirname, '.notes-cache.json');
 
-const fastify = Fastify({ logger: true });
+function buildFastify() {
+  const fastify = Fastify({ logger: true });
+  fastify.register(require('@fastify/cors'), { origin: true });
+  return fastify;
+}
 
-// Enable CORS so the frontend at different port can call /reply during development
-fastify.register(require('@fastify/cors'), { origin: true });
+// create default instance for normal run
+const fastify = buildFastify();
+
+// helper to register all endpoints onto a fastify instance
+function registerRoutes(app) {
+  app.post('/reply', async (request, reply) => {
+    const body = request.body || {};
+    const { message, memory } = body;
+    let persona;
+    try {
+      persona = require(path.resolve(__dirname, './characterData')).persona;
+    } catch (e) {
+      persona = require(path.resolve(__dirname, '../lib/characterData')).persona;
+    }
+    
+    // Search for relevant notes
+    let noteSnippet = null;
+    const searchResults = searchServerNotes(message);
+    if (searchResults.length > 0) {
+      const topResultId = searchResults[0].id;
+      const topNote = serverNotes.find((n) => n.id === topResultId);
+      if (topNote) {
+        noteSnippet = topNote.content.slice(0, 150) + (topNote.content.length > 150 ? '...' : '');
+      }
+    }
+    
+    const result = generateReplyFromMemory(message || '', memory || {}, persona, noteSnippet);
+    return result;
+  });
+
+  app.post('/syncNote', async (request, reply) => {
+    const note = request.body;
+    if (note && note.id) {
+      const idx = serverNotes.findIndex((n) => n.id === note.id);
+      if (idx !== -1) serverNotes[idx] = note;
+      else serverNotes.push(note);
+      await rebuildIndex();
+      await saveNotesToDisk();
+      return { ok: true, message: `Note ${note.id} synced and indexed` };
+    }
+    return { ok: false, message: 'Invalid note' };
+  });
+
+  app.get('/stats', async (request, reply) => {
+    return {
+      totalNotes: serverNotes.length,
+      indexReady: serverIndex.lunr !== null,
+      vectorsCount: Object.keys(serverIndex.vectors).length,
+      sentimentsCount: Object.keys(serverIndex.sentiments).length,
+    };
+  });
+}
+
+// register routes on default instance
+registerRoutes(fastify);
+
+// register push routes if available
+try {
+  const pushModule = require(path.resolve(__dirname, './push'));
+  if (pushModule && typeof pushModule.registerRoutes === 'function') {
+    pushModule.registerRoutes(fastify);
+  }
+  if (pushModule && typeof pushModule.startReminderLoop === 'function') {
+    pushModule.startReminderLoop();
+  }
+} catch (e) {
+  logger.info('[Server] Push module not registered: ', e && e.message);
+}
+
+// initialize Redis queue & worker if REDIS_URL present
+try {
+  const queueModule = require(path.resolve(__dirname, './queue'));
+  const workerModule = require(path.resolve(__dirname, './worker'));
+  if (queueModule && typeof queueModule.initQueue === 'function') queueModule.initQueue();
+  if (workerModule && typeof workerModule.startWorker === 'function') workerModule.startWorker();
+} catch (e) {
+  // if redis/bull not installed or not configured, we'll continue with file-based scheduler
+}
+
+// export builder for testing or embedding
+module.exports = { buildFastify };
 
 // Load notes from disk on startup
 async function loadNotesFromDisk() {
@@ -227,8 +310,9 @@ fastify.get('/stats', async (request, reply) => {
   };
 });
 
-fastify.listen({ port: PORT, host: '0.0.0.0' }, async () => {
-  logger.info('Fastify server listening on', PORT);
-  // Load persisted notes on startup
-  await loadNotesFromDisk();
-});
+if (require.main === module) {
+  fastify.listen({ port: PORT, host: '0.0.0.0' }, async () => {
+    logger.info('Fastify server listening on', PORT);
+    await loadNotesFromDisk();
+  });
+}

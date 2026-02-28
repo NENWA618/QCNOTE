@@ -39,7 +39,17 @@ NOTE 内置了一个虚拟助手“诺特”，她是你的笔记精灵。
 - 基于浏览器 IndexedDB 中的笔记统计自动生成记忆与个性。
 - **增强记忆**：会分析、索引笔记内容并支持关键词搜索；提问时可引用之前写过的笔记片段。
 - 支持简单情绪识别（开心/悲伤/调皮等）和多句对话。
+- 使用过程还能渐进“养成”角色，她会随着你互动累积经验、提升等级，并对完成提醒/任务表现出好感度。
 - 可选本地后端（Fastify）提供 `/reply` 接口；若无法访问则在前端使用内置规则。
+- 你可以通过对话自动设置提醒，例如“提醒我在 2026-03-02 09:00 做 喝水”，到点后会在设备上弹出通知（需要允许浏览器推送）。
+
+
+**提醒与推送**
+
+- 前端通过 Service Worker 注册 Web Push 订阅；后端（可部署在 Render）使用 `web-push` 加上 Redis 队列来计划并发送通知。
+- 环境变量需配置 `VAPID_PUBLIC`/`VAPID_PRIVATE` 以及指向后端的 `NEXT_PUBLIC_CHARACTER_SERVER_URL`。
+- 若无法访问后端，系统会回退到本地简单规则但不会发送推送。
+
 
 运行后端（可选）：
 
@@ -224,19 +234,18 @@ const newNote = await storage.addNoteAsync({ title: 'Test' });
 await storage.updateNoteAsync(id, { title: 'Updated' });
 ```
 
-### 同步方法（已弃用）
+### 同步方法（已移除）
 
-同步方法（`getData()`、`addNote()` 等）虽然保留备降级之用，但**已标记为 `@deprecated`**：
-- 阻塞 UI 线程，影响性能
-- 不支持 IndexedDB（仅限 localStorage）  
-- 在控制台会打印警告
+为了简化代码路径并避免性能陷阀，原来的同步存取 API（`getData()`、`addNote()` 等）
+已在当前版本中彻底移除。应用层不再可见这些方法：所有读写操作均需使用
+异步接口（`*Async`），并且后端已删除相关日志警告。
 
 ```typescript
-// ❌ 已弃用 - 避免使用
-const notes = storage.getData(); // ⚠️ [NoteStorage] Deprecated sync method used: getData
+// ✅ 正确用法
+const notes = await storage.getDataAsync();
 ```
 
-**请勿混用同步和异步接口**，否则可能产生竞态写入、旧数据覆盖的情况。
+对于旧项目，请确保完成迁移后彻底删除任何同步调用。
 
 ### 迁移指南：从同步到异步
 

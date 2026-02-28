@@ -65,7 +65,29 @@ export class NoteStorage {
       // IndexedDB 不可用或出错，保持 useIndexedDB = false
     }
   }
+  /**
+   * Internal helpers for localStorage access.
+   *
+   * These used to be the public sync methods (getData/setData)
+   * but those have been removed from the public API.  We keep
+   * private helpers here so that the async methods can fall back
+   * to localStorage when IndexedDB is unavailable.  They are
+   * intentionally not exported or documented.
+   */
+  private _getDataLocal(): NoteItem[] | null {
+    const raw = localStorage.getItem(this.storageKey);
+    return raw ? (JSON.parse(raw) as NoteItem[]) : null;
+  }
 
+  private _setDataLocal(notes: NoteItem[]): boolean {
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(notes));
+      return true;
+    } catch (e) {
+      console.error('[NoteStorage] _setDataLocal failed', e);
+      return false;
+    }
+  }
   // enable IndexedDB backend and migrate existing localStorage data into it
   async enableIndexedDB() {
     if (typeof window === 'undefined') return false;
@@ -75,14 +97,14 @@ export class NoteStorage {
       const existing = await IDB.getItem(this.storageKey);
       if (existing && Array.isArray(existing) && existing.length > 0) {
         this.useIndexedDB = true;
-          logger.info('✓ IndexedDB 已有数据，保留现有数据，启用索引存储');
+        logger.info('✓ IndexedDB 已有数据，保留现有数据，启用索引存储');
         return true;
       }
 
       // 否则从 localStorage 迁移（如果有）
-      const notes = this.getData();
-      const settings = this.getSettings() || null;
-      if (notes && notes.length > 0) {
+      const notes = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
+      const settings = JSON.parse(localStorage.getItem(this.settingsKey) || 'null');
+      if (notes && Array.isArray(notes) && notes.length > 0) {
         // 备份当前 localStorage 内容到 IndexedDB 备份键，防止意外覆盖
         try {
           const backupKey = `${this.storageKey}_backup_${Date.now()}`;
@@ -126,7 +148,7 @@ export class NoteStorage {
         return idbData as NoteItem[];
       }
       // IndexedDB 无数据，尝试 localStorage
-      const lsData = this.getData();
+      const lsData = this._getDataLocal();
       if (lsData) {
         return lsData;
       }
@@ -134,7 +156,7 @@ export class NoteStorage {
     } catch (e) {
       console.error('读取存储失败:', e);
       // IndexedDB 出错，回退到 localStorage
-      return this.getData();
+      return this._getDataLocal();
     }
   }
 
@@ -151,8 +173,8 @@ export class NoteStorage {
           // 清空 localStorage
           localStorage.removeItem(this.storageKey);
         } catch (_) {
-          // IndexedDB 失败，回退到 localStorage
-          this.setData(notes);
+          // IndexedDB 失败，回退到本地 localStorage
+          this._setDataLocal(notes);
         }
       }
 
@@ -201,79 +223,22 @@ export class NoteStorage {
       return;
     }
     
-    if (!this.getData()) {
-      this.setData([]);
+    if (!localStorage.getItem(this.storageKey)) {
+      localStorage.setItem(this.storageKey, JSON.stringify([]));
     }
-    if (!this.getSettings()) {
-      this.setSettings({
-        theme: 'light',
-        sortBy: 'date',
-        itemsPerPage: 12,
-        defaultCategory: '生活',
-      });
-    }
-  }
-
-  /**
-   * @deprecated Use getDataAsync() instead. Synchronous access blocks the UI and doesn't support IndexedDB.
-   */
-  getData(): NoteItem[] | null {
-    this._warnSyncUsage('getData');
-    try {
-      const data = typeof window !== 'undefined' ? localStorage.getItem(this.storageKey) : null;
-      return data ? (JSON.parse(data) as NoteItem[]) : null;
-    } catch (e: unknown) {
-      console.error('读取存储失败:', e);
-      return null;
+    if (!localStorage.getItem(this.settingsKey)) {
+      localStorage.setItem(
+        this.settingsKey,
+        JSON.stringify({
+          theme: 'light',
+          sortBy: 'date',
+          itemsPerPage: 12,
+          defaultCategory: '生活',
+        })
+      );
     }
   }
 
-  /**
-   * @deprecated Use setDataAsync() instead. Synchronous writes block the UI and don't support IndexedDB.
-   */
-  setData(notes: NoteItem[]) {
-    this._warnSyncUsage('setData');
-    try {
-      if (typeof window !== 'undefined')
-        localStorage.setItem(this.storageKey, JSON.stringify(notes));
-      return true;
-    } catch (e) {
-      console.error('保存存储失败:', e);
-      return false;
-    }
-  }
-
-  /**
-   * @deprecated Use getSettingsAsync() instead.
-   */
-  getSettings(): UserSettings | null {
-    this._warnSyncUsage('getSettings');
-    try {
-      const settings =
-        typeof window !== 'undefined' ? localStorage.getItem(this.settingsKey) : null;
-      return settings ? (JSON.parse(settings) as UserSettings) : null;
-    } catch (e: unknown) {
-      console.error('读取设置失败:', e);
-      return null;
-    }
-  }
-
-  /**
-   * @deprecated Use setSettingsAsync() instead.
-   */
-  setSettings(settings: UserSettings) {
-    this._warnSyncUsage('setSettings');
-    try {
-      if (typeof window !== 'undefined')
-        localStorage.setItem(this.settingsKey, JSON.stringify(settings));
-      return true;
-    } catch (e) {
-      console.error('保存设置失败:', e);
-      return false;
-    }
-  }
-
-  async getSettingsAsync(): Promise<UserSettings | null> {
     try {
       // 优先尝试 IndexedDB
       const idbSettings = await IDB.getItem(this.settingsKey);
@@ -282,11 +247,12 @@ export class NoteStorage {
         return idbSettings as UserSettings;
       }
       // IndexedDB 无数据，尝试 localStorage
-      return this.getSettings();
+      const settings = localStorage.getItem(this.settingsKey);
+      return settings ? (JSON.parse(settings) as UserSettings) : null;
     } catch (e) {
       console.error('读取设置失败:', e);
-      // IndexedDB 出错，回退到 localStorage
-      return this.getSettings();
+      const settings = localStorage.getItem(this.settingsKey);
+      return settings ? (JSON.parse(settings) as UserSettings) : null;
     }
   }
 
@@ -303,7 +269,9 @@ export class NoteStorage {
         localStorage.removeItem(this.settingsKey);
         return true;
       } catch (_) {
-        return this.setSettings(settings);
+        // fallback to localStorage
+        localStorage.setItem(this.settingsKey, JSON.stringify(settings));
+        return true;
       }
     } catch (e) {
       console.error('保存设置失败:', e);
@@ -311,28 +279,6 @@ export class NoteStorage {
     }
   }
 
-  /**
-   * @deprecated Use addNoteAsync() instead.
-   */
-  addNote(note: Partial<NoteItem>) {
-    this._warnSyncUsage('addNote');
-    const notes = this.getData() || [];
-    const newNote: NoteItem = {
-      id: `note_${Date.now()}`,
-      title: note.title || '无标题',
-      content: note.content || '',
-      category: note.category || '生活',
-      tags: note.tags || [],
-      color: note.color || '#dc96b4',
-      isFavorite: false,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      isArchived: false,
-    };
-    notes.unshift(newNote);
-    this.setData(notes);
-    return newNote;
-  }
 
   async addNoteAsync(note: Partial<NoteItem>) {
     const notes = (await this.getDataAsync()) || [];
@@ -353,24 +299,6 @@ export class NoteStorage {
     return newNote;
   }
 
-  /**
-   * @deprecated Use updateNoteAsync() instead.
-   */
-  updateNote(id: string, updates: Partial<NoteItem>) {
-    this._warnSyncUsage('updateNote');
-    const notes = this.getData() || [];
-    const index = notes.findIndex((n) => n.id === id);
-    if (index !== -1) {
-      notes[index] = {
-        ...notes[index],
-        ...updates,
-        updatedAt: Date.now(),
-      };
-      this.setData(notes);
-      return notes[index];
-    }
-    return null;
-  }
 
   async updateNoteAsync(id: string, updates: Partial<NoteItem>) {
     const notes = (await this.getDataAsync()) || [];
@@ -387,16 +315,6 @@ export class NoteStorage {
     return null;
   }
 
-  /**
-   * @deprecated Use deleteNoteAsync() instead.
-   */
-  deleteNote(id: string) {
-    this._warnSyncUsage('deleteNote');
-    const notes = this.getData() || [];
-    const filteredNotes = notes.filter((n) => n.id !== id);
-    this.setData(filteredNotes);
-    return true;
-  }
 
   async deleteNoteAsync(id: string) {
     const notes = (await this.getDataAsync()) || [];
@@ -405,36 +323,12 @@ export class NoteStorage {
     return true;
   }
 
-  /**
-   * @deprecated Use getNoteAsync() instead.
-   */
-  getNote(id: string) {
-    this._warnSyncUsage('getNote');
-    const notes = this.getData() || [];
-    return notes.find((n) => n.id === id);
-  }
 
   async getNoteAsync(id: string) {
     const notes = (await this.getDataAsync()) || [];
     return notes.find((n) => n.id === id);
   }
 
-  /**
-   * @deprecated Use searchNotesAsync() instead.
-   */
-  searchNotes(keyword?: string) {
-    this._warnSyncUsage('searchNotes');
-    const notes = this.getData() || [];
-    if (!keyword) return notes;
-
-    const lowerKeyword = keyword.toLowerCase();
-    return notes.filter(
-      (note) =>
-        note.title.toLowerCase().includes(lowerKeyword) ||
-        note.content.toLowerCase().includes(lowerKeyword) ||
-        note.tags.some((tag) => tag.toLowerCase().includes(lowerKeyword)),
-    );
-  }
 
   async searchNotesAsync(keyword?: string) {
     const notes = (await this.getDataAsync()) || [];
@@ -449,15 +343,6 @@ export class NoteStorage {
     );
   }
 
-  /**
-   * @deprecated Use getNotesByCategoryAsync() instead.
-   */
-  getNotesByCategory(category: string) {
-    this._warnSyncUsage('getNotesByCategory');
-    const notes = this.getData() || [];
-    if (category === 'all') return notes;
-    return notes.filter((n) => n.category === category);
-  }
 
   async getNotesByCategoryAsync(category: string) {
     const notes = (await this.getDataAsync()) || [];
@@ -465,34 +350,12 @@ export class NoteStorage {
     return notes.filter((n) => n.category === category);
   }
 
-  /**
-   * @deprecated Use getFavoriteNotesAsync() instead.
-   */
-  getFavoriteNotes() {
-    this._warnSyncUsage('getFavoriteNotes');
-    const notes = this.getData() || [];
-    return notes.filter((n) => n.isFavorite);
-  }
 
   async getFavoriteNotesAsync() {
     const notes = (await this.getDataAsync()) || [];
     return notes.filter((n) => n.isFavorite);
   }
 
-  /**
-   * @deprecated Use toggleFavoriteAsync() instead.
-   */
-  toggleFavorite(id: string) {
-    this._warnSyncUsage('toggleFavorite');
-    const notes = this.getData() || [];
-    const note = notes.find((n) => n.id === id);
-    if (note) {
-      note.isFavorite = !note.isFavorite;
-      this.setData(notes);
-      return note.isFavorite;
-    }
-    return null;
-  }
 
   async toggleFavoriteAsync(id: string): Promise<boolean | null> {
     const notes = (await this.getDataAsync()) || [];
@@ -505,15 +368,6 @@ export class NoteStorage {
     return null;
   }
 
-  /**
-   * @deprecated Use getCategoriesAsync() instead.
-   */
-  getCategories() {
-    this._warnSyncUsage('getCategories');
-    const notes = this.getData() || [];
-    const categories = new Set(notes.map((n) => n.category));
-    return Array.from(categories).sort();
-  }
 
   async getCategoriesAsync() {
     const notes = (await this.getDataAsync()) || [];
@@ -521,18 +375,6 @@ export class NoteStorage {
     return Array.from(categories).sort();
   }
 
-  /**
-   * @deprecated Use getAllTagsAsync() instead.
-   */
-  getAllTags() {
-    this._warnSyncUsage('getAllTags');
-    const notes = this.getData() || [];
-    const tagsSet = new Set<string>();
-    notes.forEach((note) => {
-      note.tags.forEach((tag) => tagsSet.add(tag));
-    });
-    return Array.from(tagsSet).sort();
-  }
 
   async getAllTagsAsync() {
     const notes = (await this.getDataAsync()) || [];
@@ -567,7 +409,7 @@ export class NoteStorage {
             if (this.useIndexedDB) {
               IDB.setItem(this.storageKey, notes).then(() => resolve(notes.length));
             } else {
-              this.setData(notes);
+              this._setDataLocal(notes);
               resolve(notes.length);
             }
           } else {
@@ -583,16 +425,6 @@ export class NoteStorage {
     });
   }
 
-  /**
-   * @deprecated Use clearAllAsync() instead. Always call the async version.
-   */
-  clearAll() {
-    if (typeof window === 'undefined') return false;
-    // Storage layer should not perform UI confirmation prompts.
-    localStorage.removeItem(this.storageKey);
-    this.init();
-    return true;
-  }
 
   async clearAllAsync() {
     if (typeof window === 'undefined') return false;
@@ -607,30 +439,6 @@ export class NoteStorage {
     return true;
   }
 
-  /**
-   * @deprecated Use getStatsAsync() instead.
-   */
-  getStats(): Stats {
-    const notes = this.getData() || [];
-    const categories = this.getCategories();
-    const categoryStats: Record<string, number> = {};
-
-    categories.forEach((cat) => {
-      categoryStats[cat] = notes.filter((n) => n.category === cat).length;
-    });
-
-    return {
-      totalNotes: notes.length,
-      favoriteNotes: notes.filter((n) => n.isFavorite).length,
-      archivedNotes: notes.filter((n) => n.isArchived).length,
-      categories: categoryStats,
-      totalTags: this.getAllTags().length,
-      createdToday: notes.filter((n) => {
-        const today = new Date().toDateString();
-        return new Date(n.createdAt).toDateString() === today;
-      }).length,
-    };
-  }
 
   async getStatsAsync(): Promise<Stats> {
     const notes = (await this.getDataAsync()) || [];

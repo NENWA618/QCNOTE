@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import CharacterSVG from './CharacterSVG';
 import { generateReply, computeMemory, saveChatEntry, loadChatHistory } from '../lib/character';
+import { scheduleReminderFromText } from '../lib/reminder';
+import progression from '../lib/progression';
+import { syncLocalReminders } from '../lib/reminder';
 
 export type Mood = 'idle' | 'talking' | 'happy' | 'thinking' | 'playful' | 'sad';
 
@@ -14,6 +17,7 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
   const [messages, setMessages] = useState<{ from: 'user' | 'ai'; text: string }[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState<{ xp: number; level: number; affection: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +43,15 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
     if (chatOpen && inputRef.current) {
       inputRef.current.focus();
     }
+  }, [chatOpen]);
+
+  // load progression state when component mounts or chat opens
+  useEffect(() => {
+    progression.decayAffection().catch(() => {});
+    progression.loadProgress().then((s) => {
+      setProgress({ xp: s.xp, level: s.level, affection: s.affection });
+    }).catch(() => {});
+    syncLocalReminders().catch(() => {});
   }, [chatOpen]);
 
   // Auto-scroll to bottom when messages change
@@ -68,11 +81,27 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
     setMood('thinking');
     setIsLoading(true);
 
-    // build memory snapshot and try server first
+    // special-case: quick reminder creation via natural text
     let usedReply: string | null = null;
     let usedMood: typeof mood = 'idle';
-    try {
-      const memory = await computeMemory();
+    if (userText.includes('提醒')) {
+      try {
+        const res = await scheduleReminderFromText(userText);
+        if (res && res.ok) {
+          usedReply = `已为你设置提醒，时间：${res.targetAt}`;
+          usedMood = 'happy';
+          // award XP for setting reminder
+          progression.addXp(20).then((s) => setProgress({ xp: s.xp, level: s.level, affection: s.affection })).catch(() => {});
+        } else {
+          usedReply = (res && res.message) || '无法解析提醒内容，请使用例如：提醒我在 2026-03-01 09:00 做 喝水';
+          usedMood = 'thinking';
+        }
+      } catch (e) {
+        usedReply = '设置提醒时出错了';
+      }
+    } else {
+      try {
+        const memory = await computeMemory();
       const serverUrl = (process.env.NEXT_PUBLIC_CHARACTER_SERVER_URL as string) || 'http://localhost:4000/reply';
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -119,6 +148,8 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
     setMessages((m) => [...m, { from: 'ai', text: usedReply as string }]);
     setMood(usedMood);
     setIsLoading(false);
+    // small XP for chatting
+    progression.addXp(5).then((s) => setProgress({ xp: s.xp, level: s.level, affection: s.affection })).catch(() => {});
   };
 
   return (
@@ -137,6 +168,17 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
               ×
             </button>
           </div>
+          {progress && (
+            <div className="px-3 py-1 text-xs bg-white/50 text-primary-dark">
+              等级 {progress.level} • XP {progress.xp}/{progress.level * 100} • ❤ {progress.affection}
+              <div className="w-full h-1 bg-gray-200 rounded mt-1">
+                <div
+                  className="h-1 bg-accent-pink rounded"
+                  style={{ width: `${(progress.xp / (progress.level * 100)) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
           <div className="p-4 flex-grow overflow-y-auto mb-2 space-y-2 scrollbar-thin scrollbar-thumb-pink-200 scrollbar-track-white">
             {messages.length === 0 && (
               <div className="text-xs text-text-light text-center py-2">

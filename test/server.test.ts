@@ -37,3 +37,42 @@ describe('Server Vector Search and Index', () => {
     expect(magnitude).toBeCloseTo(1, 1);
   });
 });
+
+// route tests
+import { buildFastify } from '../server/index';
+
+describe('Server routes', () => {
+  let app;
+
+  beforeEach(() => {
+    app = buildFastify();
+    // register routes freshly
+    if (app && typeof app.register === 'function') {
+      // plugin registration has already been done in buildFastify
+    }
+  });
+
+  it('GET /stats returns default stats', async () => {
+    const res = await app.inject({ method: 'GET', url: '/stats' });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body).toHaveProperty('totalNotes');
+    expect(body).toHaveProperty('indexReady');
+  });
+
+  it('POST /syncNote adds a note', async () => {
+    const note = { id: 'test1', title: 'hi' };
+    const res = await app.inject({ method: 'POST', url: '/syncNote', payload: note });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.ok).toBe(true);
+  });
+
+  it('POST /reply returns a reply object', async () => {
+    const res = await app.inject({ method: 'POST', url: '/reply', payload: { message: 'hello' } });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body).toHaveProperty('reply');
+    expect(body).toHaveProperty('mood');
+  });
+});
