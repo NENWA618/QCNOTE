@@ -213,7 +213,7 @@ describe('NoteStorage', () => {
   });
 
   describe('Settings', () => {
-    it('should initialize default settings', () => {
+    it('should initialize default settings', async () => {
       const settings = await storage.getSettingsAsync();
       expect(settings?.theme).toBe('light');
       expect(settings?.sortBy).toBe('date');
@@ -221,7 +221,7 @@ describe('NoteStorage', () => {
       expect(settings?.defaultCategory).toBe('生活');
     });
 
-    it('should update settings', () => {
+    it('should update settings', async () => {
       await storage.setSettingsAsync({
         theme: 'dark',
         sortBy: 'title',
