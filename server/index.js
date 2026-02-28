@@ -253,37 +253,7 @@ function generateReplyFromMemory(message, memory, persona, noteSnippet) {
   return { reply, mood };
 }
 
-// accept note syncs, update server-side structures
-fastify.post('/syncNote', async (request, reply) => {
-  const note = request.body;
-  if (note && note.id) {
-    // replace or add
-    const idx = serverNotes.findIndex((n) => n.id === note.id);
-    if (idx !== -1) serverNotes[idx] = note;
-    else serverNotes.push(note);
-    
-    // rebuild index to include new/updated note
-    await rebuildIndex();
-    
-    // persist to disk
-    await saveNotesToDisk();
-    
-    return { ok: true, message: `Note ${note.id} synced and indexed` };
-  }
-  return { ok: false, message: 'Invalid note' };
-});
-
 const PORT = process.env.PORT || 10000;
-
-// Add endpoint to check server status and index stats
-fastify.get('/stats', async (request, reply) => {
-  return {
-    totalNotes: serverNotes.length,
-    indexReady: serverIndex.lunr !== null,
-    vectorsCount: Object.keys(serverIndex.vectors).length,
-    sentimentsCount: Object.keys(serverIndex.sentiments).length,
-  };
-});
 
 if (require.main === module) {
   fastify.listen({ port: PORT, host: '0.0.0.0' }, async () => {
