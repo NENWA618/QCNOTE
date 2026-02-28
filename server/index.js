@@ -1,8 +1,8 @@
 const Fastify = require('fastify');
 const fs = require('fs').promises;
 const path = require('path');
-const vector = require('../lib/vector').default;
-const sentiment = require('../lib/sentiment').default;
+const vector = require(path.resolve(__dirname, '../lib/vector')).default;
+const sentiment = require(path.resolve(__dirname, '../lib/sentiment')).default;
 
 // simple in-memory storage for server-side notes
 let serverNotes = [];
@@ -162,7 +162,7 @@ function generateReplyFromMemory(message, memory, persona, noteSnippet) {
 fastify.post('/reply', async (request, reply) => {
   const body = request.body || {};
   const { message, memory } = body;
-  const persona = require('../lib/characterData').persona;
+  const persona = require(path.resolve(__dirname, '../lib/characterData')).persona;
   
   // Search for relevant notes
   let noteSnippet = null;
