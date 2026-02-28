@@ -134,12 +134,16 @@ export async function generateReply(userMessage: string): Promise<{ reply: strin
       let hits: string[] = [];
       try {
         hits = await indexer.searchNotes(userMessage, notes);
-      } catch {}
+      } catch (e) {
+        // ignore indexer search errors
+      }
       // if the keyword index returned nothing, fall back to simple vector search
       if (hits.length === 0) {
         try {
           hits = vectorSearch(userMessage, notes);
-        } catch {}
+        } catch (e) {
+          // ignore vector search errors
+        }
       }
       if (hits.length > 0) {
         // just take first hit's content truncated
