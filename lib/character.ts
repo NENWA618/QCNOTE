@@ -3,6 +3,7 @@ import IDB from './idb';
 import { Mood } from '../components/Character';
 import persona from './characterData';
 import indexer from './indexer';
+import { vectorSearch } from './basicVector';
 
 // helper to get storage instance
 function getStorage() {
@@ -20,6 +21,7 @@ export interface Memory {
   totalNotes: number;
   tagFreq: Record<string, number>;
   categoryFreq: Record<string, number>;
+  avgSentiment?: number;
 }
 
 const CHAT_KEY = 'NOTE_CHAT_HISTORY';
@@ -47,13 +49,31 @@ export async function computeMemory(): Promise<Memory> {
     totalNotes: notes.length,
     tagFreq: {},
     categoryFreq: {},
+    avgSentiment: 0,
   };
+  let totalSent = 0;
+  const sentiments: Record<string, { score: number; comparative: number }> = {};
   notes.forEach((n: NoteItem) => {
     (n.tags || []).forEach((t: string) => {
       mem.tagFreq[t] = (mem.tagFreq[t] || 0) + 1;
     });
     mem.categoryFreq[n.category] = (mem.categoryFreq[n.category] || 0) + 1;
+    // sentiment analysis
+    try {
+      const Sentiment = require('sentiment');
+      const analyzer = new Sentiment();
+      const res = analyzer.analyze(n.content || n.title || '');
+      totalSent += res.score;
+      if (n.id) {
+        sentiments[n.id] = { score: res.score, comparative: res.comparative };
+      }
+    } catch {}
   });
+  if (notes.length > 0) mem.avgSentiment = totalSent / notes.length;
+  // cache individual note sentiments for later lookup
+  try {
+    await IDB.setItem('NOTE_SENTIMENTS', sentiments);
+  } catch {}
   return mem;
 }
 
@@ -69,12 +89,24 @@ export async function generateReply(userMessage: string): Promise<{ reply: strin
   // additionally try to search notes for relevant content
   const notes = (await getStorage().getDataAsync()) || [];
   let searchResultText = '';
+  let searchNoteId: string | null = null;
   try {
-    const hits = await indexer.searchNotes(userMessage, notes);
+    // first attempt keyword index (lunr)
+    let hits: string[] = [];
+    try {
+      hits = await indexer.searchNotes(userMessage, notes);
+    } catch {}
+    // if the keyword index returned nothing, fall back to simple vector search
+    if (hits.length === 0) {
+      try {
+        hits = vectorSearch(userMessage, notes);
+      } catch {}
+    }
     if (hits.length > 0) {
       // just take first hit's content truncated
       const note = notes.find((n: NoteItem) => n.id === hits[0]);
       if (note) {
+        searchNoteId = note.id;
         searchResultText = note.content.slice(0, 200) + (note.content.length > 200 ? '...' : '');
       }
     }
@@ -119,6 +151,18 @@ export async function generateReply(userMessage: string): Promise<{ reply: strin
   // if we obtained a relevant note snippet, append contextual hint
   if (searchResultText) {
     reply += `\n（你之前写过："${searchResultText}"）`;
+    // also mention its sentiment if available
+    if (searchNoteId) {
+      try {
+        const sentiments: Record<string, { score: number; comparative: number }> =
+          (await IDB.getItem('NOTE_SENTIMENTS')) || {};
+        const s = sentiments[searchNoteId];
+        if (s) {
+          const moodDesc = s.score > 0 ? '积极' : s.score < 0 ? '消极' : '中性';
+          reply += ` 情绪看起来比较${moodDesc}。`;
+        }
+      } catch {}
+    }
   }
 
   const entry: ChatEntry = { userMessage, aiMessage: reply, timestamp: Date.now(), mood };

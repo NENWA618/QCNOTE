@@ -125,7 +125,7 @@ describe('NoteStorage', () => {
   });
 
   describe('toggleFavorite', () => {
-    it('should toggle favorite status', () => {
+    it('should toggle favorite status', async () => {
       const note = await storage.addNoteAsync({ title: 'Test' });
       expect(note.isFavorite).toBe(false);
 
@@ -136,7 +136,7 @@ describe('NoteStorage', () => {
       expect(toggled2).toBe(false);
     });
 
-    it('should persist toggle to storage', () => {
+    it('should persist toggle to storage', async () => {
       const note = await storage.addNoteAsync({ title: 'Test' });
       await storage.toggleFavoriteAsync(note.id);
       const retrieved = await storage.getNoteAsync(note.id);
@@ -235,7 +235,7 @@ describe('NoteStorage', () => {
   });
 
   describe('Data persistence', () => {
-    it('should persist and restore notes', () => {
+    it('should persist and restore notes', async () => {
       await storage.addNoteAsync({ title: 'Persist Test' });
       const storage2 = new NoteStorage();
       const data = await storage2.getDataAsync();
@@ -243,11 +243,41 @@ describe('NoteStorage', () => {
       expect(data?.[0].title).toBe('Persist Test');
     });
 
-    it('should initialize empty storage if none exists', () => {
+    it('should initialize empty storage if none exists', async () => {
       localStorage.clear();
       const newStorage = new NoteStorage();
       const data = await newStorage.getDataAsync();
       expect(data).toEqual([]);
+    });
+  });
+
+  describe('server sync', () => {
+    beforeEach(() => {
+      vi.spyOn(global, 'fetch');
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should POST to /syncNote when notes are saved', async () => {
+      const note = await storage.addNoteAsync({ title: 'SyncTest' });
+      expect(global.fetch).toHaveBeenCalled();
+      const calledWith = (global.fetch as unknown as jest.Mock).mock.calls[0][0];
+      expect(calledWith).toBe('/syncNote');
+      const options = (global.fetch as unknown as jest.Mock).mock.calls[0][1];
+      expect(options.method).toBe('POST');
+      const sent = JSON.parse(options.body);
+      expect(sent.title).toBe('SyncTest');
+    });
+
+    it('should batch-sync when setDataAsync called with multiple notes', async () => {
+      const notes = [
+        { id: 'a', title: 'A', content: '' },
+        { id: 'b', title: 'B', content: '' },
+      ] as any;
+      await storage.setDataAsync(notes);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
     });
   });
 });

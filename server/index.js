@@ -1,8 +1,76 @@
 const Fastify = require('fastify');
+const fs = require('fs').promises;
+const path = require('path');
+const vector = require('../lib/vector').default;
+const sentiment = require('../lib/sentiment').default;
+
+// simple in-memory storage for server-side notes
+let serverNotes = [];
+let serverIndex = { lunr: null, vectors: {}, sentiments: {} };
+
+const NOTES_PERSIST_PATH = path.join(__dirname, '.notes-cache.json');
+
 const fastify = Fastify({ logger: true });
 
 // Enable CORS so the frontend at different port can call /reply during development
 fastify.register(require('@fastify/cors'), { origin: true });
+
+// Load notes from disk on startup
+async function loadNotesFromDisk() {
+  try {
+    const data = await fs.readFile(NOTES_PERSIST_PATH, 'utf-8');
+    serverNotes = JSON.parse(data);
+    console.log(`[Server] Loaded ${serverNotes.length} notes from disk`);
+    // rebuild index after loading
+    await rebuildIndex();
+  } catch (e) {
+    console.log('[Server] No persisted notes found; starting fresh');
+  }
+}
+
+// Save notes to disk
+async function saveNotesToDisk() {
+  try {
+    await fs.writeFile(NOTES_PERSIST_PATH, JSON.stringify(serverNotes, null, 2), 'utf-8');
+    console.log('[Server] Notes persisted to disk');
+  } catch (e) {
+    console.warn('[Server] Failed to persist notes:', e);
+  }
+}
+
+// Rebuild lunr index and vector/sentiment caches
+async function rebuildIndex() {
+  if (serverNotes.length === 0) {
+    serverIndex = { lunr: null, vectors: {}, sentiments: {} };
+    return;
+  }
+  
+  try {
+    // Build lunr index
+    const lunr = require('lunr');
+    serverIndex.lunr = lunr(function (builder) {
+      builder.ref('id');
+      builder.field('title');
+      builder.field('content');
+      serverNotes.forEach((note) => {
+        builder.add({ id: note.id, title: note.title, content: note.content });
+      });
+    });
+    
+    // Compute vectors and sentiment for each note
+    serverIndex.vectors = {};
+    serverIndex.sentiments = {};
+    serverNotes.forEach((note) => {
+      const text = `${note.title} ${note.content}`;
+      serverIndex.vectors[note.id] = vector.computeVector(text);
+      serverIndex.sentiments[note.id] = sentiment.analyzeEmotion(text);
+    });
+    
+    console.log(`[Server] Rebuilt index for ${serverNotes.length} notes`);
+  } catch (e) {
+    console.error('[Server] Error rebuilding index:', e);
+  }
+}
 
 function containsAny(text, keywords) {
   if (!text) return false;
@@ -10,8 +78,45 @@ function containsAny(text, keywords) {
   return keywords.some((k) => lower.includes(k));
 }
 
+// search using lunr + vector fallback
+function searchServerNotes(query) {
+  const results = [];
+  
+  // Try lunr search first
+  if (serverIndex.lunr) {
+    try {
+      const hits = serverIndex.lunr.search(query);
+      hits.forEach((h) => results.push({ id: h.ref, score: h.score, method: 'lunr' }));
+    } catch (e) {
+      console.warn('[Server] Lunr search error:', e);
+    }
+  }
+  
+  // Add vector search results
+  if (Object.keys(serverIndex.vectors).length > 0) {
+    const qvec = vector.computeVector(query);
+    const vecResults = [];
+    for (const id in serverIndex.vectors) {
+      const score = vector.cosine(qvec, serverIndex.vectors[id]);
+      if (score > 0.05) {
+        vecResults.push({ id, score, method: 'vector' });
+      }
+    }
+    vecResults.sort((a, b) => b.score - a.score);
+    // merge with lunr results, avoiding duplicates
+    vecResults.forEach((vr) => {
+      if (!results.some((r) => r.id === vr.id)) {
+        results.push(vr);
+      }
+    });
+  }
+  
+  return results;
+}
+
 // simple reply generator that accepts a memory snapshot from client
-function generateReplyFromMemory(message, memory, persona) {
+// optionally augmented with retrieved note snippets for context
+function generateReplyFromMemory(message, memory, persona, noteSnippet) {
   let reply = persona.fallbackReplies[0];
   let mood = 'idle';
 
@@ -46,19 +151,68 @@ function generateReplyFromMemory(message, memory, persona) {
     mood = 'thinking';
   }
 
+  // Append retrieved note context if available
+  if (noteSnippet) {
+    reply += `\n（你之前写过："${noteSnippet}"）`;
+  }
+
   return { reply, mood };
 }
 
 fastify.post('/reply', async (request, reply) => {
   const body = request.body || {};
   const { message, memory } = body;
-  // load persona defaults from a minimal definition
   const persona = require('../lib/characterData').persona;
-  const result = generateReplyFromMemory(message || '', memory || {}, persona);
+  
+  // Search for relevant notes
+  let noteSnippet = null;
+  const searchResults = searchServerNotes(message);
+  if (searchResults.length > 0) {
+    const topResultId = searchResults[0].id;
+    const topNote = serverNotes.find((n) => n.id === topResultId);
+    if (topNote) {
+      noteSnippet = topNote.content.slice(0, 150) + (topNote.content.length > 150 ? '...' : '');
+    }
+  }
+  
+  const result = generateReplyFromMemory(message || '', memory || {}, persona, noteSnippet);
   return result;
 });
 
+// accept note syncs, update server-side structures
+fastify.post('/syncNote', async (request, reply) => {
+  const note = request.body;
+  if (note && note.id) {
+    // replace or add
+    const idx = serverNotes.findIndex((n) => n.id === note.id);
+    if (idx !== -1) serverNotes[idx] = note;
+    else serverNotes.push(note);
+    
+    // rebuild index to include new/updated note
+    await rebuildIndex();
+    
+    // persist to disk
+    await saveNotesToDisk();
+    
+    return { ok: true, message: `Note ${note.id} synced and indexed` };
+  }
+  return { ok: false, message: 'Invalid note' };
+});
+
 const PORT = process.env.PORT || 4000;
-fastify.listen({ port: PORT, host: '0.0.0.0' }).then(() => {
+
+// Add endpoint to check server status and index stats
+fastify.get('/stats', async (request, reply) => {
+  return {
+    totalNotes: serverNotes.length,
+    indexReady: serverIndex.lunr !== null,
+    vectorsCount: Object.keys(serverIndex.vectors).length,
+    sentimentsCount: Object.keys(serverIndex.sentiments).length,
+  };
+});
+
+fastify.listen({ port: PORT, host: '0.0.0.0' }, async () => {
   console.log('Fastify server listening on', PORT);
+  // Load persisted notes on startup
+  await loadNotesFromDisk();
 });

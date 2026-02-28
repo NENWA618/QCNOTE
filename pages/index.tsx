@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
+import Character from '../components/Character';
 
 export default function Home() {
   return (
@@ -220,6 +221,8 @@ export default function Home() {
           </Link>
         </p>
       </footer>
+      {/* floating character */}
+      <Character />
     </>
   );
 }

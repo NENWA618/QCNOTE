@@ -142,22 +142,54 @@ export class NoteStorage {
       // 优先 IndexedDB，次之 localStorage
       if (this.useIndexedDB) {
         await IDB.setItem(this.storageKey, notes);
-        return true;
+      } else {
+        // 尝试写入 IndexedDB（可能在启用过程中）
+        try {
+          await IDB.setItem(this.storageKey, notes);
+          this.useIndexedDB = true;
+          // 清空 localStorage
+          localStorage.removeItem(this.storageKey);
+        } catch (_) {
+          // IndexedDB 失败，回退到 localStorage
+          this.setData(notes);
+        }
       }
-      // 尝试写入 IndexedDB（可能在启用过程中）
-      try {
-        await IDB.setItem(this.storageKey, notes);
-        this.useIndexedDB = true;
-        // 清空 localStorage
-        localStorage.removeItem(this.storageKey);
-        return true;
-      } catch (_) {
-        // IndexedDB 失败，回退到 localStorage
-        return this.setData(notes);
-      }
+
+      // 一旦本地数据写入成功，尝试同步到服务器（如果可用）
+      this.syncWithServer(notes).catch((err) => {
+        // 静默失败，服务器可能离线
+        console.warn('[NoteStorage] 同步服务器失败', err);
+      });
+      return true;
     } catch (e) {
       console.error('保存存储失败:', e);
       return false;
+    }
+  }
+
+  // 尝试将单条或多条笔记发送给后端
+  private async syncWithServer(notes?: NoteItem[] | NoteItem) {
+    if (typeof window === 'undefined') return;
+    const url = '/syncNote';
+    try {
+      if (!notes) {
+        // 读出全部并发送
+        const all = await this.getDataAsync();
+        if (!all) return;
+        notes = all;
+      }
+      const list = Array.isArray(notes) ? notes : [notes];
+      for (const note of list) {
+        // 网络请求，忽略返回值
+        await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(note),
+        });
+      }
+    } catch (e) {
+      // 可能离线或跨域都失败
+      console.debug('[NoteStorage] 无法同步到服务器', e);
     }
   }
 
