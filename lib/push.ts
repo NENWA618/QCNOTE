@@ -25,7 +25,9 @@ export async function subscribeForPush() {
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, message: e && e.message };
+    // TypeScript can't assume `message` exists on unknown
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, message: msg };
   }
 }
 
