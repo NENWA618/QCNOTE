@@ -94,8 +94,10 @@ export async function searchNotes(query: string, notes: NoteItem[]): Promise<str
   }
 }
 
-export default {
+const Indexer = {
   buildIndex,
   loadIndex,
   searchNotes,
 };
+
+export default Indexer;

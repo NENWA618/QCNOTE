@@ -36,4 +36,6 @@ export function cosine(a: Vector, b: Vector): number {
   return sum; // vectors assumed normalized
 }
 
-export default { computeVector, cosine };
+const VectorUtil = { computeVector, cosine };
+
+export default VectorUtil;

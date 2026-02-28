@@ -63,7 +63,9 @@ export async function computeMemory(): Promise<Memory> {
     if (cached) {
       sentiments = cached;
     }
-  } catch {}
+  } catch (e) {
+    // ignore cache read errors
+  }
 
   // Only analyze sentiment for notes without cached values
   let totalSent = 0;
@@ -87,7 +89,9 @@ export async function computeMemory(): Promise<Memory> {
           newSentiments[n.id] = { score: res.score, comparative: res.comparative };
           hasNewSentiments = true;
         }
-      } catch {}
+      } catch (e) {
+        // ignore sentiment analysis failures for individual notes
+      }
     } else {
       // Add cached sentiment to total
       totalSent += sentiments[n.id].score;
@@ -102,7 +106,9 @@ export async function computeMemory(): Promise<Memory> {
   if (hasNewSentiments) {
     try {
       await IDB.setItem('NOTE_SENTIMENTS', newSentiments);
-    } catch {}
+    } catch (e) {
+      // ignore cache write failures
+    }
   }
 
   return mem;
@@ -194,17 +200,21 @@ export async function generateReply(userMessage: string): Promise<{ reply: strin
           const moodDesc = s.score > 0 ? '积极' : s.score < 0 ? '消极' : '中性';
           reply += ` 情绪看起来比较${moodDesc}。`;
         }
-      } catch {}
+      } catch (e) {
+        // ignore sentiment lookup failures
+      }
     }
   }
 
   return { reply, mood };
 }
 
-export default {
+const Character = {
   loadChatHistory,
   saveChatEntry,
   clearChatHistory,
   computeMemory,
   generateReply,
 };
+
+export default Character;
