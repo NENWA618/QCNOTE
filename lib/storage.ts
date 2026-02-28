@@ -240,6 +240,7 @@ export class NoteStorage {
   }
 
   async getSettingsAsync(): Promise<UserSettings | null> {
+    try {
       // 优先尝试 IndexedDB
       const idbSettings = await IDB.getItem(this.settingsKey);
       if (idbSettings) {
