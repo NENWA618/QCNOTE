@@ -1,0 +1,16 @@
+{
+  "name": "note-server",
+  "version": "1.0.0",
+  "description": "Backend server for NOTE application",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^8.2.0",
+    "fastify": "^4.24.0",
+    "lunr": "^2.3.9",
+    "sentiment": "^5.0.1"
+  }
+}
