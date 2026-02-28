@@ -1,5 +1,6 @@
 import Utils from './utils';
 import IDB from './idb';
+import logger from './logger';
 
 export interface NoteItem {
   id: string;
@@ -58,7 +59,7 @@ export class NoteStorage {
       const data = await IDB.getItem(this.storageKey);
       if (data) {
         this.useIndexedDB = true;
-        console.log('✓ 检测到 IndexedDB 数据，自动启用');
+        logger.info('✓ 检测到 IndexedDB 数据，自动启用');
       }
     } catch (e) {
       // IndexedDB 不可用或出错，保持 useIndexedDB = false
@@ -74,7 +75,7 @@ export class NoteStorage {
       const existing = await IDB.getItem(this.storageKey);
       if (existing && Array.isArray(existing) && existing.length > 0) {
         this.useIndexedDB = true;
-        console.log('✓ IndexedDB 已有数据，保留现有数据，启用索引存储');
+          logger.info('✓ IndexedDB 已有数据，保留现有数据，启用索引存储');
         return true;
       }
 
@@ -86,7 +87,7 @@ export class NoteStorage {
         try {
           const backupKey = `${this.storageKey}_backup_${Date.now()}`;
           await IDB.setItem(backupKey, notes);
-          console.log('✓ 本地数据已备份到 IndexedDB 键：', backupKey);
+          logger.info('✓ 本地数据已备份到 IndexedDB 键：', backupKey);
         } catch (bkErr) {
           console.warn('备份 localStorage 数据到 IndexedDB 失败，继续迁移：', bkErr);
         }
@@ -96,13 +97,13 @@ export class NoteStorage {
         // 清空 localStorage
         localStorage.removeItem(this.storageKey);
         localStorage.removeItem(this.settingsKey);
-        console.log('✓ IndexedDB 已启用，数据迁移成功');
+        logger.info('✓ IndexedDB 已启用，数据迁移成功');
         return true;
       }
 
       // 两边均无数据：启用 IndexedDB（但不写入空数组）
       this.useIndexedDB = true;
-      console.log('✓ IndexedDB 已启用（无需迁移）');
+        logger.info('✓ IndexedDB 已启用（无需迁移）');
       return true;
     } catch (e: unknown) {
       console.error('启用IndexedDB失败:', e);
@@ -158,7 +159,7 @@ export class NoteStorage {
       // 一旦本地数据写入成功，尝试同步到服务器（如果可用）
       this.syncWithServer(notes).catch((err) => {
         // 静默失败，服务器可能离线
-        console.warn('[NoteStorage] 同步服务器失败', err);
+        logger.warn('[NoteStorage] 同步服务器失败', err);
       });
       return true;
     } catch (e) {
@@ -173,22 +174,22 @@ export class NoteStorage {
     const url = '/syncNote';
     try {
       if (!notes) {
-        // 读出全部并发送
         const all = await this.getDataAsync();
         if (!all) return;
         notes = all;
       }
       const list = Array.isArray(notes) ? notes : [notes];
-      for (const note of list) {
-        // 网络请求，忽略返回值
-        await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(note),
-        });
-      }
+      // send requests in parallel; avoid throwing for individual failures
+      await Promise.allSettled(
+        list.map((note) =>
+          fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(note),
+          })
+        )
+      );
     } catch (e) {
-      // 可能离线或跨域都失败
       console.debug('[NoteStorage] 无法同步到服务器', e);
     }
   }

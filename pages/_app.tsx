@@ -19,9 +19,9 @@ export default function App({ Component, pageProps }: AppProps) {
     (async () => {
       const success = await storage?.enableIndexedDB();
       if (success) {
-        console.log('✓ IndexedDB 已启用，数据迁移成功');
+        if (process.env.NODE_ENV !== 'production') console.log('✓ IndexedDB 已启用，数据迁移成功');
       } else {
-        console.log('⚠ IndexedDB 启用失败，继续使用 localStorage');
+        if (process.env.NODE_ENV !== 'production') console.log('⚠ IndexedDB 启用失败，继续使用 localStorage');
       }
       setReady(true);
     })();

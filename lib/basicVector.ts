@@ -13,11 +13,15 @@ export function buildVocab(notes: NoteItem[]): string[] {
 }
 
 export function vectorize(text: string, vocab: string[]): number[] {
+  // build a map for quick lookup to avoid O(n) indexOf per token
+  const idxMap = new Map<string, number>();
+  vocab.forEach((w, i) => idxMap.set(w, i));
+
   const vec = new Array(vocab.length).fill(0);
   const words = text.toLowerCase().split(/\W+/);
   words.forEach((w) => {
-    const idx = vocab.indexOf(w);
-    if (idx !== -1) vec[idx] += 1;
+    const idx = idxMap.get(w);
+    if (idx !== undefined) vec[idx] += 1;
   });
   return vec;
 }

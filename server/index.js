@@ -1,6 +1,7 @@
 const Fastify = require('fastify');
 const fs = require('fs').promises;
 const path = require('path');
+const logger = require('../lib/logger');
 let vector;
 let sentiment;
 try {
@@ -29,11 +30,11 @@ async function loadNotesFromDisk() {
   try {
     const data = await fs.readFile(NOTES_PERSIST_PATH, 'utf-8');
     serverNotes = JSON.parse(data);
-    console.log(`[Server] Loaded ${serverNotes.length} notes from disk`);
+    logger.info(`[Server] Loaded ${serverNotes.length} notes from disk`);
     // rebuild index after loading
     await rebuildIndex();
   } catch (e) {
-    console.log('[Server] No persisted notes found; starting fresh');
+    logger.info('[Server] No persisted notes found; starting fresh');
   }
 }
 
@@ -41,7 +42,7 @@ async function loadNotesFromDisk() {
 async function saveNotesToDisk() {
   try {
     await fs.writeFile(NOTES_PERSIST_PATH, JSON.stringify(serverNotes, null, 2), 'utf-8');
-    console.log('[Server] Notes persisted to disk');
+    logger.info('[Server] Notes persisted to disk');
   } catch (e) {
     console.warn('[Server] Failed to persist notes:', e);
   }
@@ -75,9 +76,10 @@ async function rebuildIndex() {
       serverIndex.sentiments[note.id] = sentiment.analyzeEmotion(text);
     });
     
-    console.log(`[Server] Rebuilt index for ${serverNotes.length} notes`);
+    logger.info(`[Server] Rebuilt index for ${serverNotes.length} notes`);
   } catch (e) {
-    console.error('[Server] Error rebuilding index:', e);
+    logger.error('[Server] Error rebuilding index:', e);
+    throw e; // propagate so caller can know
   }
 }
 
@@ -226,7 +228,7 @@ fastify.get('/stats', async (request, reply) => {
 });
 
 fastify.listen({ port: PORT, host: '0.0.0.0' }, async () => {
-  console.log('Fastify server listening on', PORT);
+  logger.info('Fastify server listening on', PORT);
   // Load persisted notes on startup
   await loadNotesFromDisk();
 });
