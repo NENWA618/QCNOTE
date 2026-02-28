@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import CharacterSVG from './CharacterSVG';
+import CharacterLive2D from './CharacterLive2D';
 import { generateReply, computeMemory, saveChatEntry, loadChatHistory } from '../lib/character';
 import { scheduleReminderFromText } from '../lib/reminder';
 import progression from '../lib/progression';
@@ -157,7 +157,7 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
   return (
     <div className="character-container">
       <div onClick={handleClick}>
-        <CharacterSVG mood={mood} />
+        <CharacterLive2D mood={mood} />
       </div>
       {chatOpen && (
         <div className="character-chat bg-white p-0 rounded-lg shadow-light w-64 max-h-96 overflow-hidden flex flex-col">
