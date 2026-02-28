@@ -102,7 +102,7 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
     } else {
       try {
         const memory = await computeMemory();
-      const serverUrl = (process.env.NEXT_PUBLIC_CHARACTER_SERVER_URL as string) || 'http://localhost:4000/reply';
+      const serverUrl = (process.env.NEXT_PUBLIC_CHARACTER_SERVER_URL as string) || 'http://localhost:10000/reply';
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
       try {

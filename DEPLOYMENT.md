@@ -53,13 +53,13 @@ $env:VAPID_PRIVATE='<上面生成的 privateKey>'
 npm run start
 ```
 
-后端默认监听 `http://localhost:4000`。
+后端默认监听 `http://localhost:10000`。
 
 5. **配置前端连接后端**
 
 在前端项目根创建 `.env.local` 或在启动时注入环境变量：
 ```
-NEXT_PUBLIC_CHARACTER_SERVER_URL=http://localhost:4000
+NEXT_PUBLIC_CHARACTER_SERVER_URL=http://localhost:10000
 NEXT_PUBLIC_VAPID_PUBLIC=<publicKey>
 ```
 
@@ -96,7 +96,7 @@ NEXT_PUBLIC_VAPID_PUBLIC=<publicKey>
    - `REDIS_URL` = <Key Value 实例的内部 URL>
    - `VAPID_PUBLIC` = <你的 VAPID 公钥>
    - `VAPID_PRIVATE` = <你的 VAPID 私钥>
-   - （可选）`PORT` = `4000`
+   - （无需设置 PORT：Render 会自动分配并注入，服务代码已支持）
 
 4. **可选：单独 Background Worker**
    如果需要把队列处理分离到单独的 worker 进程：

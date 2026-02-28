@@ -298,7 +298,7 @@ fastify.post('/syncNote', async (request, reply) => {
   return { ok: false, message: 'Invalid note' };
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 10000;
 
 // Add endpoint to check server status and index stats
 fastify.get('/stats', async (request, reply) => {

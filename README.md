@@ -54,7 +54,7 @@ NOTE 内置了一个虚拟助手“诺特”，她是你的笔记精灵。
 运行后端（可选）：
 
 ```bash
-npm run start-server   # 启动 Fastify 服务器，默认 4000
+npm run start-server   # 启动 Fastify 服务器，默认 10000
 ```
 
 在环境变量 `NEXT_PUBLIC_CHARACTER_SERVER_URL` 中指定不同 URL。
