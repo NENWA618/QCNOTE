@@ -51,29 +51,60 @@ export async function computeMemory(): Promise<Memory> {
     categoryFreq: {},
     avgSentiment: 0,
   };
+  
+  if (notes.length === 0) {
+    return mem;
+  }
+
+  // Try to load cached sentiments first
+  let sentiments: Record<string, { score: number; comparative: number }> = {};
+  try {
+    const cached = await IDB.getItem<Record<string, { score: number; comparative: number }>>('NOTE_SENTIMENTS');
+    if (cached) {
+      sentiments = cached;
+    }
+  } catch {}
+
+  // Only analyze sentiment for notes without cached values
   let totalSent = 0;
-  const sentiments: Record<string, { score: number; comparative: number }> = {};
+  const newSentiments: Record<string, { score: number; comparative: number }> = {...sentiments};
+  let hasNewSentiments = false;
+
   notes.forEach((n: NoteItem) => {
     (n.tags || []).forEach((t: string) => {
       mem.tagFreq[t] = (mem.tagFreq[t] || 0) + 1;
     });
     mem.categoryFreq[n.category] = (mem.categoryFreq[n.category] || 0) + 1;
-    // sentiment analysis
-    try {
-      const Sentiment = require('sentiment');
-      const analyzer = new Sentiment();
-      const res = analyzer.analyze(n.content || n.title || '');
-      totalSent += res.score;
-      if (n.id) {
-        sentiments[n.id] = { score: res.score, comparative: res.comparative };
-      }
-    } catch {}
+
+    // sentiment analysis - only if not cached
+    if (!sentiments[n.id]) {
+      try {
+        const Sentiment = require('sentiment');
+        const analyzer = new Sentiment();
+        const res = analyzer.analyze(n.content || n.title || '');
+        totalSent += res.score;
+        if (n.id) {
+          newSentiments[n.id] = { score: res.score, comparative: res.comparative };
+          hasNewSentiments = true;
+        }
+      } catch {}
+    } else {
+      // Add cached sentiment to total
+      totalSent += sentiments[n.id].score;
+    }
   });
-  if (notes.length > 0) mem.avgSentiment = totalSent / notes.length;
-  // cache individual note sentiments for later lookup
-  try {
-    await IDB.setItem('NOTE_SENTIMENTS', sentiments);
-  } catch {}
+
+  if (notes.length > 0) {
+    mem.avgSentiment = totalSent / notes.length;
+  }
+
+  // Save updated sentiments cache if there are new ones
+  if (hasNewSentiments) {
+    try {
+      await IDB.setItem('NOTE_SENTIMENTS', newSentiments);
+    } catch {}
+  }
+
   return mem;
 }
 
@@ -90,36 +121,38 @@ export async function generateReply(userMessage: string): Promise<{ reply: strin
   const notes = (await getStorage().getDataAsync()) || [];
   let searchResultText = '';
   let searchNoteId: string | null = null;
-  try {
-    // first attempt keyword index (lunr)
-    let hits: string[] = [];
+  
+  if (notes.length > 0) {
     try {
-      hits = await indexer.searchNotes(userMessage, notes);
-    } catch {}
-    // if the keyword index returned nothing, fall back to simple vector search
-    if (hits.length === 0) {
+      // first attempt keyword index (lunr)
+      let hits: string[] = [];
       try {
-        hits = vectorSearch(userMessage, notes);
+        hits = await indexer.searchNotes(userMessage, notes);
       } catch {}
-    }
-    if (hits.length > 0) {
-      // just take first hit's content truncated
-      const note = notes.find((n: NoteItem) => n.id === hits[0]);
-      if (note) {
-        searchNoteId = note.id;
-        searchResultText = note.content.slice(0, 200) + (note.content.length > 200 ? '...' : '');
+      // if the keyword index returned nothing, fall back to simple vector search
+      if (hits.length === 0) {
+        try {
+          hits = vectorSearch(userMessage, notes);
+        } catch {}
       }
+      if (hits.length > 0) {
+        // just take first hit's content truncated
+        const note = notes.find((n: NoteItem) => n.id === hits[0]);
+        if (note) {
+          searchNoteId = note.id;
+          searchResultText = note.content.slice(0, 200) + (note.content.length > 200 ? '...' : '');
+        }
+      }
+    } catch (e) {
+      // ignore search errors
     }
-  } catch (e) {
-    // ignore search errors
   }
 
   // default
   let reply = persona.fallbackReplies[0];
   let mood: Mood = 'idle';
 
-  const lowerMsg = userMessage.toLowerCase();
-  if (containsAny(userMessage, ['记了什么', '笔记', '内容'])) {
+    if (containsAny(userMessage, ['记了什么', '笔记', '内容'])) {
     if (mem.totalNotes === 0) {
       reply = persona.templates.noNotes;
       mood = 'playful';
@@ -129,7 +162,7 @@ export async function generateReply(userMessage: string): Promise<{ reply: strin
       reply = persona.templates.summary(mem.totalNotes, topTag ? topTag[0] : undefined, topCat ? topCat[0] : undefined);
       mood = 'happy';
     }
-  } else if (containsAny(userMessage, ['你好', '嗨', '在吗'])) {
+    } else if (containsAny(userMessage, ['你好', '嗨', '在吗'])) {
     reply = persona.greetings[Math.floor(Math.random() * persona.greetings.length)];
     mood = 'happy';
   } else if (containsAny(userMessage, ['难过', '悲伤', '烦', '哭'])) {
@@ -165,8 +198,6 @@ export async function generateReply(userMessage: string): Promise<{ reply: strin
     }
   }
 
-  const entry: ChatEntry = { userMessage, aiMessage: reply, timestamp: Date.now(), mood };
-  await saveChatEntry(entry);
   return { reply, mood };
 }
 

@@ -197,10 +197,27 @@
   margin-bottom: 0.5rem;
   width: 18rem;
   font-family: inherit;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .character-chat .input {
   font-size: 0.875rem;
+}
+
+.character-chat .input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
 }
 
 /* custom scrollbar */
@@ -253,6 +270,12 @@
 /* thinking tilt */
 .character-svg.thinking {
   transform: rotate(-5deg);
+  animation: thinkingPulse 2s ease-in-out infinite;
+}
+
+@keyframes thinkingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
 }
 
 /* playful wink */
@@ -267,6 +290,12 @@
 /* sad droop */
 .character-svg.sad {
   transform: translateY(2px) scale(0.98);
+  animation: sadSway 3s ease-in-out infinite;
+}
+
+@keyframes sadSway {
+  0%, 100% { transform: translateY(2px) scale(0.98) rotate(-2deg); }
+  50% { transform: translateY(4px) scale(0.97) rotate(2deg); }
 }
 
 /* hair sway */
@@ -284,5 +313,24 @@
 .character-svg.talking .mouth {
   transform-origin: 60px 96px;
   animation: mouthMove 0.28s infinite;
+}
+
+/* character bounce on appearance */
+.character-container {
+  animation: characterBounce 0.5s ease-out;
+}
+
+@keyframes characterBounce {
+  0% {
+    transform: scale(0.8) translateY(20px);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
 }
 
