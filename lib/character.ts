@@ -4,6 +4,7 @@ import { Mood } from '../components/Character';
 import persona from './characterData';
 import indexer from './indexer';
 import { vectorSearch } from './basicVector';
+import progression from './progression';
 
 // helper to get storage instance
 function getStorage() {
@@ -25,6 +26,20 @@ export interface Memory {
 }
 
 const CHAT_KEY = 'NOTE_CHAT_HISTORY';
+
+// Get affection-based mood boost
+export async function getAffectionBoost(): Promise<string> {
+  try {
+    const state = await progression.loadProgress();
+    if (state.affection >= 80) return ' 📍（开心得不得了）';
+    if (state.affection >= 60) return ' 💕（心情不错）';
+    if (state.affection >= 40) return ' 😊（还可以哦）';
+    if (state.affection < 20) return ' 😕（有点难过呢）';
+  } catch (e) {
+    // ignore
+  }
+  return '';
+}
 
 export async function loadChatHistory(): Promise<ChatEntry[]> {
   const data = await IDB.getItem<ChatEntry[]>(CHAT_KEY);

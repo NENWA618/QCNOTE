@@ -1,4 +1,4 @@
-import { scheduleReminderFromText, syncLocalReminders, ReminderItem } from '../lib/reminder';
+import { scheduleReminderFromText, syncLocalReminders, completeReminder, ReminderItem } from '../lib/reminder';
 import IDB from '../lib/idb';
 
 describe('reminder logic', () => {
@@ -22,5 +22,17 @@ describe('reminder logic', () => {
     await syncLocalReminders();
     const locals = await IDB.getItem<ReminderItem[]>('NOTE_LOCAL_REMINDERS');
     expect(locals && locals[0].id).toBe('srv1');
+  });
+
+  it('completes reminder and marks completed', async () => {
+    await IDB.setItem('NOTE_LOCAL_REMINDERS', [{ 
+      id: 'r1', 
+      title: 'test', 
+      body: 'do stuff', 
+      targetAt: '2025-01-01T00:00:00Z'
+    }]);
+    const completed = await completeReminder('r1');
+    expect(completed?.completed).toBe(true);
+    expect(completed?.completedAt).toBeDefined();
   });
 });

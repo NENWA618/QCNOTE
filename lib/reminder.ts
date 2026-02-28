@@ -6,6 +6,8 @@ export interface ReminderItem {
   body: string;
   targetAt: string;
   localOnly?: boolean;
+  completed?: boolean;
+  completedAt?: number;
 }
 
 const REM_KEY = 'NOTE_LOCAL_REMINDERS';
@@ -67,6 +69,27 @@ export async function scheduleReminderFromText(text: string) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, message: msg };
   }
+}
+
+// mark a reminder as completed and award progression
+export async function completeReminder(id: string) {
+  const locals = await getLocalReminders();
+  const updated = locals.map((r) => {
+    if (r.id === id && !r.completed) {
+      return { ...r, completed: true, completedAt: Date.now() };
+    }
+    return r;
+  });
+  await saveLocalReminders(updated);
+  // Import and award progression
+  try {
+    const progression = (await import('./progression')).default;
+    await progression.addAffection(15);  // +15 affection for completing
+    await progression.addXp(30);         // +30 XP for completing
+  } catch (e) {
+    console.warn('Failed to award progression for reminder completion', e);
+  }
+  return updated.find((r) => r.id === id);
 }
 
 // try to sync unsent reminders with server when connectivity returns

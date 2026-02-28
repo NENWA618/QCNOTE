@@ -90,8 +90,9 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
         if (res && res.ok) {
           usedReply = `已为你设置提醒，时间：${res.targetAt}`;
           usedMood = 'happy';
-          // award XP for setting reminder
+          // award XP and affection for setting reminder
           progression.addXp(20).then((s) => setProgress({ xp: s.xp, level: s.level, affection: s.affection })).catch(() => {});
+          progression.addAffection(5).then((s) => setProgress({ xp: s.xp, level: s.level, affection: s.affection })).catch(() => {});
         } else {
           usedReply = (res && res.message) || '无法解析提醒内容，请使用例如：提醒我在 2026-03-01 09:00 做 喝水';
           usedMood = 'thinking';

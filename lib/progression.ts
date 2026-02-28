@@ -10,7 +10,8 @@ export interface ProgressState {
 const PROG_KEY = 'NOTE_PROGRESSION';
 
 const BASE_XP = 100;
-const AFFECTION_DECAY_RATE = 1; // point per day
+const AFFECTION_DECAY_RATE = 1; // point per day (max 100 - min 0)
+const AFFECTION_NATURAL_GAIN = 0.1; // small passive gain per day (optional)
 
 async function loadProgress(): Promise<ProgressState> {
   const data = await IDB.getItem<ProgressState>(PROG_KEY);
