@@ -3,7 +3,7 @@ services:
     name: NOTE-server
     runtime: node
     plan: free
-    buildCommand: npm --prefix server install
+    buildCommand: npm install && npm --prefix server install
     startCommand: npm --prefix server start
     envVars:
       - key: NODE_ENV
