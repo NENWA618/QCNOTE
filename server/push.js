@@ -20,12 +20,21 @@ function ensureVapid() {
     logger.warn('[Push] VAPID keys not configured; push will not work until VAPID_PUBLIC and VAPID_PRIVATE are set');
     return false;
   }
-  webpush.setVapidDetails('mailto:admin@example.com', pub, priv);
-  return true;
+  try {
+    webpush.setVapidDetails('mailto:admin@example.com', pub, priv);
+    return true;
+  } catch (e) {
+    logger.warn('[Push] Failed to set VAPID keys:', e && e.message);
+    return false;
+  }
 }
 
 async function registerRoutes(fastify) {
-  ensureVapid();
+  const vapidReady = ensureVapid();
+  if (!vapidReady) {
+    logger.warn('[Push] Skipping push routes; VAPID not configured');
+    return;
+  }
   // try to use Redis-backed queue if available
   let queueModule = null;
   try {
