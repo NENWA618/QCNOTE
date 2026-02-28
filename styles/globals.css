@@ -179,3 +179,110 @@
     margin: 2rem 0;
   }
 }
+
+/* character component styles */
+.character-container {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  width: 120px;
+  height: 240px;
+  cursor: pointer;
+  z-index: 1000;
+}
+.character-container .character-chat {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 0.5rem;
+  width: 18rem;
+  font-family: inherit;
+}
+
+.character-chat .input {
+  font-size: 0.875rem;
+}
+
+/* custom scrollbar */
+.character-chat::-webkit-scrollbar {
+  width: 6px;
+}
+.character-chat::-webkit-scrollbar-track {
+  background: transparent;
+}
+.character-chat::-webkit-scrollbar-thumb {
+  background-color: rgba(220,150,180,0.6);
+  border-radius: 3px;
+}
+
+.character-svg {
+  width: 100%;
+  height: auto;
+  transition: transform 0.3s ease;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+}
+
+/* blinking */
+@keyframes blink {
+  0%, 20%, 40%, 60%, 80%, 100% { transform: scaleY(1); }
+  10%, 30%, 50%, 70%, 90% { transform: scaleY(0.1); }
+}
+.character-svg.idle .eyes {
+  animation: blink 4s infinite;
+}
+
+/* talking: mouth movement */
+@keyframes mouthMove {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.3); }
+}
+.character-svg.talking .mouth {
+  animation: mouthMove 0.3s infinite;
+}
+
+/* happy jump */
+.character-svg.happy {
+  animation: happyJump 0.5s infinite;
+}
+@keyframes happyJump {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* thinking tilt */
+.character-svg.thinking {
+  transform: rotate(-5deg);
+}
+
+/* playful wink */
+.character-svg.playful .eye-left {
+  animation: wink 1.5s infinite;
+}
+@keyframes wink {
+  0%, 20%, 100% { transform: scaleY(1); }
+  10% { transform: scaleY(0.1); }
+}
+
+/* sad droop */
+.character-svg.sad {
+  transform: translateY(2px) scale(0.98);
+}
+
+/* hair sway */
+@keyframes hairSway {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(1.6deg); }
+  100% { transform: rotate(0deg); }
+}
+.character-svg .hair {
+  transform-origin: 60px 20px;
+  animation: hairSway 6s ease-in-out infinite;
+}
+
+/* small mouth bounce when talking */
+.character-svg.talking .mouth {
+  transform-origin: 60px 96px;
+  animation: mouthMove 0.28s infinite;
+}
+
