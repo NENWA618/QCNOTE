@@ -2,6 +2,7 @@ import { initWindowStorage, NoteItem } from './storage';
 import IDB from './idb';
 import { Mood } from '../components/Character';
 import persona from './characterData';
+import indexer from './indexer';
 
 // helper to get storage instance
 function getStorage() {
@@ -65,6 +66,21 @@ function containsAny(text: string, keywords: string[]) {
 export async function generateReply(userMessage: string): Promise<{ reply: string; mood: Mood }> {
   const history = await loadChatHistory();
   const mem = await computeMemory();
+  // additionally try to search notes for relevant content
+  const notes = (await getStorage().getDataAsync()) || [];
+  let searchResultText = '';
+  try {
+    const hits = await indexer.searchNotes(userMessage, notes);
+    if (hits.length > 0) {
+      // just take first hit's content truncated
+      const note = notes.find((n: NoteItem) => n.id === hits[0]);
+      if (note) {
+        searchResultText = note.content.slice(0, 200) + (note.content.length > 200 ? '...' : '');
+      }
+    }
+  } catch (e) {
+    // ignore search errors
+  }
 
   // default
   let reply = persona.fallbackReplies[0];
@@ -98,6 +114,11 @@ export async function generateReply(userMessage: string): Promise<{ reply: strin
       reply = persona.fallbackReplies[Math.floor(Math.random() * persona.fallbackReplies.length)];
       mood = 'thinking';
     }
+  }
+
+  // if we obtained a relevant note snippet, append contextual hint
+  if (searchResultText) {
+    reply += `\n（你之前写过："${searchResultText}"）`;
   }
 
   const entry: ChatEntry = { userMessage, aiMessage: reply, timestamp: Date.now(), mood };
