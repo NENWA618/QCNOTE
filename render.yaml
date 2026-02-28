@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install && npm --prefix server install
-    startCommand: npm --prefix server start
+    startCommand: NODE_PATH=./node_modules:./server/node_modules npm --prefix server start
     envVars:
       - key: NODE_ENV
         value: production
