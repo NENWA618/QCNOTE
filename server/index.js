@@ -1,8 +1,17 @@
 const Fastify = require('fastify');
 const fs = require('fs').promises;
 const path = require('path');
-const vector = require(path.resolve(__dirname, '../lib/vector')).default;
-const sentiment = require(path.resolve(__dirname, '../lib/sentiment')).default;
+let vector;
+let sentiment;
+try {
+  // Prefer server-local implementations (CommonJS)
+  vector = require(path.resolve(__dirname, './vector')).default;
+  sentiment = require(path.resolve(__dirname, './sentiment')).default;
+} catch (e) {
+  // Fallback to shared lib if server copies are not present
+  vector = require(path.resolve(__dirname, '../lib/vector')).default;
+  sentiment = require(path.resolve(__dirname, '../lib/sentiment')).default;
+}
 
 // simple in-memory storage for server-side notes
 let serverNotes = [];
@@ -162,7 +171,12 @@ function generateReplyFromMemory(message, memory, persona, noteSnippet) {
 fastify.post('/reply', async (request, reply) => {
   const body = request.body || {};
   const { message, memory } = body;
-  const persona = require(path.resolve(__dirname, '../lib/characterData')).persona;
+  let persona;
+  try {
+    persona = require(path.resolve(__dirname, './characterData')).persona;
+  } catch (e) {
+    persona = require(path.resolve(__dirname, '../lib/characterData')).persona;
+  }
   
   // Search for relevant notes
   let noteSnippet = null;
