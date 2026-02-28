@@ -11,9 +11,7 @@
     "@fastify/cors": "^8.2.0",
     "fastify": "^4.24.0",
     "lunr": "^2.3.9",
-    "sentiment": "^5.0.1"
-  },
-  "devDependencies": {
+    "sentiment": "^5.0.1",
     "tsx": "^4.7.0"
   }
 }
