@@ -41,11 +41,16 @@
 - 📦 BullMQ + Redis 任务队列
 - 🧪 Vitest 单元测试（依赖 `fake-indexeddb` 用于 Node 环境的 IndexedDB 模拟）
 - 🔧 后端可选 Fastify 服务器（`fastify`, `@fastify/cors`）
-- 🚀 CI/CD 自动化（GitHub Actions）
+- � 可配置远程日志：设置环境变量 `LOG_ENDPOINT` 可将日志 POST 到指定 URL
+- 🚀 CI/CD 自动化（GitHub Actions，带依赖缓存与安全审计）
 - 📱 PWA 支持（Service Worker + Web Push）
 
 
 ## 🚀 快速开始（5 分钟上手）
+
+> **CI 优化提示**: 我们的 GitHub Actions 配置会缓存 `~/.npm` 与 `.next/cache`，并在每次运行后执行 `npm audit`。无需额外设置。
+
+
 
 ### 前置要求
 
