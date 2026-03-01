@@ -31,3 +31,11 @@ if (typeof globalThis.fetch === 'undefined') {
   globalThis.fetch = async () => ({ ok: true, json: async () => ({}) }) as any;
 }
 
+// ignore known Node warning from vitest about --localstorage-file
+process.on('warning', (w) => {
+  if (typeof w.message === 'string' && w.message.includes('--localstorage-file')) {
+    return;
+  }
+  console.warn(w);
+});
+
