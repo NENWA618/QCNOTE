@@ -17,6 +17,10 @@
   "license": "MIT",
   "dependencies": {
     "@fastify/cors": "^11.2.0",
+    "@pixi/core": "^7.4.3",
+    "@pixi/display": "^7.4.3",
+    "@pixi/math": "^7.4.3",
+    "@pixi/utils": "^7.4.3",
     "fastify": "^5.7.4",
     "lunr": "^2.3.9",
     "next": "^14.0.0",
