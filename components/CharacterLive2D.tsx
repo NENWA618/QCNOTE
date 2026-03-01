@@ -32,7 +32,7 @@ const CharacterLive2D: React.FC<CharacterLive2DProps> = ({ mood = 'idle' }) => {
         transition: 'filter 0.3s ease',
       }}
     >
-      <Live2DViewer mood={mood} onError={() => setError(true)} />
+      <Live2DViewer mood={mood} onError={(e) => { console.log('Live2D error:', e); setError(true); }} />
       <style jsx>{`
         @keyframes talkingBounce {
           0%, 100% { transform: translateY(0); }
