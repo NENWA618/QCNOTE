@@ -57,6 +57,7 @@ describe('Server routes', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body).toHaveProperty('totalNotes');
+    expect(body.totalNotes).toBe(0);
     expect(body).toHaveProperty('indexReady');
   });
 
@@ -68,11 +69,30 @@ describe('Server routes', () => {
     expect(body.ok).toBe(true);
   });
 
+  it('POST /syncNote rejects invalid payload', async () => {
+    const res = await app.inject({ method: 'POST', url: '/syncNote', payload: { foo: 'bar' } });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.ok).toBe(false);
+  });
+
   it('POST /reply returns a reply object', async () => {
     const res = await app.inject({ method: 'POST', url: '/reply', payload: { message: 'hello' } });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body).toHaveProperty('reply');
     expect(body).toHaveProperty('mood');
+  });
+
+  it('POST /reply with empty body still responds', async () => {
+    const res = await app.inject({ method: 'POST', url: '/reply', payload: {} });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body).toHaveProperty('reply');
+  });
+
+  it('Unknown route returns 404', async () => {
+    const res = await app.inject({ method: 'GET', url: '/nonexistent' });
+    expect(res.statusCode).toBe(404);
   });
 });
