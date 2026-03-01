@@ -25,23 +25,30 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
 
     const initLive2D = async () => {
       try {
+        console.log('Starting Live2D initialization...');
+        console.log('Creating PIXI.Application...');
         const app = new PIXI.Application({
           width: 180,
           height: 300,
           backgroundAlpha: 0,
         });
         appRef.current = app;
+        console.log('PIXI App created successfully');
 
         if (containerRef.current) {
           containerRef.current.appendChild(app.canvas as HTMLCanvasElement);
+          console.log('Canvas appended to DOM');
         }
 
+        console.log('Loading model from:', MODEL_URL);
         const model = await Live2DModel.from(MODEL_URL);
+        console.log('Model loaded successfully:', model);
         const anyModel: any = model;
         anyModel.scale.set(0.5);
         anyModel.x = app.canvas.width / 2;
         anyModel.y = app.canvas.height / 1.1;
         (app.stage as any).addChild(anyModel);
+        console.log('Model added to stage');
 
         modelRef.current = model;
         try {
@@ -49,6 +56,7 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
         } catch (e) {
           // Idle motion might not exist, continue anyway
         }
+        console.log('Live2D initialization complete!');
       } catch (e) {
         console.error('Failed to load Hiyori Live2D model:', e);
         if (onError && e instanceof Error) {
