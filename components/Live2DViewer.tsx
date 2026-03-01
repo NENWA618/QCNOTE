@@ -25,24 +25,25 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
 
     const initLive2D = async () => {
       try {
-        console.log('Starting Live2D initialization...');
-        console.log('Creating PIXI.Application...');
+        console.log('[Live2D] Starting initialization...');
+        console.log('[Live2D] Window.live2d available?', typeof (window as any).Live2D !== 'undefined');
+        console.log('[Live2D] Creating PIXI.Application...');
         const app = new PIXI.Application({
           width: 180,
           height: 300,
           backgroundAlpha: 0,
         });
         appRef.current = app;
-        console.log('PIXI App created successfully');
+        console.log('[Live2D] PIXI App created successfully');
 
         if (containerRef.current) {
           containerRef.current.appendChild(app.canvas as HTMLCanvasElement);
-          console.log('Canvas appended to DOM');
+          console.log('[Live2D] Canvas appended to DOM');
         }
 
-        console.log('Loading model from:', MODEL_URL);
+        console.log('[Live2D] Loading model from:', MODEL_URL);
         const model = await Live2DModel.from(MODEL_URL);
-        console.log('Model loaded successfully:', model);
+        console.log('[Live2D] Model loaded successfully:', model);
         const anyModel: any = model;
         anyModel.scale.set(0.5);
         anyModel.x = app.canvas.width / 2;

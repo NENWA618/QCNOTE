@@ -22,8 +22,15 @@ const CharacterLive2D: React.FC<CharacterLive2DProps> = ({ mood = 'idle' }) => {
   // if the Live2D viewer isn't available (SSR or failed import) or we've hit an error,
   // fall back to the SVG character
   if (!Live2DViewer || error) {
+    console.log('[CharacterLive2D] Falling back to SVG (Live2D unavailable or error occurred)');
     return <CharacterSVG mood={mood} />;
   }
+
+  const handleLive2DError = (e: Error) => {
+    console.error('[CharacterLive2D] Live2D initialization error:', e);
+    console.warn('[CharacterLive2D] Falling back to SVG character');
+    setError(true);
+  };
 
   return (
     <div
@@ -35,7 +42,7 @@ const CharacterLive2D: React.FC<CharacterLive2DProps> = ({ mood = 'idle' }) => {
         transition: 'filter 0.3s ease',
       }}
     >
-      <Live2DViewer mood={mood} onError={(e) => { console.log('Live2D error:', e); setError(true); }} />
+      <Live2DViewer mood={mood} onError={handleLive2DError} />
       <style jsx>{`
         @keyframes talkingBounce {
           0%, 100% { transform: translateY(0); }
