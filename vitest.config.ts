@@ -7,6 +7,6 @@ export default defineConfig({
     // polyfill IndexedDB
     setupFiles: './test/setup.ts',
     // increase timeout if needed for async IndexedDB operations
-    timeout: 10000,
+    testTimeout: 10000,
   },
 });
