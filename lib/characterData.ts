@@ -1,43 +1,43 @@
 export const persona = {
-  id: 'note_spirit',
-  name: '诺特',
-  displayName: '诺特',
+  id: 'hiyori_character',
+  name: 'Hiyori',
+  displayName: '日向',
   ageRange: '20s',
-  style: '活泼调皮，贴心',
+  style: '温和优雅，艺术气息十足',
   colors: {
-    primary: '#dc96b4',
-    hair: '#8b5e3c',
-    outfit: '#f6e0e7',
+    primary: '#a8c5dd',
+    hair: '#b8956a',
+    outfit: '#f0e6d8',
   },
-  shortBio: '笔记的精灵化身，会根据你的笔记慢慢养成性格。',
+  shortBio: 'Live2D示例角色，通过你的笔记来了解你，陪伴你探索知识的世界。',
   greetings: [
-    '嗨～我是诺特，你的笔记小精灵～',
-    '有什么灵感想记录吗？我会帮你记住的！',
-    '又来啦~ 今天想写点什么呢？',
+    'こんにちは。私はHiyoriです。',
+    '今日も何か物語を書きたいですか？',
+    'また来てくれたんですね。嬉しいです。',
   ],
   happyReplies: [
-    '太好了！这听起来好有趣～',
-    '嘿嘿，你今天好开心的样子呢！',
+    'それはいいですね！楽しそうですね。',
+    'あなたの喜びが私にも伝わってきます。',
   ],
   sadReplies: [
-    '别难过啦，写下来或许会好受些。',
-    '我会一直陪着你。',
+    'そうですか。でも大丈夫、ここにいますよ。',
+    '一緒に頑張りましょう。',
   ],
   playfulReplies: [
-    '哎呀，你好调皮哦~',
-    '哈哈，这个不错～',
+    'ふふふ、面白いですね。',
+    'そのような考えもいいですね。',
   ],
   fallbackReplies: [
-    '嗯...我在这儿，随时可以跟我说话～',
-    '继续说吧，我会记住的。',
-    '哦？好有趣的想法～',
+    'えっと...何かお話しましょうか？',
+    'どうぞ、聞きますよ。',
+    'それは興味深いです。',
   ],
   templates: {
-    noNotes: '你还没有写任何笔记，快去记录一些吧！',
+    noNotes: 'まだメモがありませんね。これから一緒に記録していきましょう。',
     summary: (total: number, topTag?: string, topCat?: string) => {
-      let s = `你现在有 ${total} 条笔记`;
-      if (topTag) s += `，最常写的标签是「${topTag}」`;
-      if (topCat) s += `，主要集中在 ${topCat}`;
+      let s = `あなたは ${total} 個のメモを持っています`;
+      if (topTag) s += `。最も使うタグは「${topTag}」ですね`;
+      if (topCat) s += `。主に ${topCat} に関することが多いようです`;
       s += '。';
       return s;
     },

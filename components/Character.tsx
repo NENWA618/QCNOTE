@@ -162,7 +162,7 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
       {chatOpen && (
         <div className="character-chat bg-white p-0 rounded-lg shadow-light w-64 max-h-96 overflow-hidden flex flex-col">
           <div className="bg-accent-pink/30 text-primary-dark px-3 py-1 flex justify-between items-center text-sm font-medium flex-shrink-0">
-            <span>诺特</span>
+            <span>Hiyori</span>
             <button
               onClick={() => setChatOpen(false)}
               className="text-primary-dark hover:text-accent-pink"
@@ -184,7 +184,7 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
           <div className="p-4 flex-grow overflow-y-auto mb-2 space-y-2 scrollbar-thin scrollbar-thumb-pink-200 scrollbar-track-white">
             {messages.length === 0 && (
               <div className="text-xs text-text-light text-center py-2">
-                开启一段对话吧～
+                何か話しませんか？
               </div>
             )}
             {messages.map((m, idx) => (
@@ -205,7 +205,7 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="text-xs text-text-light px-3 py-2">诺特正在思考...</div>
+                <div className="text-xs text-text-light px-3 py-2">Hiyoriが考え中...</div>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -223,7 +223,7 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
                   sendMessage();
                 }
               }}
-              placeholder="和诺特说点什么..."
+              placeholder="Hiyoriに話しかけてください..."
               disabled={isLoading}
             />
             <button onClick={sendMessage} className="btn btn-primary" disabled={isLoading}>

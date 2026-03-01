@@ -10,7 +10,7 @@
 
 - 🎨 **前端**：Next.js 14 + TypeScript + Tailwind CSS（已部署 Vercel）
 - 🚀 **后端**：Fastify + Node.js（可选，已部署 Render）
-- 🤖 **AI诺特**：虚拟助手，支持聊天、养成、提醒解析
+- 🤖 **AI Hiyori**：虚拟助手，支持聊天、养成、提醒解析
 
 ## 🎯 当前功能与状态
 
@@ -26,7 +26,7 @@
 - 💾 IndexedDB 本地存储（隐私优先）
 - 📤 JSON 导入/导出
 
-**AI 诺特助手**
+**AI Hiyori 虚拟助手**
 - 💬 实时对话与聊天历史
 - 🤖 AI 生成回复（本地规则或后端 API）
 - 🎮 养成系统（XP、等级、好感度）
@@ -59,13 +59,14 @@
 
 ---
 
-### 🤖 AI 看板娘 — 诺特
+### 🤖 AI 虚拟助手 — Hiyori
 
-NOTE 内置了一个虚拟助手"诺特"，她是你的笔记精灵。
+NOTE 内置了一个虚拟助手"Hiyori（日向）"，她是 Live2D 官方示例角色，以优雅和艺术气息著称。
 
 **视觉设计**
-- 双尾辫、蝴蝶结与精致服饰，采用更专业的二次元动画风格
-- 好感度变化时角色脸部会有红晕变化，状态间有细腻的过渡动画
+- Live2D 官方示例模型，由插画家 Kani Biimu 设计
+- 采用精致的二次元动画风格，流畅的动作和表情
+- 好感度变化时角色表情会随之变化，展现不同的心情状态
 
 **基础对话**
 - 出现在首页右下角，点击她即可展开聊天窗口
@@ -76,7 +77,7 @@ NOTE 内置了一个虚拟助手"诺特"，她是你的笔记精灵。
 **养成系统** ⭐ *新功能*
 - 聊天、创建提醒与完成提醒都会累积 XP，满足阈值自动升级
   - 聊天：+10 XP；创建提醒：+20 XP +5 好感；完成提醒：+30 XP +15 好感
-- 好感度介于 0-100，会影响诺特回复时的表情符号和语气
+- 好感度介于 0-100，会影响 Hiyori 回复时的表情符号和语气
 - 每天首次打开聊天页面时好感度会自然衰减 1 点
 - 组件顶部显示等级、XP 进度条及❤好感度，实时刷新
 
@@ -170,14 +171,14 @@ npx tsc --noEmit  # TypeScript 类型检查
 NOTE/
 ├── pages/                   # Next.js 页面 (TSX)
 │   ├── _app.tsx            # 应用入口（初始化存储、导入 Tailwind）
-│   ├── index.tsx           # 首页（包含诺特虚拟助手）
+│   ├── index.tsx           # 首页（包含 Hiyori 虚拟助手）
 │   ├── dashboard.tsx       # 笔记管理页面
 │   ├── contact.tsx         # 联系页面
 │   ├── privacy.tsx         # 隐私政策
 │   └── terms.tsx           # 使用条款
 ├── components/             # React 可复用组件 (TSX)
-│   ├── Character.tsx       # 诺特虚拟助手（聊天、养成）
-│   ├── CharacterLive2D.tsx  # 诺特角色 Live2D 模型（Hiyori, pixi.js 加载），失败时回退到 SVG
+│   ├── Character.tsx       # Hiyori 虚拟助手（聊天、养成）
+│   ├── CharacterLive2D.tsx  # Hiyori Live2D 模型（pixi.js 加载），失败时回退到 SVG
 │   ├── Header.tsx          # 导航栏
 │   ├── Sidebar.tsx         # 侧边栏（分类、排序、统计）
 │   ├── Footer.tsx          # 页脚
@@ -204,7 +205,7 @@ NOTE/
 │   ├── worker.js           # 后台提醒工作进程
 │   ├── vector.ts           # 向量索引（共享库副本）
 │   ├── sentiment.ts        # 情感分析（共享库副本）
-│   ├── characterData.ts    # 诺特角色数据
+│   ├── characterData.ts    # Hiyori 角色数据
 │   └── package.json        # 后端依赖
 ├── test/                   # 单元测试 (Vitest)
 │   ├── storage.test.ts
@@ -412,7 +413,7 @@ npm run dev        # http://localhost:10000
 | 🔍 搜索 | 全文搜索 + 向量相似度搜索 |
 | 📊 统计可视化 | 笔记数量、标签热力、类别分布 |
 | 💾 隐私存储 | IndexedDB 本地存储，100% 隐私保护 |
-| 💬 AI聊天 | 诺特虚拟助手，支持对话和提醒 |
+| 💬 AI聊天 | Hiyori 虚拟助手，支持对话和提醒 |
 | 🎮 养成系统 | 等级、XP、好感度；创建/完成提醒加成；好感日衰减 |
 | ⏰ 智能提醒 | 自然语言解析，Web Push 通知 |
 | 📤 导入导出 | JSON 备份与恢复 |
