@@ -192,7 +192,10 @@ export class NoteStorage {
 
   // 尝试将单条或多条笔记发送给后端
   private async syncWithServer(notes?: NoteItem[] | NoteItem) {
-    if (typeof window === 'undefined') return;
+    // originally we avoided attempting network calls when running on server
+    // side (no "window"). for tests we prefer to simply check for a
+    // fetch implementation so that the polyfilled global.fetch is usable.
+    if (typeof fetch !== 'function') return;
     const url = '/syncNote';
     try {
       if (!notes) {

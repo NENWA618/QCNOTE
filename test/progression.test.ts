@@ -1,9 +1,10 @@
+import { describe, it, expect, beforeEach } from 'vitest';
 import progression from '../lib/progression';
 
 describe('progression module', () => {
   beforeEach(async () => {
     // clear storage
-    const IDB = require('../lib/idb').default;
+    const IDB = (await import('../lib/idb')).default;
     if (IDB.clearStore) await IDB.clearStore();
   });
 

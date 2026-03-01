@@ -1,11 +1,12 @@
 import { scheduleReminderFromText, syncLocalReminders, completeReminder, ReminderItem } from '../lib/reminder';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import IDB from '../lib/idb';
 
 describe('reminder logic', () => {
   beforeEach(async () => {
     if (IDB.clearStore) await IDB.clearStore();
-    // stub fetch
-    (global as any).fetch = jest.fn(async () => ({ ok: true, json: async () => ({ ok: true, id: 'srv1' }) }));
+    // stub fetch using Vitest mocking helpers
+    (global as any).fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, id: 'srv1' }) }));
   });
 
   it('parses and schedules reminder, stores locally', async () => {

@@ -1,19 +1,52 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NoteStorage, type NoteItem } from '../lib/storage';
+import IDB from '../lib/idb';
 
 describe('NoteStorage', () => {
   let storage: NoteStorage;
 
+  // helper to ensure a fresh in-memory localStorage between tests
+  const resetLocalStorage = () => {
+    let _store: Record<string, string> = {};
+    (global as any).localStorage = {
+      getItem(key: string) {
+        return _store.hasOwnProperty(key) ? _store[key] : null;
+      },
+      setItem(key: string, value: string) {
+        _store[key] = String(value);
+      },
+      removeItem(key: string) {
+        delete _store[key];
+      },
+      clear() {
+        _store = {};
+      },
+    } as any;
+  };
+
   beforeEach(async () => {
-    // Clear localStorage before each test
-    localStorage.clear();
+    // ensure fresh storage implementation for every test
+    resetLocalStorage();
+    // clear any existing IndexedDB data as well
+    if (IDB.clearStore) {
+      try {
+        await IDB.clearStore();
+      } catch {
+        // ignore if not set up yet
+      }
+    }
     storage = new NoteStorage();
     // ensure storage init completed
     await storage.getDataAsync();
   });
 
   afterEach(() => {
-    localStorage.clear();
+    resetLocalStorage();
+    // ensure IndexedDB is cleaned up between suites as well
+    if (IDB.clearStore) {
+      // clearStore returns a promise but afterEach cannot be async easily
+      IDB.clearStore().catch(() => {});
+    }
   });
 
   describe('addNote', () => {
@@ -262,10 +295,12 @@ describe('NoteStorage', () => {
 
     it('should POST to /syncNote when notes are saved', async () => {
       const note = await storage.addNoteAsync({ title: 'SyncTest' });
+      // the syncWithServer call is fire-and-forget, so wait a tick
+      await new Promise((r) => setTimeout(r, 0));
       expect(global.fetch).toHaveBeenCalled();
-      const calledWith = (global.fetch as unknown as jest.Mock).mock.calls[0][0];
+      const calledWith = (global.fetch as unknown as vi.Mock).mock.calls[0][0];
       expect(calledWith).toBe('/syncNote');
-      const options = (global.fetch as unknown as jest.Mock).mock.calls[0][1];
+      const options = (global.fetch as unknown as vi.Mock).mock.calls[0][1];
       expect(options.method).toBe('POST');
       const sent = JSON.parse(options.body);
       expect(sent.title).toBe('SyncTest');
@@ -277,6 +312,8 @@ describe('NoteStorage', () => {
         { id: 'b', title: 'B', content: '' },
       ] as any;
       await storage.setDataAsync(notes);
+      // give background sync a moment to execute
+      await new Promise((r) => setTimeout(r, 0));
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
   });

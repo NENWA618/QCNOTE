@@ -39,7 +39,8 @@
 - 🎨 Tailwind CSS 响应式设计
 - 🏗️ 可选 Fastify 后端（前后端分离）
 - 📦 BullMQ + Redis 任务队列
-- 🧪 Vitest 单元测试
+- 🧪 Vitest 单元测试（依赖 `fake-indexeddb` 用于 Node 环境的 IndexedDB 模拟）
+- 🔧 后端可选 Fastify 服务器（`fastify`, `@fastify/cors`）
 - 🚀 CI/CD 自动化（GitHub Actions）
 - 📱 PWA 支持（Service Worker + Web Push）
 
@@ -113,6 +114,12 @@ npm run start-server   # 启动 Fastify 服务器，默认 10000
 ```bash
 npm install
 ```
+
+> **开发者注意：** `npm install` 还会拉取多种开发依赖，包括
+> `vitest`、`fake-indexeddb`（测试环境）、`typescript`、`eslint` 等；
+> 后端相关的依赖如 `fastify`、`@fastify/cors` 则作为普通依赖存在。
+
+
 
 ### 启动开发服务器
 

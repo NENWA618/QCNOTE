@@ -1,7 +1,13 @@
 const Fastify = require('fastify');
 const fs = require('fs').promises;
 const path = require('path');
-const logger = require('../lib/logger');
+// logger is optional; in tests we may not have a real implementation
+let logger;
+try {
+  logger = require('../lib/logger');
+} catch (e) {
+  logger = console;
+}
 let vector;
 let sentiment;
 try {
@@ -23,6 +29,10 @@ const NOTES_PERSIST_PATH = path.join(__dirname, '.notes-cache.json');
 function buildFastify() {
   const fastify = Fastify({ logger: true });
   fastify.register(require('@fastify/cors'), { origin: true });
+  // make sure pre-defined routes are attached when creating new instance
+  if (typeof registerRoutes === 'function') {
+    registerRoutes(fastify);
+  }
   return fastify;
 }
 
@@ -31,6 +41,13 @@ const fastify = buildFastify();
 
 // helper to register all endpoints onto a fastify instance
 function registerRoutes(app) {
+  // avoid registering the same routes multiple times on the same instance
+  if (app.__routesRegistered) {
+    return;
+  }
+  // mark on the instance so subsequent calls are no-ops
+  app.__routesRegistered = true;
+
   app.post('/reply', async (request, reply) => {
     const body = request.body || {};
     const { message, memory } = body;

@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { buildVocab, vectorize } from '../lib/basicVector';
 
 describe('basicVector optimizations', () => {

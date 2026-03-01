@@ -5,8 +5,10 @@ const STORE_NAME = 'keyval';
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    if (typeof window === 'undefined' || !window.indexedDB) return reject('IndexedDB not supported');
-    const req = window.indexedDB.open(DB_NAME, 1);
+    // support both browser (window) and Node.js (globalThis) environments
+    const env: any = typeof window !== 'undefined' ? window : globalThis;
+    if (!env.indexedDB) return reject('IndexedDB not supported');
+    const req = env.indexedDB.open(DB_NAME, 1);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
