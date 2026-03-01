@@ -26,9 +26,9 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
     const initLive2D = async () => {
       try {
         const app = new PIXI.Application({
-          transparent: true,
           width: 180,
           height: 300,
+          backgroundAlpha: 0,
         });
         appRef.current = app;
 
