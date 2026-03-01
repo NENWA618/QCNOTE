@@ -50,7 +50,10 @@ function registerRoutes(app) {
 
   app.post('/reply', async (request, reply) => {
     const body = request.body || {};
-    const { message, memory } = body;
+    // ensure message is string to avoid vector errors
+    const { memory } = body;
+    let message = '';
+    if (typeof body.message === 'string') message = body.message;
     let persona;
     try {
       persona = require(path.resolve(__dirname, './characterData')).persona;
@@ -192,6 +195,7 @@ function containsAny(text, keywords) {
 // search using lunr + vector fallback
 function searchServerNotes(query) {
   const results = [];
+  if (!query || typeof query !== 'string') return results;
   
   // Try lunr search first
   if (serverIndex.lunr) {

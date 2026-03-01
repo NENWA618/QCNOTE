@@ -177,7 +177,7 @@ NOTE/
 │   └── terms.tsx           # 使用条款
 ├── components/             # React 可复用组件 (TSX)
 │   ├── Character.tsx       # 诺特虚拟助手（聊天、养成）
-│   ├── CharacterLive2D.tsx  # 诺特角色 SVG 渲染（动画风格）
+│   ├── CharacterLive2D.tsx  # 诺特角色 Live2D 模型（Hiyori, pixi.js 加载），失败时回退到 SVG
 │   ├── Header.tsx          # 导航栏
 │   ├── Sidebar.tsx         # 侧边栏（分类、排序、统计）
 │   ├── Footer.tsx          # 页脚
