@@ -13,7 +13,6 @@ let Live2DViewer: React.FC<{
 
 if (typeof window !== 'undefined') {
   // require at runtime so server bundle stays light
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   Live2DViewer = require('./Live2DViewer').Live2DViewer;
 }
 
