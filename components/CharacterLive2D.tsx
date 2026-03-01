@@ -1,59 +1,28 @@
-import React, { useState } from 'react';
+import React from 'react';
 import CharacterSVG from './CharacterSVG';
 
 interface CharacterLive2DProps {
   mood?: 'idle' | 'talking' | 'happy' | 'thinking' | 'playful' | 'sad';
 }
 
-// Client side require to avoid dynamic chunk issues
-let Live2DViewer: React.FC<{
-  mood?: 'idle' | 'talking' | 'happy' | 'thinking' | 'playful' | 'sad';
-  onError?: (error: Error) => void;
-}> | null = null;
-
-if (typeof window !== 'undefined') {
-  // require at runtime so server bundle stays light
-  Live2DViewer = require('./Live2DViewer').Live2DViewer;
-}
-
+/**
+ * Temporary fallback to SVG character while Live2D integration is being resolved.
+ * 
+ * Previous attempts to integrate pixi-live2d-display encountered version compatibility issues:
+ * - pixi-live2d-display@0.4.0 is incompatible with Pixi v7/v8
+ * - Cubism runtime (live2dcubismcore.js) could not be reliably loaded from CDN
+ * - Model resources were incomplete
+ * 
+ * To re-enable Live2D in the future:
+ * 1. Either upgrade to a modern Live2D library (e.g., CubismWebFramework v5+)
+ * 2. Or downgrade to compatible versions: pixi-live2d-display@0.2.x with Pixi v6
+ * 3. Ensure complete model assets are available locally
+ * 4. Handle Cubism runtime loading properly (either v2 or v4 depending on model format)
+ */
 const CharacterLive2D: React.FC<CharacterLive2DProps> = ({ mood = 'idle' }) => {
-  const [error, setError] = useState(false);
-
-  // if the Live2D viewer isn't available (SSR or failed import) or we've hit an error,
-  // fall back to the SVG character
-  if (!Live2DViewer || error) {
-    console.log('[CharacterLive2D] Falling back to SVG (Live2D unavailable or error occurred)');
-    return <CharacterSVG mood={mood} />;
-  }
-
-  const handleLive2DError = (e: Error) => {
-    console.error('[CharacterLive2D] Live2D initialization error:', e);
-    console.warn('[CharacterLive2D] Falling back to SVG character');
-    setError(true);
-  };
-
-  return (
-    <div
-      className={`character-live2d ${mood}`}
-      style={{
-        width: 180,
-        height: 300,
-        filter: mood === 'thinking' ? 'brightness(0.95)' : 'brightness(1)',
-        transition: 'filter 0.3s ease',
-      }}
-    >
-      <Live2DViewer mood={mood} onError={handleLive2DError} />
-      <style jsx>{`
-        @keyframes talkingBounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-2px); }
-        }
-        .character-live2d.talking {
-          animation: talkingBounce 0.3s ease-in-out;
-        }
-      `}</style>
-    </div>
-  );
+  // Always use SVG for now - provides reliable, performant character display
+  return <CharacterSVG mood={mood} />;
 };
 
 export default CharacterLive2D;
+
