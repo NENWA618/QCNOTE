@@ -46,6 +46,21 @@ const Footer: React.FC = () => {
       </div>
       <hr className="border-0 border-t border-white border-opacity-20 my-8" />
       <p>© 2026 NOTE. 用心记录每一刻。</p>
+      <p className="text-xs mt-2 text-gray-400">
+        Hiyori Live2D 模型由 Live2D 官方提供，插画师：Kani&nbsp;Biimu。使用请遵守
+        <a
+          href="https://www.live2d.jp/en/terms/live2d-free-material-license-agreement/"
+          className="text-primary-light underline hover:text-white transition-colors"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Live2D 免费素材许可协议
+        </a>。
+      </p>
+      <p className="text-xs text-gray-400">
+        本站使用 <a href="https://pixijs.com/" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Pixi.js</a>、
+        <a href="https://github.com/guansss/pixi-live2d-display" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">pixi-live2d-display</a> 等开源库（MIT/Apache 等）。
+      </p>
       <p className="mt-4 text-sm">
         <Link
           href="/privacy"
