@@ -5,7 +5,7 @@ import * as PIXI from 'pixi.js';
 import { Live2DModel } from 'pixi-live2d-display';
 
 const MODEL_URL =
-  'https://raw.githubusercontent.com/patrickkimjunhwi/hiyori/main/hiyori_free_t08.model3.json';
+  '/live2d/hiyori_free_t08.model3.json';
 
 interface Live2DViewerProps {
   mood?: 'idle' | 'talking' | 'happy' | 'thinking' | 'playful' | 'sad';
