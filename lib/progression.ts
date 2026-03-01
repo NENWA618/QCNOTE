@@ -59,7 +59,7 @@ async function decayAffection(): Promise<ProgressState> {
   return state;
 }
 
-export default {
+const progression = {
   loadProgress,
   saveProgress,
   addXp,
@@ -67,3 +67,5 @@ export default {
   decayAffection,
   xpForNext,
 };
+
+export default progression;

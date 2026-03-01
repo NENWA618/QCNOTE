@@ -11,4 +11,5 @@ export function error(...args: unknown[]) {
   console.error('[NOTE]', ...args);
 }
 
-export default { info, warn, error };
+const logger = { info, warn, error };
+export default logger;
