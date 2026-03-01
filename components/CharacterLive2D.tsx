@@ -1,24 +1,28 @@
 import React, { useState } from 'react';
-import dynamic from 'next/dynamic';
 import CharacterSVG from './CharacterSVG';
 
 interface CharacterLive2DProps {
   mood?: 'idle' | 'talking' | 'happy' | 'thinking' | 'playful' | 'sad';
 }
 
-// Dynamically import Live2D component with ssr:false to avoid window errors
-const Live2DViewer = dynamic(
-  () => import('./Live2DViewer').then((mod) => ({ default: mod.Live2DViewer })),
-  {
-    ssr: false,
-    loading: () => <CharacterSVG />,
-  }
-);
+// Client side require to avoid dynamic chunk issues
+let Live2DViewer: React.FC<{
+  mood?: 'idle' | 'talking' | 'happy' | 'thinking' | 'playful' | 'sad';
+  onError?: (error: Error) => void;
+}> | null = null;
+
+if (typeof window !== 'undefined') {
+  // require at runtime so server bundle stays light
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Live2DViewer = require('./Live2DViewer').Live2DViewer;
+}
 
 const CharacterLive2D: React.FC<CharacterLive2DProps> = ({ mood = 'idle' }) => {
   const [error, setError] = useState(false);
 
-  if (error) {
+  // if the Live2D viewer isn't available (SSR or failed import) or we've hit an error,
+  // fall back to the SVG character
+  if (!Live2DViewer || error) {
     return <CharacterSVG mood={mood} />;
   }
 
