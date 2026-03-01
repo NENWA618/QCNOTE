@@ -42,6 +42,9 @@ coverage/
 .tmp
 temp/
 
+# application data
+server/.notes-cache.json
+
 # System files
 Thumbs.db
 .DS_Store
