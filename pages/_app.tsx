@@ -28,11 +28,6 @@ export default function App({ Component, pageProps }: AppProps) {
     })();
   }, []);
 
-  if (!ready) {
-    // 简易 loading 屏幕，避免 UI 在 storage 未就绪时访问同步方法
-    return <div className="min-h-screen flex items-center justify-center">加载中…</div>;
-  }
-
   return (
     <>
       {/* include Cubism 2 runtime globally before any Live2D model loads */}
@@ -44,9 +39,13 @@ export default function App({ Component, pageProps }: AppProps) {
             console.log('live2d runtime loaded');
         }}
       />
-      <main className={inter.className}>
-        <Component {...pageProps} />
-      </main>
+      {!ready ? (
+        <div className="min-h-screen flex items-center justify-center">加载中…</div>
+      ) : (
+        <main className={inter.className}>
+          <Component {...pageProps} />
+        </main>
+      )}
     </>
   );
 }
