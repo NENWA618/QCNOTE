@@ -210,7 +210,6 @@ export default function Home() {
       </div>
 
       <footer>
-        <hr className="border-0 border-t border-white border-opacity-20 my-8" />
         <p>© 2026 NOTE. 用心记录每一刻。</p>
         <p className="text-xs mt-2 text-gray-400">
           Hiyori Live2D 模型由 Live2D 官方提供，插画师：Kani&nbsp;Biimu。使用请遵守
