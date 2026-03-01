@@ -1,5 +1,6 @@
 import type { AppProps } from 'next/app';
 import { useEffect, useState } from 'react';
+import Script from 'next/script';
 import '../styles/globals.css';
 import { Inter } from 'next/font/google';
 import { initWindowStorage } from '../lib/storage';
@@ -33,8 +34,19 @@ export default function App({ Component, pageProps }: AppProps) {
   }
 
   return (
-    <main className={inter.className}>
-      <Component {...pageProps} />
-    </main>
+    <>
+      {/* include Cubism 2 runtime globally before any Live2D model loads */}
+      <Script
+        src="https://cdn.jsdelivr.net/gh/dylanNew/live2d/webgl/Live2D/lib/live2d.min.js"
+        strategy="beforeInteractive"
+        onLoad={() => {
+          if (process.env.NODE_ENV !== 'production')
+            console.log('live2d runtime loaded');
+        }}
+      />
+      <main className={inter.className}>
+        <Component {...pageProps} />
+      </main>
+    </>
   );
 }
