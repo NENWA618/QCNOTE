@@ -57,6 +57,35 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
       const PIXI = await import('pixi.js');
       const { Live2DModel } = await import('pixi-live2d-display');
 
+      // patch buggy helper shipped with pixi-live2d-display v0.2.x; the original
+      // implementation chains `.load().on()` which fails because `load()` returns
+      // void in Pixi v6. we replace the method with a fixed copy.
+      if (Live2DModel && !(Live2DModel as any).__patchedLoader) {
+        (Live2DModel as any).__patchedLoader = true;
+        (Live2DModel as any).fromModelSettingsFile = function(url: string, options?: any) {
+          return new Promise((resolve, reject) => {
+            const loader = new PIXI.Loader();
+            loader.on('error', reject);
+            loader.add(url, options?.loaderOptions);
+            loader.load((loader: any, resources: any) => {
+              const res = resources[url];
+              if (!res.error) {
+                Live2DModel.fromModelSettingsJSON(res.data, url, options)
+                  .then(resolve)
+                  .catch(reject);
+              } else {
+                reject(res.error);
+              }
+            });
+          });
+        };
+      }
+
+      // register shared ticker to satisfy the model's motion system
+      if (Live2DModel && (Live2DModel as any).registerTicker) {
+        (Live2DModel as any).registerTicker(PIXI.Ticker.shared);
+      }
+
       // Log available runtime information for debugging
       console.log('[Live2D] Checking runtime environments...');
       console.log('[Live2D] window.Live2D available?', typeof (window as any).Live2D !== 'undefined');
