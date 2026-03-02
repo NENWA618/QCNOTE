@@ -24,15 +24,22 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
   // during SSR.
   const appRef = useRef<any>(null);
   const modelRef = useRef<any>(null);
+  // keep the latest callback in a ref so the initialization effect
+  // does not need to re-run when the parent re-creates the function.
+  const onErrorRef = useRef<((e: Error) => void) | undefined>(onError);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   useEffect(() => {
     if (!containerRef.current) return;
+    let cancelled = false;
 
     const initLive2D = async () => {
       // Wait for Cubism 2 runtime to be available (up to 5 seconds)
       let cubismReady = false;
       let waitAttempts = 0;
-      while (!cubismReady && waitAttempts < 50) {
+      while (!cubismReady && waitAttempts < 50 && !cancelled) {
         if (typeof (window as any).Live2D !== 'undefined') {
           cubismReady = true;
           console.log('[Live2D] Cubism 2 runtime is ready');
@@ -41,20 +48,20 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
           waitAttempts++;
         }
       }
-      
+
       if (!cubismReady) {
         console.warn('[Live2D] Cubism 2 runtime did not load within timeout; attempting to proceed anyway');
       }
-      
+
       // dynamic imports ensure the code only runs in the browser
       const PIXI = await import('pixi.js');
       const { Live2DModel } = await import('pixi-live2d-display');
-      
+
       // Log available runtime information for debugging
       console.log('[Live2D] Checking runtime environments...');
       console.log('[Live2D] window.Live2D available?', typeof (window as any).Live2D !== 'undefined');
       console.log('[Live2D] PIXI version', (PIXI as any).VERSION || 'unknown');
-      
+
       try {
         console.log('[Live2D] Starting initialization...');
         console.log('[Live2D] Creating PIXI.Application...');
@@ -66,28 +73,17 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
         appRef.current = app;
         console.log('[Live2D] PIXI App created successfully');
 
-        if (containerRef.current) {
-          // Pixi types expose `view` instead of `canvas` on Application.
-          // older versions had `app.view` property pointing at the HTMLCanvasElement.
+        if (containerRef.current && !cancelled) {
           const canvasEl = (app as any).view as HTMLCanvasElement;
           containerRef.current.appendChild(canvasEl);
           console.log('[Live2D] Canvas appended to DOM');
         }
 
         console.log('[Live2D] Loading model from:', MODEL_URL);
-        // `pixi-live2d-display` exposes a set of static factory helpers rather
-        // than a generic `from` method.  earlier versions of this component
-        // incorrectly called `(Live2DModel as any).from(...)`, which worked
-        // with the newer 0.4.x releases but broke after we downgraded to
-        // 0.2.x (see production error "c.from is not a function").
-        //
-        // The correct entry point for a URL is `fromModelSettingsFile`.
-        // We keep the `any` cast around the class so TS doesn't complain about
-        // missing defs in the published package.
         const model = await (Live2DModel as any).fromModelSettingsFile(MODEL_URL);
+        if (cancelled) return; // bail out if unmounted mid-load
         console.log('[Live2D] Model loaded successfully:', model);
         const anyModel: any = model;
-        // the koharu model is larger than our original Hiyori asset, adjust scale
         anyModel.scale.set(0.4);
         const canvasEl = (app as any).view as HTMLCanvasElement;
         anyModel.x = canvasEl.width / 2;
@@ -106,8 +102,9 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
         const errorMsg = e instanceof Error ? e.message : String(e);
         console.error('[Live2D] Failed to load koharu model:', errorMsg);
         console.error('[Live2D] Full error:', e);
-        if (onError && e instanceof Error) {
-          onError(e);
+        const cb = onErrorRef.current;
+        if (cb && e instanceof Error) {
+          cb(e);
         }
       }
     };
@@ -115,11 +112,12 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
     initLive2D();
 
     return () => {
+      cancelled = true;
       if (appRef.current) {
         appRef.current.destroy(true, { children: true });
       }
     };
-  }, [onError]);
+  }, []);
 
   // React to mood changes
   useEffect(() => {
