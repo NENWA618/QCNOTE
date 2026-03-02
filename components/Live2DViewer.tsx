@@ -75,8 +75,16 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
         }
 
         console.log('[Live2D] Loading model from:', MODEL_URL);
-        // @ts-ignore - type definitions are missing for this older version
-        const model = await (Live2DModel as any).from(MODEL_URL);
+        // `pixi-live2d-display` exposes a set of static factory helpers rather
+        // than a generic `from` method.  earlier versions of this component
+        // incorrectly called `(Live2DModel as any).from(...)`, which worked
+        // with the newer 0.4.x releases but broke after we downgraded to
+        // 0.2.x (see production error "c.from is not a function").
+        //
+        // The correct entry point for a URL is `fromModelSettingsFile`.
+        // We keep the `any` cast around the class so TS doesn't complain about
+        // missing defs in the published package.
+        const model = await (Live2DModel as any).fromModelSettingsFile(MODEL_URL);
         console.log('[Live2D] Model loaded successfully:', model);
         const anyModel: any = model;
         // the koharu model is larger than our original Hiyori asset, adjust scale
