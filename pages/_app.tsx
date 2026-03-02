@@ -30,7 +30,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <>
-      {/* Load Cubism 2 runtime for koharu Live2D model.
+      {/* Load Cubism 2 runtime for koharu Live2D model.
           add a version query parameter to bust client cache after
           each deployment; the value can be explicit via
           NEXT_PUBLIC_LIVE2D_VERSION or defaults to build timestamp. */}
