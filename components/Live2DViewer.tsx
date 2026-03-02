@@ -29,13 +29,13 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
     if (!containerRef.current) return;
 
     const initLive2D = async () => {
-      // Wait for Cubism 4 runtime to be available (up to 5 seconds)
+      // Wait for Cubism 2 runtime to be available (up to 5 seconds)
       let cubismReady = false;
       let waitAttempts = 0;
       while (!cubismReady && waitAttempts < 50) {
-        if (typeof (window as any).live2dcubismcore !== 'undefined') {
+        if (typeof (window as any).Live2D !== 'undefined') {
           cubismReady = true;
-          console.log('[Live2D] Cubism 4 runtime is ready');
+          console.log('[Live2D] Cubism 2 runtime is ready');
         } else {
           await new Promise(resolve => setTimeout(resolve, 100));
           waitAttempts++;
@@ -43,7 +43,7 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
       }
       
       if (!cubismReady) {
-        console.warn('[Live2D] Cubism 4 runtime did not load within timeout; attempting to proceed anyway');
+        console.warn('[Live2D] Cubism 2 runtime did not load within timeout; attempting to proceed anyway');
       }
       
       // dynamic imports ensure the code only runs in the browser
@@ -53,7 +53,6 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
       // Log available runtime information for debugging
       console.log('[Live2D] Checking runtime environments...');
       console.log('[Live2D] window.Live2D available?', typeof (window as any).Live2D !== 'undefined');
-      console.log('[Live2D] window.live2dcubismcore available?', typeof (window as any).live2dcubismcore !== 'undefined');
       console.log('[Live2D] PIXI version', (PIXI as any).VERSION || 'unknown');
       
       try {
@@ -76,10 +75,8 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
         }
 
         console.log('[Live2D] Loading model from:', MODEL_URL);
-        // `Live2DModel.from` returns a promise that resolves once the moc/texture
-        // assets have been fetched and the model is initialised.  The koharu package
-        // uses a single texture and a handful of motion files, so the load is quick.
-        const model = await Live2DModel.from(MODEL_URL);
+        // @ts-ignore - type definitions are missing for this older version
+        const model = await (Live2DModel as any).from(MODEL_URL);
         console.log('[Live2D] Model loaded successfully:', model);
         const anyModel: any = model;
         // the koharu model is larger than our original Hiyori asset, adjust scale
