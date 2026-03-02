@@ -36,6 +36,10 @@ export default function Terms() {
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">3. 知识产权</h2>
           <p className="text-text-light mb-4">
             NOTE 的源代码遵循仓库内声明的 MIT 许可证。你可以在遵守许可条款的前提下使用、修改和分发本项目。
+            <br />
+            （看板娘模型当前使用来自 <code>live2d-widget-model-koharu</code> 的开源资产，
+            该模型以 GPL‑2.0 授权，与项目代码的 MIT 许可不同。使用时请自行评估
+            可能的合规要求。）
           </p>
 
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">4. 修改与终止</h2>

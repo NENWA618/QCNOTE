@@ -36,6 +36,7 @@ const CharacterSVG: React.FC<CharacterSVGProps> = ({ mood = 'idle' }) => {
 
   return (
     <svg
+      data-testid="character-svg"
       width="120"
       height="240"
       viewBox="0 0 120 240"

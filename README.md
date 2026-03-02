@@ -59,19 +59,24 @@
 
 ---
 
-### 🤖 AI 虚拟助手 — Hiyori
+### 🤖 AI 虚拟助手 — koharu (Live2D)
 
-NOTE 内置了一个虚拟助手"Hiyori（日向）"，她是 Live2D 官方示例角色，以优雅和艺术气息著称。
+NOTE 现在在页面右下角展示一只 Live2D 看板娘，其形象为开源模型
+“koharu”。项目最初试用了 Live2D 官方示例角色 Hiyori，但由于部署
+不稳定及许可限制，最终改用来自
+<https://github.com/xiazeyu/live2d-widget-models> 的 koharu 版本。
 
 **视觉设计**
-- Live2D 官方示例模型，由插画家 Kani Biimu 设计
-- 采用精致的二次元动画风格，流畅的动作和表情
-- 好感度变化时角色表情会随之变化，展现不同的心情状态
+- Live2D 模型 koharu（基于 Cubism2，单次贴图）
+- 采用简洁二次元风格，动作和表情轻快，可通过对话和好感度触发不同
+  动画
 
 **版权与许可**
-- Hiyori 模型由 Live2D 官方提供，插画师为 Kani Biimu。
-- 使用该模型需遵守 [Live2D 免费素材许可协议](https://www.live2d.jp/en/terms/live2d-free-material-license-agreement/)。
-- 本项目中引用的开源库（如 Pixi.js、pixi-live2d-display、Next.js 等）均为 MIT/Apache/BSD 等开源许可，可在 `node_modules` 中查阅相关许可证。
+- 看板娘模型 koharu 由第三方开源发布，采用 **GPL‑2.0** 许可。
+  使用或修改模组时请遵循 GPL 条款；注意这一点与本仓库 MIT 许可的
+  不同。
+- 本项目引用的 JavaScript 库（Pixi.js、pixi-live2d-display、Next.js 等）
+  均为 MIT/Apache/BSD 等宽松许可证，相关信息可在 `node_modules` 中查阅。
 
 
 **基础对话**

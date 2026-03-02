@@ -60,7 +60,10 @@ const Footer: React.FC = () => {
       <p className="text-xs text-gray-400">
         本站使用 <a href="https://pixijs.com/" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Pixi.js</a>、
         <a href="https://github.com/guansss/pixi-live2d-display" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">pixi-live2d-display</a> 等开源库（MIT/Apache 等）。
-      </p>
+        </p>
+        <p className="text-xs text-gray-400">
+          看板娘模型最初选用的 Hiyori 来自 <a href="https://github.com/BrightBeginnings/hiyori-legacy" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">brightbeginnings/hiyori-legacy</a>，后因部署和许可问题替换为开源模型 <a href="https://github.com/xiazeyu/live2d-widget-models" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">koharu</a>（GPL‑2.0）。
+        </p>
       <p className="mt-4 text-sm">
         <Link
           href="/privacy"

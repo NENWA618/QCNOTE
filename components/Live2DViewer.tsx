@@ -1,11 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-// @ts-ignore - pixi.js types not available
-import * as PIXI from 'pixi.js';
-// @ts-ignore - pixi-live2d-display types not available  
-import { Live2DModel } from 'pixi-live2d-display';
+// We import pixi and pixi-live2d-display dynamically inside the effect
+// so that the modules (which assume a browser `window`) are never
+// required during server-side rendering.  This prevents build-time
+// errors like "window is not defined".
 
-const MODEL_URL =
-  '/live2d/hiyori_free_t08.model3.json';
+// after switching to an open‑source model we copy the assets into public/live2d/koharu
+// the JSON file shipped with the npm package is named `koharu.model.json` (Cubism2 format).
+// pixi-live2d-display is able to load both `.model3.json` and legacy `.model.json` files.
+const MODEL_URL = '/live2d/koharu/koharu.model.json';
 
 interface Live2DViewerProps {
   mood?: 'idle' | 'talking' | 'happy' | 'thinking' | 'playful' | 'sad';
@@ -17,13 +19,19 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
   onError,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const appRef = useRef<PIXI.Application | null>(null);
+  // appRef stores PIXI.Application instance; we use `any` because PIXI is
+  // imported dynamically and the compile-time type might not be available
+  // during SSR.
+  const appRef = useRef<any>(null);
   const modelRef = useRef<any>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const initLive2D = async () => {
+      // dynamic imports ensure the code only runs in the browser
+      const PIXI = await import('pixi.js');
+      const { Live2DModel } = await import('pixi-live2d-display');
       try {
         console.log('[Live2D] Starting initialization...');
         console.log('[Live2D] Window.live2d available?', typeof (window as any).Live2D !== 'undefined');
@@ -37,17 +45,25 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
         console.log('[Live2D] PIXI App created successfully');
 
         if (containerRef.current) {
-          containerRef.current.appendChild(app.canvas as HTMLCanvasElement);
+          // Pixi types expose `view` instead of `canvas` on Application.
+          // older versions had `app.view` property pointing at the HTMLCanvasElement.
+          const canvasEl = (app as any).view as HTMLCanvasElement;
+          containerRef.current.appendChild(canvasEl);
           console.log('[Live2D] Canvas appended to DOM');
         }
 
         console.log('[Live2D] Loading model from:', MODEL_URL);
+        // `Live2DModel.from` returns a promise that resolves once the moc/texture
+        // assets have been fetched and the model is initialised.  The koharu package
+        // uses a single texture and a handful of motion files, so the load is quick.
         const model = await Live2DModel.from(MODEL_URL);
         console.log('[Live2D] Model loaded successfully:', model);
         const anyModel: any = model;
-        anyModel.scale.set(0.5);
-        anyModel.x = app.canvas.width / 2;
-        anyModel.y = app.canvas.height / 1.1;
+        // the koharu model is larger than our original Hiyori asset, adjust scale
+        anyModel.scale.set(0.4);
+        const canvasEl = (app as any).view as HTMLCanvasElement;
+        anyModel.x = canvasEl.width / 2;
+        anyModel.y = canvasEl.height / 1.1;
         (app.stage as any).addChild(anyModel);
         console.log('Model added to stage');
 
