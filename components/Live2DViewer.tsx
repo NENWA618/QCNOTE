@@ -59,26 +59,47 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
 
       // patch buggy helper shipped with pixi-live2d-display v0.2.x; the original
       // implementation chains `.load().on()` which fails because `load()` returns
-      // void in Pixi v6. we replace the method with a fixed copy.
+      // void in Pixi v6. we replace the method with a fixed copy that avoids
+      // the `.on()` pattern entirely.
       if (Live2DModel && !(Live2DModel as any).__patchedLoader) {
         (Live2DModel as any).__patchedLoader = true;
         (Live2DModel as any).fromModelSettingsFile = function(url: string, options?: any) {
           return new Promise((resolve, reject) => {
-            const loader = new PIXI.Loader();
-            // Loader type in Pixi 6 does not include `.on` in its defs, so
-            // cast to any here to silence the compiler.
-            (loader as any).on('error', reject);
-            loader.add(url, options?.loaderOptions);
-            loader.load((loader: any, resources: any) => {
-              const res = resources[url];
-              if (!res.error) {
-                Live2DModel.fromModelSettingsJSON(res.data, url, options)
-                  .then(resolve)
-                  .catch(reject);
-              } else {
-                reject(res.error);
-              }
-            });
+            try {
+              const loader = new PIXI.Loader();
+              let completed = false;
+              
+              loader.load((loader: any, resources: any) => {
+                completed = true;
+                const res = resources[url];
+                if (res && !res.error) {
+                  Live2DModel.fromModelSettingsJSON(res.data, url, options)
+                    .then(resolve)
+                    .catch(reject);
+                } else {
+                  reject(new Error(`Failed to load resource at ${url}: ${res?.error || 'Unknown error'}`));
+                }
+              });
+              
+              loader.add(url, options?.loaderOptions);
+              
+              // Timeout safety: reject if load takes too long
+              const timeoutId = setTimeout(() => {
+                if (!completed) {
+                  reject(new Error(`Load timeout for ${url}`));
+                }
+              }, 30000);
+              
+              // Clear timeout on completion
+              const originalLoad = loader.load.bind(loader);
+              loader.load = function(...args: any[]) {
+                const result = originalLoad(...args);
+                clearTimeout(timeoutId);
+                return result;
+              };
+            } catch (error) {
+              reject(error);
+            }
           });
         };
       }
