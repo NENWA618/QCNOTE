@@ -29,12 +29,35 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
     if (!containerRef.current) return;
 
     const initLive2D = async () => {
+      // Wait for Cubism 4 runtime to be available (up to 5 seconds)
+      let cubismReady = false;
+      let waitAttempts = 0;
+      while (!cubismReady && waitAttempts < 50) {
+        if (typeof (window as any).live2dcubismcore !== 'undefined') {
+          cubismReady = true;
+          console.log('[Live2D] Cubism 4 runtime is ready');
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          waitAttempts++;
+        }
+      }
+      
+      if (!cubismReady) {
+        console.warn('[Live2D] Cubism 4 runtime did not load within timeout; attempting to proceed anyway');
+      }
+      
       // dynamic imports ensure the code only runs in the browser
       const PIXI = await import('pixi.js');
       const { Live2DModel } = await import('pixi-live2d-display');
+      
+      // Log available runtime information for debugging
+      console.log('[Live2D] Checking runtime environments...');
+      console.log('[Live2D] window.Live2D available?', typeof (window as any).Live2D !== 'undefined');
+      console.log('[Live2D] window.live2dcubismcore available?', typeof (window as any).live2dcubismcore !== 'undefined');
+      console.log('[Live2D] PIXI version', (PIXI as any).VERSION || 'unknown');
+      
       try {
         console.log('[Live2D] Starting initialization...');
-        console.log('[Live2D] Window.live2d available?', typeof (window as any).Live2D !== 'undefined');
         console.log('[Live2D] Creating PIXI.Application...');
         const app = new PIXI.Application({
           width: 180,

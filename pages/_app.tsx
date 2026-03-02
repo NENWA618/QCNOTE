@@ -30,13 +30,13 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <>
-      {/* include Cubism 2 runtime globally before any Live2D model loads */}
+      {/* Load Cubism 4 runtime from CDN for koharu Live2D model */}
       <Script
-        src="/live2d.min.js"
-        strategy="beforeInteractive"
+        src="https://cdn.jsdelivr.net/gh/Live2D/CubismCoreForWeb@latest/dist/live2dcubismcore.min.js"
+        strategy="afterInteractive"
         onLoad={() => {
           if (process.env.NODE_ENV !== 'production')
-            console.log('Cubism 2 runtime loaded');
+            console.log('Cubism 4 runtime loaded');
         }}
       />
       {!ready ? (
