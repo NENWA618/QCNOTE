@@ -65,7 +65,9 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
         (Live2DModel as any).fromModelSettingsFile = function(url: string, options?: any) {
           return new Promise((resolve, reject) => {
             const loader = new PIXI.Loader();
-            loader.on('error', reject);
+            // Loader type in Pixi 6 does not include `.on` in its defs, so
+            // cast to any here to silence the compiler.
+            (loader as any).on('error', reject);
             loader.add(url, options?.loaderOptions);
             loader.load((loader: any, resources: any) => {
               const res = resources[url];
