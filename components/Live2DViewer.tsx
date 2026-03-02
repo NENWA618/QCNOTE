@@ -98,7 +98,9 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
         }
         console.log('Live2D initialization complete!');
       } catch (e) {
-        console.error('Failed to load Hiyori Live2D model:', e);
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        console.error('[Live2D] Failed to load koharu model:', errorMsg);
+        console.error('[Live2D] Full error:', e);
         if (onError && e instanceof Error) {
           onError(e);
         }
