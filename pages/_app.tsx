@@ -30,9 +30,15 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <>
-      {/* Load Cubism 2 runtime for koharu Live2D model (pixi-live2d-display 0.2.x compatible) */}
+      {/* Load Cubism 2 runtime for koharu Live2D model.
+          add a version query parameter to bust client cache after
+          each deployment; the value can be explicit via
+          NEXT_PUBLIC_LIVE2D_VERSION or defaults to build timestamp. */}
       <Script
-        src="/live2d.min.js"
+        src={
+          "/live2d.min.js?v=" +
+          (process.env.NEXT_PUBLIC_LIVE2D_VERSION || Date.now())
+        }
         strategy="afterInteractive"
         onLoad={() => {
           if (process.env.NODE_ENV !== 'production')
