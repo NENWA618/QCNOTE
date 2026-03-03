@@ -55,12 +55,11 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
 
       // dynamic imports ensure the code only runs in the browser
       const PIXI = await import('pixi.js');
-      const { Live2DModel } = await import('pixi-live2d-display');
 
-      // Ensure PIXI.Loader exists for libraries that still reference it (v0.2.x
-      // of pixi-live2d-display). Pixi 6 removed Loader from the core package and
-      // moved it into @pixi/loaders, so we dynamically provide a shim if
-      // necessary. This patch makes `new PIXI.Loader()` safe everywhere.
+      // Polyfill Loader early, before we load pixi-live2d-display.  The
+      // library may have captured `PIXI.Loader` at module evaluation time, but
+      // we patch it here to ensure the correct class is present. We also wrap
+      // fromModelSettings to guarantee Loader is available when it is called.
       if (!(PIXI as any).Loader) {
         try {
           const mod = await import('@pixi/loaders');
@@ -69,10 +68,32 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
           if (!(PIXI as any).loaders) {
             (PIXI as any).loaders = { Loader: LoaderClass };
           }
-          console.log('[Live2D] Patched PIXI.Loader from @pixi/loaders');
+          console.log('[Live2D] Polyfilled PIXI.Loader from @pixi/loaders');
         } catch (e) {
           console.warn('[Live2D] could not import @pixi/loaders:', e);
         }
+      }
+
+      const { Live2DModel } = await import('pixi-live2d-display');
+
+      // Final safety net: ensure Live2DModel's fromModelSettingsFile has a valid
+      // Loader. The library's fromModelSettings() is called by fromModelSettingsFile,
+      // and may need Loader at that point.
+      if (Live2DModel && !(Live2DModel as any).__loaderPatched) {
+        (Live2DModel as any).__loaderPatched = true;
+        const origFromModelSettingsJSON = (Live2DModel as any).fromModelSettingsJSON;
+        (Live2DModel as any).fromModelSettingsJSON = async function(...args: any[]) {
+          // Ensure Loader is in place
+          if (!(PIXI as any).Loader) {
+            const mod = await import('@pixi/loaders');
+            const LoaderClass = mod.Loader || mod.default || mod;
+            (PIXI as any).Loader = LoaderClass;
+            if (!(PIXI as any).loaders) {
+              (PIXI as any).loaders = { Loader: LoaderClass };
+            }
+          }
+          return origFromModelSettingsJSON.apply(this, args);
+        };
       }
 
       // patch buggy helper shipped with pixi-live2d-display v0.2.x; the original
