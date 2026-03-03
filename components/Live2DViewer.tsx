@@ -68,35 +68,33 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
             try {
               const loader = new PIXI.Loader();
               let completed = false;
+              let timeoutId: any;
               
+              // Add the resource FIRST
+              loader.add(url, options?.loaderOptions);
+              
+              // Timeout safety: reject if load takes too long
+              timeoutId = setTimeout(() => {
+                if (!completed) {
+                  reject(new Error(`Load timeout for ${url}`));
+                }
+              }, 30000);
+              
+              // THEN call load with callback
               loader.load((loader: any, resources: any) => {
                 completed = true;
+                clearTimeout(timeoutId);
+                
                 const res = resources[url];
                 if (res && !res.error) {
                   Live2DModel.fromModelSettingsJSON(res.data, url, options)
                     .then(resolve)
                     .catch(reject);
                 } else {
-                  reject(new Error(`Failed to load resource at ${url}: ${res?.error || 'Unknown error'}`));
+                  const errorMsg = res?.error?.message || res?.error || 'Unknown loading error';
+                  reject(new Error(`Failed to load resource at ${url}: ${errorMsg}`));
                 }
               });
-              
-              loader.add(url, options?.loaderOptions);
-              
-              // Timeout safety: reject if load takes too long
-              const timeoutId = setTimeout(() => {
-                if (!completed) {
-                  reject(new Error(`Load timeout for ${url}`));
-                }
-              }, 30000);
-              
-              // Clear timeout on completion
-              const originalLoad = loader.load.bind(loader);
-              loader.load = function(...args: any[]) {
-                const result = originalLoad(...args);
-                clearTimeout(timeoutId);
-                return result;
-              };
             } catch (error) {
               reject(error);
             }
