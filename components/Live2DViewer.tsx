@@ -57,6 +57,24 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
       const PIXI = await import('pixi.js');
       const { Live2DModel } = await import('pixi-live2d-display');
 
+      // Ensure PIXI.Loader exists for libraries that still reference it (v0.2.x
+      // of pixi-live2d-display). Pixi 6 removed Loader from the core package and
+      // moved it into @pixi/loaders, so we dynamically provide a shim if
+      // necessary. This patch makes `new PIXI.Loader()` safe everywhere.
+      if (!(PIXI as any).Loader) {
+        try {
+          const mod = await import('@pixi/loaders');
+          const LoaderClass = mod.Loader || mod.default || mod;
+          (PIXI as any).Loader = LoaderClass;
+          if (!(PIXI as any).loaders) {
+            (PIXI as any).loaders = { Loader: LoaderClass };
+          }
+          console.log('[Live2D] Patched PIXI.Loader from @pixi/loaders');
+        } catch (e) {
+          console.warn('[Live2D] could not import @pixi/loaders:', e);
+        }
+      }
+
       // patch buggy helper shipped with pixi-live2d-display v0.2.x; the original
       // implementation chains `.load().on()` which fails because `load()` returns
       // void in Pixi v6. we replace the method with a fixed copy that avoids
