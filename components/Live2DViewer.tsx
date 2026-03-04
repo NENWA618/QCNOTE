@@ -161,8 +161,11 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
         const canvasEl = (app as any).view as HTMLCanvasElement;
         anyModel.x = canvasEl.width / 2;
         anyModel.y = canvasEl.height / 1.1;
+        // disable interactive features to prevent pointer/interaction errors
+        anyModel.autoUpdate = true;
+        anyModel.autoInteract = false;
         (app.stage as any).addChild(anyModel);
-        console.log('Model added to stage');
+        console.log('[Live2D] Model added to stage');
 
         modelRef.current = model;
         try {
