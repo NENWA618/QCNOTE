@@ -98,73 +98,23 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
 
       // patch buggy helper shipped with pixi-live2d-display v0.2.x; the original
       // implementation chains `.load().on()` which fails because `load()` returns
-      // void in Pixi v6. we replace the method with a fixed copy that avoids
-      // the `.on()` pattern entirely.
+      // void in Pixi v6. we replace the method with one that fetches JSON directly,
+      // avoiding the Loader entirely to sidestep module-load-time capture issues.
       if (Live2DModel && !(Live2DModel as any).__patchedLoader) {
         (Live2DModel as any).__patchedLoader = true;
         (Live2DModel as any).fromModelSettingsFile = async function(url: string, options?: any) {
-          // Create or locate a PIXI Loader implementation at runtime. Some
-          // PIXI bundles expose `PIXI.Loader`, while others expect the
-          // separate `@pixi/loaders` package. Try both and surface helpful
-          // console logs to aid debugging in production.
           try {
-            let LoaderClass: any = (PIXI as any).Loader || (PIXI as any).loaders?.Loader;
-            if (!LoaderClass) {
-              try {
-                const mod = await import('@pixi/loaders');
-                LoaderClass = mod.Loader || mod.default || mod;
-                console.log('[Live2D] Using Loader from @pixi/loaders');
-              } catch (impErr) {
-                console.warn('[Live2D] Failed to import @pixi/loaders:', impErr);
-              }
+            console.log('[Live2D] Loading model settings from:', url);
+            const resp = await fetch(url);
+            if (!resp.ok) {
+              throw new Error(`HTTP ${resp.status}: ${resp.statusText} for ${url}`);
             }
-
-            if (!LoaderClass) {
-              throw new Error('PIXI Loader class not available (PIXI.Loader / @pixi/loaders)');
-            }
-
-            return await new Promise((resolve, reject) => {
-              try {
-                const loader = new LoaderClass();
-                let completed = false;
-                let timeoutId: any;
-
-                console.log('[Live2D] Created loader instance:', !!loader, 'hasAdd:', typeof loader.add === 'function');
-
-                // Add resource before starting the load
-                if (typeof loader.add !== 'function') {
-                  reject(new Error('Loader.add is not a function on the detected Loader implementation'));
-                  return;
-                }
-
-                loader.add(url, options?.loaderOptions);
-
-                timeoutId = setTimeout(() => {
-                  if (!completed) {
-                    reject(new Error(`Load timeout for ${url}`));
-                  }
-                }, 30000);
-
-                loader.load((loaderInst: any, resources: any) => {
-                  completed = true;
-                  clearTimeout(timeoutId);
-
-                  const res = resources[url];
-                  if (res && !res.error) {
-                    Live2DModel.fromModelSettingsJSON(res.data, url, options)
-                      .then(resolve)
-                      .catch(reject);
-                  } else {
-                    const errorMsg = res?.error?.message || res?.error || 'Unknown loading error';
-                    reject(new Error(`Failed to load resource at ${url}: ${errorMsg}`));
-                  }
-                });
-              } catch (error) {
-                reject(error);
-              }
-            });
+            const json = await resp.json();
+            console.log('[Live2D] Fetched model settings JSON, calling fromModelSettingsJSON...');
+            return await (Live2DModel as any).fromModelSettingsJSON(json, url, options);
           } catch (err) {
-            return Promise.reject(err);
+            console.error('[Live2D] fromModelSettingsFile error:', err);
+            throw err;
           }
         };
       }
