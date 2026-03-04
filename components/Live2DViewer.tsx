@@ -119,9 +119,15 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
         };
       }
 
-      // register shared ticker to satisfy the model's motion system
+      // register ticker class (not the instance) so that the
+      // `Live2DModel` setter can access `Ticker.shared` correctly.
+      // earlier versions of this code mistakenly passed the shared
+      // instance; that caused `f.shared` to be undefined and produced
+      // "Cannot read properties of undefined (reading 'add')" errors
+      // during model construction.  See the stacktrace logged in the
+      // production console for details.
       if (Live2DModel && (Live2DModel as any).registerTicker) {
-        (Live2DModel as any).registerTicker(PIXI.Ticker.shared);
+        (Live2DModel as any).registerTicker(PIXI.Ticker);
       }
 
       // Log available runtime information for debugging

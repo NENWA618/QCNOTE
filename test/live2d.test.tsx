@@ -29,3 +29,4 @@ describe('CharacterLive2D', () => {
     expect(screen.getByTestId('character-svg')).toBeTruthy();
   });
 });
+
