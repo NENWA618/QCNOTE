@@ -148,6 +148,9 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
 
         if (containerRef.current && !cancelled) {
           const canvasEl = (app as any).view as HTMLCanvasElement;
+          canvasEl.style.display = 'block';
+          canvasEl.style.width = '100%';
+          canvasEl.style.height = '100%';
           containerRef.current.appendChild(canvasEl);
           console.log('[Live2D] Canvas appended to DOM');
         }
