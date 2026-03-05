@@ -191,6 +191,7 @@
   z-index: 1000;
   overflow: hidden;
   border-radius: 8px;
+  background-color: transparent;
 }
 .character-container .character-chat {
   position: absolute;
