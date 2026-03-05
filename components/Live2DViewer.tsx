@@ -164,6 +164,8 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
         // disable interactive features to prevent pointer/interaction errors
         anyModel.autoUpdate = true;
         anyModel.autoInteract = false;
+        anyModel.interactive = false;
+        anyModel.interactiveChildren = false;
         (app.stage as any).addChild(anyModel);
         console.log('[Live2D] Model added to stage');
 
