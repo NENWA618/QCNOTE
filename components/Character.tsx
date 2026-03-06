@@ -156,7 +156,7 @@ const Character: React.FC<CharacterProps> = ({ initialMood = 'idle' }) => {
 
   return (
     <div className="character-container">
-      <div onClick={handleClick}>
+      <div onClick={handleClick} style={{ width: '100%', height: '100%' }}>
         <CharacterLive2D mood={mood} />
       </div>
       {chatOpen && (
