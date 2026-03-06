@@ -154,10 +154,15 @@ export const Live2DViewer: React.FC<Live2DViewerProps> = ({
           canvasEl.style.left = '0';
           canvasEl.style.width = '100%';
           canvasEl.style.height = '100%';
+          canvasEl.style.zIndex = '1';
           containerRef.current.appendChild(canvasEl);
           console.log('[Live2D] Canvas appended to DOM');
+          console.log('[Live2D] Canvas element:', canvasEl);
+          console.log('[Live2D] Canvas computed style:', window.getComputedStyle(canvasEl));
           console.log('[Live2D] Canvas size:', canvasEl.width, 'x', canvasEl.height);
+          console.log('[Live2D] Canvas offsetSize:', canvasEl.offsetWidth, 'x', canvasEl.offsetHeight);
           console.log('[Live2D] Container size:', containerRef.current.offsetWidth, 'x', containerRef.current.offsetHeight);
+          console.log('[Live2D] Container:', containerRef.current);
         }
 
         console.log('[Live2D] Loading model from:', MODEL_URL);
