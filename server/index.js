@@ -26,6 +26,52 @@ let serverIndex = { lunr: null, vectors: {}, sentiments: {} };
 
 const NOTES_PERSIST_PATH = path.join(__dirname, '.notes-cache.json');
 
+const DEFAULT_PERSONA = {
+  id: 'waifu_character',
+  name: '看板娘',
+  displayName: 'Waifu',
+  ageRange: '20s',
+  style: '活泼可爱，智能陪伴',
+  colors: {
+    primary: '#ff69b4',
+    hair: '#ffb6c1',
+    outfit: '#ffe4e1',
+  },
+  shortBio: 'Live2D看板娘，通过你的笔记来了解你，陪伴你探索知识的世界。',
+  greetings: [
+    'こんにちは！私は看板娘です。',
+    '今日も一緒に頑張りましょう！',
+    'また会えて嬉しいです。',
+  ],
+  happyReplies: [
+    'それはいいですね！楽しそうですね。',
+    'あなたの喜びが私にも伝わってきます。',
+  ],
+  sadReplies: [
+    'そうですか。でも大丈夫、ここにいますよ。',
+    '一緒に頑張りましょう。',
+  ],
+  playfulReplies: [
+    'ふふふ、面白いですね。',
+    'そのような考えもいいですね。',
+  ],
+  fallbackReplies: [
+    'えっと...何かお話しましょうか？',
+    'どうぞ、聞きますよ。',
+    'それは興味深いです。',
+  ],
+  templates: {
+    noNotes: 'まだメモがありませんね。これから一緒に記録していきましょう。',
+    summary: (total, topTag, topCat) => {
+      let s = `あなたは ${total} 個のメモを持っています`;
+      if (topTag) s += `。最も使うタグは「${topTag}」ですね`;
+      if (topCat) s += `。主に ${topCat} に関することが多いようです`;
+      s += '。';
+      return s;
+    },
+  },
+};
+
 function buildFastify() {
   const fastify = Fastify({ logger: true });
   fastify.register(require('@fastify/cors'), { origin: true });
@@ -54,13 +100,8 @@ function registerRoutes(app) {
     const { memory } = body;
     let message = '';
     if (typeof body.message === 'string') message = body.message;
-    let persona;
-    try {
-      persona = require(path.resolve(__dirname, './characterData')).persona;
-    } catch (e) {
-      persona = require(path.resolve(__dirname, '../lib/characterData')).persona;
-    }
-    
+    const persona = DEFAULT_PERSONA;
+
     // Search for relevant notes
     let noteSnippet = null;
     const searchResults = searchServerNotes(message);

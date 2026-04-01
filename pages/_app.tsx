@@ -35,15 +35,20 @@ export default function App({ Component, pageProps }: AppProps) {
           each deployment; the value can be explicit via
           NEXT_PUBLIC_LIVE2D_VERSION or defaults to build timestamp. */}
       <Script
-        src={
-          "/live2d.min.js?v=" +
-          (process.env.NEXT_PUBLIC_LIVE2D_VERSION || Date.now())
-        }
+        src={ "/js/jquery.min.js" }
         strategy="afterInteractive"
-        onLoad={() => {
-          if (process.env.NODE_ENV !== 'production')
-            console.log('Cubism 2 runtime loaded');
-        }}
+      />
+      <Script
+        src={ "/js/jquery-ui.min.js" }
+        strategy="afterInteractive"
+      />
+      <Script
+        src={ "/js/waifu-tips.min.js" }
+        strategy="afterInteractive"
+      />
+      <Script
+        src={ "/js/waifu.js" }
+        strategy="afterInteractive"
       />
       {!ready ? (
         <div className="min-h-screen flex items-center justify-center">加载中…</div>
