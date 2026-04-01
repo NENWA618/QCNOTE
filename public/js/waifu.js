@@ -2381,6 +2381,10 @@ function GM_xmlhttpRequest(opt) {
         live2d_settings['modelStorage'] = true;
         live2d_settings['modelAPI'] = '/live2d/';
         live2d_settings['localModelUrl'] = (config.waifu.localModels && config.waifu.localModels[config.waifu.modelIndex] && config.waifu.localModels[config.waifu.modelIndex].modelUrl) || '/live2d/koharu/koharu.model3.json';
+        live2d_settings['showWelcomeMessage'] = false;
+        live2d_settings['showHitokoto'] = false;
+        live2d_settings['showCopyMessage'] = false;
+        live2d_settings['showToolMenu'] = true;
 
         console.log('[Live2D] 调用本地 initModel...');
         // 本地模型和文本数据，彻底不依赖第三方 API
