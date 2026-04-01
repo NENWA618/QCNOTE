@@ -43,6 +43,10 @@ export default function App({ Component, pageProps }: AppProps) {
         strategy="afterInteractive"
       />
       <Script
+        src={ "/js/live2d.min.js" }
+        strategy="afterInteractive"
+      />
+      <Script
         src={ "/js/waifu-tips.min.js" }
         strategy="afterInteractive"
       />
