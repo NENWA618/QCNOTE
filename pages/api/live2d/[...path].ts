@@ -20,13 +20,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const headers = { ...req.headers };
-  delete headers.host;
+  const upstreamHeaders = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (key.toLowerCase() === 'host' || value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        upstreamHeaders.append(key, v);
+      }
+    } else {
+      upstreamHeaders.set(key, String(value));
+    }
+  }
 
   try {
     const upstream = await fetch(proxyUrl, {
       method: req.method,
-      headers,
+      headers: upstreamHeaders,
       body: ['GET', 'HEAD', 'OPTIONS'].includes(req.method ?? '') ? undefined : req.body,
     });
 

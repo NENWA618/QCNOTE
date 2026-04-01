@@ -81,7 +81,11 @@ function GM_xmlhttpRequest(opt) {
         waifu: {
             modelId: 1,
             modelTexturesId: 53,
-            dockSide: 'right' // 'left' 或 'right'，记住停靠位置
+            dockSide: 'right', // 'left' 或 'right'，记住停靠位置
+            localModels: [
+                { id: 1, name: 'koharu', modelUrl: '/live2d/koharu/koharu.model3.json' }
+            ],
+            modelIndex: 0
         },
 
         // 天气设置
@@ -1969,100 +1973,40 @@ function GM_xmlhttpRequest(opt) {
 
     // ========== Live2D 模型切换功能 ==========
     function loadOtherModel() {
-        const modelId = config.waifu.modelId;
-        const modelRandMode = 'switch'; // 可选 'rand'(随机) 或 'switch'(顺序)
-
-        if (typeof showMessage === 'function') {
-            showMessage('正在切换看板娘...', 2000);
+        const localModels = config.waifu.localModels || [];
+        if (localModels.length <= 1) {
+            if (typeof showMessage === 'function') {
+                showMessage('本地看板娘仅有一个模型，无法切换', 3000, true);
+            }
+            return;
         }
 
-        $.ajax({
-            cache: modelRandMode === 'switch',
-            url: `https://live2d.fghrsh.net/api/${modelRandMode}/?id=${modelId}`,
-            dataType: "json",
-            success: function(result) {
-                if (result && result.model) {
-                    const newModelId = result.model.id;
-                    const message = result.model.message || '新的看板娘来啦~';
+        config.waifu.modelIndex = (config.waifu.modelIndex + 1) % localModels.length;
+        const nextModel = localModels[config.waifu.modelIndex];
+        config.waifu.modelId = nextModel.id;
+        config.waifu.modelTexturesId = 0;
+        saveConfig();
 
-                    // 保存到配置中，实现跨网站同步
-                    config.waifu.modelId = newModelId;
-                    config.waifu.modelTexturesId = 0;
-                    saveConfig();
-                    console.log('[Live2D] 模型已切换并保存:', newModelId, '-0');
+        if (typeof loadModel === 'function') {
+            loadModel(nextModel.id, 0);
+        } else if (typeof loadlive2d === 'function') {
+            localStorage.setItem('modelId', nextModel.id);
+            localStorage.setItem('modelTexturesId', 0);
+            loadlive2d('live2d', nextModel.modelUrl);
+        }
 
-                    if (typeof loadModel === 'function') {
-                        loadModel(newModelId, 0);
-                    } else if (typeof loadlive2d === 'function') {
-                        // 同时保存到localStorage以兼容Live2D库
-                        localStorage.setItem('modelId', newModelId);
-                        localStorage.setItem('modelTexturesId', 0);
-                        loadlive2d('live2d', `https://live2d.fghrsh.net/api/get/?id=${newModelId}-0`);
-                    }
-
-                    if (typeof showMessage === 'function') {
-                        showMessage(message, 3000, true);
-                    }
-                }
-            },
-            error: function() {
-                if (typeof showMessage === 'function') {
-                    showMessage('切换失败了...', 3000);
-                }
-            }
-        });
+        if (typeof showMessage === 'function') {
+            showMessage(`已切换到本地模型：${nextModel.name}`, 3000, true);
+        }
     }
 
     function loadRandTextures() {
-        const modelId = config.waifu.modelId;
-        const modelTexturesId = config.waifu.modelTexturesId;
-        const modelTexturesRandMode = 'rand'; // 可选 'rand'(随机) 或 'switch'(顺序)
-
         if (typeof showMessage === 'function') {
-            showMessage('正在换装中...', 2000);
+            showMessage('本地模型暂不支持随机换装，如有需要请使用本地模型编辑器手动替换。', 3000, true);
         }
-
-        $.ajax({
-            cache: modelTexturesRandMode === 'switch',
-            url: `https://live2d.fghrsh.net/api/${modelTexturesRandMode}_textures/?id=${modelId}-${modelTexturesId}`,
-            dataType: "json",
-            success: function(result) {
-                if (result && result.textures) {
-                    const newTexturesId = result.textures.id;
-
-                    if (newTexturesId === 1 && (modelTexturesId === 1 || modelTexturesId === 0)) {
-                        if (typeof showMessage === 'function') {
-                            showMessage('我还没有其他衣服呢', 3000, true);
-                        }
-                    } else {
-                        if (typeof showMessage === 'function') {
-                            showMessage('我的新衣服好看嘛', 3000, true);
-                        }
-                    }
-
-                    // 保存到配置中，实现跨网站同步
-                    config.waifu.modelTexturesId = newTexturesId;
-                    saveConfig();
-                    console.log('[Live2D] 材质已切换并保存:', modelId, '-', newTexturesId);
-
-                    if (typeof loadModel === 'function') {
-                        loadModel(modelId, newTexturesId);
-                    } else if (typeof loadlive2d === 'function') {
-                        // 同时保存到localStorage以兼容Live2D库
-                        localStorage.setItem('modelTexturesId', newTexturesId);
-                        loadlive2d('live2d', `https://live2d.fghrsh.net/api/get/?id=${modelId}-${newTexturesId}`);
-                    }
-                }
-            },
-            error: function() {
-                if (typeof showMessage === 'function') {
-                    showMessage('换装失败了...', 3000);
-                }
-            }
-        });
     }
 
-    // ========== 天气功能 ==========
+    // ========== 天气功能 ======================
     function getWeather() {
         const province = config.weather.province;
         const city = config.weather.city;
@@ -2435,9 +2379,28 @@ function GM_xmlhttpRequest(opt) {
         live2d_settings['waifuEdgeSide'] = config.waifu.dockSide === 'left' ? 'left:0' : 'right:0';
         live2d_settings['waifuDraggable'] = 'disable';
         live2d_settings['modelStorage'] = true;
+        live2d_settings['modelAPI'] = '/live2d/';
+        live2d_settings['localModelUrl'] = (config.waifu.localModels && config.waifu.localModels[config.waifu.modelIndex] && config.waifu.localModels[config.waifu.modelIndex].modelUrl) || '/live2d/koharu/koharu.model3.json';
 
-        console.log('[Live2D] 调用 initModel...');
-        initModel('https://cdn.jsdelivr.net/gh/fghrsh/live2d_demo@master/assets/waifu-tips.json');
+        console.log('[Live2D] 调用本地 initModel...');
+        // 本地模型和文本数据，彻底不依赖第三方 API
+        const localTips = {
+            waifu: {
+                model_message: { 1: ['欢迎回来，{nickname}！'] },
+                load_rand_textures: ['换装成功！', '暂时没有更多本地衣服~'],
+                console_open_msg: ['模型已就绪！'],
+                hitokoto_api_message: {
+                    "lwl12.com": ['[引用]', ' - ', ''],
+                    "fghrsh.net": ['[引用]', ' - ', ''],
+                    "jinrishici.com": ['[引用]', ' - ', ''],
+                    "hitokoto.cn": ['[引用]', ' - ', '']
+                }
+            },
+            mouseover: [],
+            click: [],
+            seasons: []
+        };
+        initModel(localTips);
 
         // 强制覆盖对话框样式，使其自动调整大小
         setTimeout(() => {
