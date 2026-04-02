@@ -10,6 +10,7 @@ import ImportExport from '../components/ImportExport';
 import { Trash } from '../components/Trash';
 import { Calendar } from '../components/Calendar';
 import { Timeline } from '../components/Timeline';
+import { KnowledgeGraph } from '../components/KnowledgeGraph';
 import { NoteItem, NoteStorage, Stats, NoteVersion, initWindowStorage } from '../lib/storage';
 
 const Dashboard: React.FC = () => {
@@ -30,7 +31,7 @@ const Dashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewingTrash, setViewingTrash] = useState(false);
   const [trashNotes, setTrashNotes] = useState<NoteItem[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline' | 'graph'>('list');
 
   // Editor state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -311,6 +312,14 @@ const Dashboard: React.FC = () => {
                     📊 时间线
                   </button>
                   <button
+                    onClick={() => setViewMode('graph')}
+                    className={`btn-secondary flex items-center gap-1 ${
+                      viewMode === 'graph' ? 'bg-blue-100 text-blue-600' : ''
+                    }`}
+                  >
+                    🧠 图谱
+                  </button>
+                  <button
                     onClick={handleNewNote}
                     className="btn-primary flex items-center gap-1"
                   >
@@ -349,6 +358,11 @@ const Dashboard: React.FC = () => {
             />
           ) : viewMode === 'timeline' ? (
             <Timeline
+              notes={notes}
+              onSelectNote={handleEditNote}
+            />
+          ) : viewMode === 'graph' ? (
+            <KnowledgeGraph
               notes={notes}
               onSelectNote={handleEditNote}
             />
