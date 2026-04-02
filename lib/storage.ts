@@ -421,15 +421,22 @@ export class NoteStorage {
         if (local) {
           // Check for conflict: if local is newer or content differs
           if (local.updatedAt > remote.updatedAt || local.content !== remote.content || local.title !== remote.title) {
-            conflicts.push({
-              id: remote.id,
-              local,
-              remote,
-              resolved: false,
-              createdAt: Date.now(),
-            });
-            // Keep local for now
-            mergedNotes.push(local);
+            const strategy = config.conflictStrategy || 'manual';
+            if (strategy === 'prefer-local') {
+              mergedNotes.push(local);
+            } else if (strategy === 'prefer-remote') {
+              mergedNotes.push(remote);
+            } else {
+              // manual
+              conflicts.push({
+                id: remote.id,
+                local,
+                remote,
+                resolved: false,
+                createdAt: Date.now(),
+              });
+              mergedNotes.push(local);
+            }
           } else {
             // Remote is same or newer, use remote
             mergedNotes.push(remote);

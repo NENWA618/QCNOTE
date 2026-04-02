@@ -109,6 +109,7 @@ const Dashboard: React.FC = () => {
         encryptionKey: config.encryptionKey || '',
         autoSyncEnabled: config.autoSyncEnabled || false,
         syncInterval: config.syncInterval || 5 * 60 * 1000,
+        conflictStrategy: config.conflictStrategy || 'manual',
       });
       setLastSyncTime(config.lastSyncTime || null);
     }
@@ -264,6 +265,7 @@ const Dashboard: React.FC = () => {
         encryptionKey: config.encryptionKey || '',
         autoSyncEnabled: config.autoSyncEnabled || false,
         syncInterval: config.syncInterval || 5 * 60 * 1000,
+        conflictStrategy: config.conflictStrategy || 'manual',
       });
     }
     return result;
