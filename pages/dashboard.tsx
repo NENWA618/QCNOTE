@@ -102,7 +102,7 @@ const Dashboard: React.FC = () => {
     }, webdavConfig.syncInterval);
 
     return () => clearInterval(interval);
-  }, [webdavConfig.autoSyncEnabled, webdavConfig.syncInterval]);
+  }, [webdavConfig]);
 
   const loadNotes = async () => {
     const s = storageRef.current;
