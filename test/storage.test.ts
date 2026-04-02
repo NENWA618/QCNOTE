@@ -169,7 +169,55 @@ describe('NoteStorage', () => {
       const toggled2 = await storage.toggleFavoriteAsync(note.id);
       expect(toggled2).toBe(false);
     });
+  });
 
+  describe('WebDAV config', () => {
+    it('should save and load webdav configuration', async () => {
+      const conf = {
+        url: 'https://example.com/webdav',
+        username: 'user',
+        password: 'pwd',
+        remotePath: 'notes.json',
+        encryptionKey: 'secret',
+      };
+      const saveResult = await storage.setWebDAVConfigAsync(conf);
+      expect(saveResult).toBe(true);
+
+      const loaded = await storage.getWebDAVConfigAsync();
+      expect(loaded).toEqual(conf);
+    });
+
+    it('should clear webdav configuration', async () => {
+      const conf = {
+        url: 'https://example.com/webdav',
+        username: 'user',
+        password: 'pwd',
+        remotePath: 'notes.json',
+        encryptionKey: 'secret',
+      };
+      await storage.setWebDAVConfigAsync(conf);
+      const cleared = await storage.clearWebDAVConfigAsync();
+      expect(cleared).toBe(true);
+      const loaded = await storage.getWebDAVConfigAsync();
+      expect(loaded).toBeNull();
+    });
+
+    it('should handle webdav push/pull gracefully without fetch', async () => {
+      const conf = {
+        url: 'https://example.com/webdav',
+        username: 'user',
+        password: 'pwd',
+        remotePath: 'notes.json',
+        encryptionKey: '',
+      };
+      const pushResult = await storage.pushToWebDAVAsync(conf);
+      const pullResult = await storage.pullFromWebDAVAsync(conf);
+      expect(pushResult).toBe(false);
+      expect(pullResult).toBe(false);
+    });
+  });
+
+  describe('toggleFavorite', () => {
     it('should persist toggle to storage', async () => {
       const note = await storage.addNoteAsync({ title: 'Test' });
       await storage.toggleFavoriteAsync(note.id);

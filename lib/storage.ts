@@ -48,14 +48,24 @@ export interface UserSettings {
   defaultCategory: string;
 }
 
+export interface WebDAVConfig {
+  url: string;
+  username: string;
+  password: string;
+  remotePath: string;
+  encryptionKey?: string;
+}
+
 export class NoteStorage {
   storageKey: string;
   settingsKey: string;
+  webdavConfigKey: string;
   useIndexedDB: boolean;
 
   constructor() {
     this.storageKey = 'NOTE_STORAGE';
     this.settingsKey = 'NOTE_SETTINGS';
+    this.webdavConfigKey = 'NOTE_WEBDAV_CONFIG';
     this.useIndexedDB = false;
     this.init();
     // 自动检查 IndexedDB 是否可用
@@ -155,7 +165,185 @@ export class NoteStorage {
       return false;
     }
   }
-  // enable IndexedDB backend and migrate existing localStorage data into it
+
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  private base64ToArrayBuffer(base64: string): ArrayBuffer {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  private async deriveKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
+    const encoder = new TextEncoder();
+    const baseKey = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(passphrase),
+      'PBKDF2',
+      false,
+      ['deriveKey'],
+    );
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: salt.buffer as ArrayBuffer, iterations: 250000, hash: 'SHA-256' },
+      baseKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt'],
+    );
+  }
+
+  private async encryptText(plain: string, passphrase: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await this.deriveKey(passphrase, salt);
+    const encrypted = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encoder.encode(plain),
+    );
+    // format: salt + iv + ciphertext
+    const combined = new Uint8Array(salt.byteLength + iv.byteLength + encrypted.byteLength);
+    combined.set(salt, 0);
+    combined.set(iv, salt.byteLength);
+    combined.set(new Uint8Array(encrypted), salt.byteLength + iv.byteLength);
+    return this.arrayBufferToBase64(combined.buffer);
+  }
+
+  private async decryptText(cipherText: string, passphrase: string): Promise<string> {
+    const encoder = new TextDecoder();
+    const combined = new Uint8Array(this.base64ToArrayBuffer(cipherText));
+    const salt = combined.slice(0, 16);
+    const iv = combined.slice(16, 28);
+    const data = combined.slice(28);
+    const key = await this.deriveKey(passphrase, salt);
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+    return encoder.decode(decrypted);
+  }
+
+  async getWebDAVConfigAsync(): Promise<WebDAVConfig | null> {
+    try {
+      if (this.useIndexedDB) {
+        const data = await IDB.getItem(this.webdavConfigKey);
+        if (data) return data as WebDAVConfig;
+      }
+      const raw = localStorage.getItem(this.webdavConfigKey);
+      return raw ? (JSON.parse(raw) as WebDAVConfig) : null;
+    } catch (e) {
+      console.error('[NoteStorage] getWebDAVConfigAsync failed', e);
+      return null;
+    }
+  }
+
+  async setWebDAVConfigAsync(config: WebDAVConfig): Promise<boolean> {
+    try {
+      if (this.useIndexedDB) {
+        await IDB.setItem(this.webdavConfigKey, config);
+      } else {
+        try {
+          await IDB.setItem(this.webdavConfigKey, config);
+          this.useIndexedDB = true;
+          localStorage.removeItem(this.webdavConfigKey);
+        } catch {
+          localStorage.setItem(this.webdavConfigKey, JSON.stringify(config));
+        }
+      }
+      return true;
+    } catch (e) {
+      console.error('[NoteStorage] setWebDAVConfigAsync failed', e);
+      return false;
+    }
+  }
+
+  async clearWebDAVConfigAsync(): Promise<boolean> {
+    try {
+      if (this.useIndexedDB) {
+        await IDB.setItem(this.webdavConfigKey, null);
+      }
+      localStorage.removeItem(this.webdavConfigKey);
+      return true;
+    } catch (e) {
+      console.error('[NoteStorage] clearWebDAVConfigAsync failed', e);
+      return false;
+    }
+  }
+
+  private async webdavFetch(method: string, url: string, config: WebDAVConfig, body?: string): Promise<Response> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/octet-stream',
+    };
+    if (config.username && config.password) {
+      headers.Authorization = `Basic ${btoa(`${config.username}:${config.password}`)}`;
+    }
+    return fetch(url, { method, headers, body });
+  }
+
+  private normalizeWebDAVUrl(config: WebDAVConfig): string {
+    const base = config.url.trim().replace(/\/+$/, '');
+    const path = config.remotePath.trim().replace(/^\/+/, '');
+    return `${base}/${path}`;
+  }
+
+  async pushToWebDAVAsync(config: WebDAVConfig, encrypt = true): Promise<boolean> {
+    if (typeof fetch !== 'function' || typeof window === 'undefined') {
+      console.warn('[NoteStorage] WebDAV 仅在浏览器环境支持');
+      return false;
+    }
+
+    try {
+      const allNotes = (await this.getDataAsync()) || [];
+      let payload = JSON.stringify(allNotes);
+      if (encrypt && config.encryptionKey && config.encryptionKey.length > 0) {
+        payload = await this.encryptText(payload, config.encryptionKey);
+      }
+      const url = this.normalizeWebDAVUrl(config);
+      const response = await this.webdavFetch('PUT', url, config, payload);
+      return response.ok;
+    } catch (e) {
+      console.error('[NoteStorage] pushToWebDAVAsync failed', e);
+      return false;
+    }
+  }
+
+  async pullFromWebDAVAsync(config: WebDAVConfig, decrypt = true): Promise<boolean> {
+    if (typeof fetch !== 'function' || typeof window === 'undefined') {
+      console.warn('[NoteStorage] WebDAV 仅在浏览器环境支持');
+      return false;
+    }
+
+    try {
+      const url = this.normalizeWebDAVUrl(config);
+      const response = await this.webdavFetch('GET', url, config);
+      if (!response.ok) {
+        console.warn('[NoteStorage] pullFromWebDAVAsync 读取失败', response.status);
+        return false;
+      }
+      const raw = await response.text();
+      let content = raw;
+      if (decrypt && config.encryptionKey && config.encryptionKey.length > 0) {
+        content = await this.decryptText(raw, config.encryptionKey);
+      }
+      const notes = JSON.parse(content) as NoteItem[];
+      if (!Array.isArray(notes)) {
+        throw new Error('WebDAV 数据格式错误');
+      }
+      await this.setDataAsync(notes);
+      return true;
+    } catch (e) {
+      console.error('[NoteStorage] pullFromWebDAVAsync failed', e);
+      return false;
+    }
+  }
   async enableIndexedDB() {
     if (typeof window === 'undefined') return false;
     if (this.useIndexedDB) return true; // 已启用，跳过

@@ -11,7 +11,8 @@ import { Trash } from '../components/Trash';
 import { Calendar } from '../components/Calendar';
 import { Timeline } from '../components/Timeline';
 import { KnowledgeGraph } from '../components/KnowledgeGraph';
-import { NoteItem, NoteStorage, Stats, NoteVersion, initWindowStorage } from '../lib/storage';
+import WebDAVSync from '../components/WebDAVSync';
+import { NoteItem, NoteStorage, Stats, NoteVersion, WebDAVConfig, initWindowStorage } from '../lib/storage';
 
 const Dashboard: React.FC = () => {
   const storageRef = useRef<NoteStorage | null>(null);
@@ -32,6 +33,13 @@ const Dashboard: React.FC = () => {
   const [viewingTrash, setViewingTrash] = useState(false);
   const [trashNotes, setTrashNotes] = useState<NoteItem[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline' | 'graph'>('list');
+  const [webdavConfig, setWebdavConfig] = useState({
+    url: '',
+    username: '',
+    password: '',
+    remotePath: 'notes.json',
+    encryptionKey: '',
+  });
 
   // Editor state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -52,7 +60,19 @@ const Dashboard: React.FC = () => {
     setNotes(all);
     setCategories(await s.getCategoriesAsync());
     setStats(await s.getStatsAsync());
-    
+
+    // Load WebDAV 配置
+    const config = await s.getWebDAVConfigAsync();
+    if (config) {
+      setWebdavConfig({
+        url: config.url,
+        username: config.username,
+        password: config.password,
+        remotePath: config.remotePath,
+        encryptionKey: config.encryptionKey || '',
+      });
+    }
+
     // Load trash notes
     const trash = await s.getTrashNotesAsync();
     setTrashNotes(trash);
@@ -189,6 +209,44 @@ const Dashboard: React.FC = () => {
       await s.clearAllAsync();
       await loadNotes();
     }
+  };
+
+  const handleSaveWebdavConfig = async (config: WebDAVConfig) => {
+    const s = storageRef.current;
+    if (!s) return false;
+    const result = await s.setWebDAVConfigAsync(config);
+    if (result) {
+      setWebdavConfig({
+        url: config.url,
+        username: config.username,
+        password: config.password,
+        remotePath: config.remotePath,
+        encryptionKey: config.encryptionKey || '',
+      });
+    }
+    return result;
+  };
+
+  const handleWebdavPush = async (config: WebDAVConfig) => {
+    const s = storageRef.current;
+    if (!s) return false;
+    return s.pushToWebDAVAsync(config, Boolean(config.encryptionKey));
+  };
+
+  const handleWebdavPull = async (config: WebDAVConfig) => {
+    const s = storageRef.current;
+    if (!s) return false;
+    const result = await s.pullFromWebDAVAsync(config, Boolean(config.encryptionKey));
+    if (result) await loadNotes();
+    return result;
+  };
+
+  const handleClearWebdavConfig = async () => {
+    const s = storageRef.current;
+    if (!s) return false;
+    const result = await s.clearWebDAVConfigAsync();
+    if (result) setWebdavConfig({ url: '', username: '', password: '', remotePath: 'notes.json', encryptionKey: '' });
+    return result;
   };
 
   const handleRestoreNote = async (id: string) => {
@@ -367,13 +425,22 @@ const Dashboard: React.FC = () => {
               onSelectNote={handleEditNote}
             />
           ) : (
-            <NoteList
-              notes={filteredNotes}
-              onEdit={handleEditNote}
-              onDelete={handleDeleteNote}
-              onToggleFavorite={handleToggleFavorite}
-              onToggleArchive={handleToggleArchive}
-            />
+            <div className="space-y-4">
+              <WebDAVSync
+                config={webdavConfig}
+                onSaveConfig={handleSaveWebdavConfig}
+                onPush={handleWebdavPush}
+                onPull={handleWebdavPull}
+                onClearConfig={handleClearWebdavConfig}
+              />
+              <NoteList
+                notes={filteredNotes}
+                onEdit={handleEditNote}
+                onDelete={handleDeleteNote}
+                onToggleFavorite={handleToggleFavorite}
+                onToggleArchive={handleToggleArchive}
+              />
+            </div>
           )}
         </main>
       </div>
