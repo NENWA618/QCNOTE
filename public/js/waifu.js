@@ -2389,7 +2389,8 @@ function GM_xmlhttpRequest(opt) {
         live2d_settings['modelId'] = config.waifu.modelId;
         live2d_settings['modelTexturesId'] = config.waifu.modelTexturesId;
         live2d_settings['waifuEdgeSide'] = config.waifu.dockSide === 'left' ? 'left:0' : 'right:0';
-        live2d_settings['waifuDraggable'] = 'disable';
+        live2d_settings['waifuDraggable'] = 'unlimited'; // 启用拖拽，支持移动设备触摸操作
+        live2d_settings['waifuDraggableRevert'] = true;
         live2d_settings['modelStorage'] = true;
         live2d_settings['modelAPI'] = '/live2d/';
         live2d_settings['localModelUrl'] = (config.waifu.localModels && config.waifu.localModels[config.waifu.modelIndex] && config.waifu.localModels[config.waifu.modelIndex].modelUrl) || '/live2d/koharu/koharu.model.json';
@@ -2397,6 +2398,7 @@ function GM_xmlhttpRequest(opt) {
         live2d_settings['showHitokoto'] = false;
         live2d_settings['showCopyMessage'] = false;
         live2d_settings['showToolMenu'] = true;
+        live2d_settings['waifuMinWidth'] = '400px'; // 降低最小宽度阈值，支持移动设备显示
 
         console.log('[Live2D] 调用本地 initModel...');
         // 本地模型和文本数据，彻底不依赖第三方 API
