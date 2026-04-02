@@ -594,15 +594,10 @@ const Dashboard: React.FC = () => {
                 onSaveConfig={handleSaveOneDriveConfig}
               />
               <NoteList
-                onSync={handleOneDriveSync}
-                onSaveConfig={handleSaveOneDriveConfig}
-              />
-              < onConfigChange={handleWebdavConfigChange}
-              />
-              <NoteList
                 notes={filteredNotes}
                 onEdit={handleEditNote}
                 onDelete={handleDeleteNote}
+                onToggleFavorite={handleToggleFavorite}
                 onToggleFavorite={handleToggleFavorite}
                 onToggleArchive={handleToggleArchive}
               />
