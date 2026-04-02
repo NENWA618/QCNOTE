@@ -210,7 +210,7 @@ const Contact: React.FC = () => {
           <a href="https://github.com/guansss/pixi-live2d-display" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">pixi-live2d-display</a> 等开源库（MIT/Apache 等）。
         </p>
         <p className="text-xs text-gray-400">
-          看板娘基于 <a href="https://scriptcat.org/zh-CN/script-show-page/5343" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Live2D 看板娘</a> 开源项目（GPL-2.0），支持自定义台词、健康提醒、天气查询、待办事项等功能。
+          看板娘基于 <a href="https://github.com/fghrsh/live2d_demo" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Live2D 看板娘</a> 开源项目（GPL-2.0），支持自定义台词、健康提醒、天气查询、待办事项等功能。
         </p>
         <p className="mt-4 text-sm">
           <Link
