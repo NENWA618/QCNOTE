@@ -14,7 +14,10 @@ const NoteList: React.FC<NoteListProps> = ({
   onEdit,
   onDelete,
   onToggleFavorite,
-  onToggleArchive
+  onToggleArchive,
+  searchQuery,
+  selectedTags,
+  onTagClick
 }) => {
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('zh-CN');

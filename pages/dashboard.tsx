@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Footer from '../components/Footer';
@@ -45,7 +45,8 @@ const Dashboard: React.FC = () => {
     autoSyncEnabled: false,
     syncInterval: 5 * 60 * 1000, // 5 minutes default
   });
-  const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
+  const [noteCache, setNoteCache] = useState<Map<string, NoteItem>>(new Map());
+  const [searchCache, setSearchCache] = useState<Map<string, NoteItem[]>>(new Map());
   const [syncManager, setSyncManager] = useState<WebDAVSyncManager | null>(null);
 
   // Editor state
@@ -95,6 +96,12 @@ const Dashboard: React.FC = () => {
     const s = storageRef.current;
     if (!s) return;
     const all = (await s.getDataAsync()) || [];
+
+    // 更新缓存
+    const newCache = new Map();
+    all.forEach(note => newCache.set(note.id, note));
+    setNoteCache(newCache);
+
     setNotes(all);
     setCategories(await s.getCategoriesAsync());
     setStats(await s.getStatsAsync());
