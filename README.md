@@ -223,7 +223,7 @@ npm start          # http://localhost:10000
 
 **授权**
 
-- 脚本：GPL-2.0（来自 [scriptcat.org](https://scriptcat.org/zh-CN/script-show-page/5343)）
+- 脚本：GPL-2.0（来自 [fghrsh/live2d_demo](https://github.com/fghrsh/live2d_demo)）
 - 模型：遵循对应 Live2D 模型的许可证
 
 ## 🌤️ 本地天气系统

@@ -47,7 +47,7 @@ const Footer: React.FC = () => {
       <hr className="border-0 border-t border-white border-opacity-20 my-8" />
       <p>© 2026 NOTE. 用心记录每一刻。</p>
       <p className="text-xs mt-2 text-gray-400">
-        看板娘基于 <a href="https://scriptcat.org/zh-CN/script-show-page/5343" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Live2D 看板娘</a> 开源项目（GPL-2.0），支持自定义台词、健康提醒、天气查询、待办事项等功能。
+        看板娘基于 <a href="https://github.com/fghrsh/live2d_demo" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Live2D 看板娘</a> 开源项目（GPL-2.0），支持自定义台词、健康提醒、天气查询、待办事项等功能。
       </p>
       <p className="text-xs text-gray-400">
         本站使用 <a href="https://pixijs.com/" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Pixi.js</a>、
