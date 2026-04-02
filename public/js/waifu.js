@@ -214,12 +214,13 @@ function GM_xmlhttpRequest(opt) {
             right: 0;
             z-index: 999999 !important;
             font-size: 0;
-            transform: translateY(3px);
+            transform: translateY(3px) scale(0.8);
+            transform-origin: bottom right;
             opacity: 0;
             transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
         }
         .waifu.loaded { opacity: 1; }
-        .waifu:hover { transform: translateY(0); }
+        .waifu:hover { transform: translateY(0) scale(0.8); }
 
         .waifu-tips {
             opacity: 0;
