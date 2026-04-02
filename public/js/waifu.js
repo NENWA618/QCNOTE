@@ -2007,83 +2007,41 @@ function GM_xmlhttpRequest(opt) {
         }
     }
 
-    // ========== 天气功能 ======================
+    // ========== 天气功能（本地模式，已抛弃外部 API）======================
     function getWeather() {
         const province = config.weather.province;
         const city = config.weather.city;
 
-        messageSystem.showImportant('正在获取天气信息...', 2000);
+        messageSystem.showImportant('正在获取天气信息（本地模式）...', 2000);
+        console.log('[Live2D] 本地天气模式，省份:', province, '城市:', city);
 
-        console.log('[Live2D] 开始获取天气，省份:', province, '城市:', city);
+        const localWeatherOptions = [
+            { type: '晴', desc: '风和日丽，适合出门散步' },
+            { type: '多云', desc: '云淡风轻，心情也随之舒畅' },
+            { type: '小雨', desc: '带上雨伞，记得到处点小心路' },
+            { type: '中雨', desc: '雨天适合放慢节奏, 稳稳的幸福' },
+            { type: '大雨', desc: '雨势较大，注意防滑、避免出行' },
+            { type: '雾', desc: '能见度低，出行一定要多加小心' },
+            { type: '晴转多云', desc: '天气稍有变化，早晚温差大' },
+            { type: '阴', desc: '略显舒适，适合读书和写作' }
+        ];
 
-        // 获取城市数据
-        const cityData = findCityCode(province, city);
-        console.log('[Live2D] 查找到的城市数据:', cityData);
+        const pick = localWeatherOptions[Math.floor(Math.random() * localWeatherOptions.length)];
+        const temp = (18 + Math.floor(Math.random() * 12));
+        const humidity = (40 + Math.floor(Math.random() * 40));
+        const airQualityLevels = ['优', '良', '轻度污染'];
+        const air = airQualityLevels[Math.floor(Math.random() * airQualityLevels.length)];
 
-        if (!cityData || !cityData.city_code) {
-            console.error('[Live2D] 找不到城市代码');
-            messageSystem.showImportant(`抱歉，暂不支持${city}的天气查询哦~\n请在设置中检查省份和城市配置`, 4000);
-            return;
-        }
+        const messages = [
+            `今日${city}天气：${pick.type}（本地模拟）\n当前温度：${temp}°C 湿度：${humidity}%`,
+            `风向：东南风 2-3 级\n空气质量：${air}`,
+            `提醒：${pick.desc}`
+        ];
 
-        // 使用和脚本猫完全一样的天气API
-        const apiUrl = `http://t.weather.itboy.net/api/weather/city/${cityData.city_code}`;
-        console.log('[Live2D] 天气API地址:', apiUrl);
-
-        // 使用 GM_xmlhttpRequest 绕过 CORS 和混合内容限制
-        GM_xmlhttpRequest({
-            url: apiUrl,
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            timeout: 10000,
-            onload: function(response) {
-                try {
-                    const data = JSON.parse(response.responseText);
-                    console.log('[Live2D] 天气API响应:', data);
-
-                    if (data && data.status === 200 && data.data) {
-                        const weatherData = data.data;
-                        const forecast = weatherData.forecast && weatherData.forecast[0];
-
-                        if (!forecast) {
-                            console.error('[Live2D] 天气数据格式错误');
-                            messageSystem.showImportant('天气信息获取失败，请稍后再试', 3000);
-                            return;
-                        }
-
-                        // 分段显示天气信息
-                        const messages = [
-                            `今日${city}天气：${forecast.type}\n当前温度：${weatherData.wendu}°C 湿度：${weatherData.shidu}`,
-                            `${forecast.high.replace('高温 ', '最高温度：')}\n${forecast.low.replace('低温 ', '最低温度：')}\n${forecast.fx} ${forecast.fl}`,
-                            `空气质量：${weatherData.quality}（PM2.5: ${weatherData.pm25}）\n${forecast.notice}`,
-                            `健康提示：${weatherData.ganmao}`
-                        ];
-
-                        // 依次显示每段信息
-                        messages.forEach((msg, index) => {
-                            setTimeout(() => {
-                                messageSystem.showImportant(msg, 5000);
-                            }, index * 5500);
-                        });
-                    } else {
-                        console.error('[Live2D] 天气API返回状态异常:', data);
-                        messageSystem.showImportant('天气信息获取失败，请检查城市设置', 3000);
-                    }
-                } catch (e) {
-                    console.error('[Live2D] 解析天气数据失败:', e);
-                    messageSystem.showImportant('天气信息解析失败', 3000);
-                }
-            },
-            onerror: function(error) {
-                console.error('[Live2D] 天气API请求失败:', error);
-                messageSystem.showImportant('天气信息获取失败，请稍后再试', 3000);
-            },
-            ontimeout: function() {
-                console.error('[Live2D] 天气API请求超时');
-                messageSystem.showImportant('天气信息获取超时，请稍后再试', 3000);
-            }
+        messages.forEach((msg, index) => {
+            setTimeout(() => {
+                messageSystem.showImportant(msg, 5000);
+            }, index * 5200);
         });
     }
 
