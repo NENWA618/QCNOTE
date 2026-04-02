@@ -56,16 +56,26 @@ export interface WebDAVConfig {
   encryptionKey?: string;
 }
 
+export interface NoteConflict {
+  id: string;
+  local: NoteItem;
+  remote: NoteItem;
+  resolved: boolean;
+  createdAt: number;
+}
+
 export class NoteStorage {
   storageKey: string;
   settingsKey: string;
   webdavConfigKey: string;
+  conflictsKey: string;
   useIndexedDB: boolean;
 
   constructor() {
     this.storageKey = 'NOTE_STORAGE';
     this.settingsKey = 'NOTE_SETTINGS';
     this.webdavConfigKey = 'NOTE_WEBDAV_CONFIG';
+    this.conflictsKey = 'NOTE_CONFLICTS';
     this.useIndexedDB = false;
     this.init();
     // 自动检查 IndexedDB 是否可用
@@ -278,6 +288,62 @@ export class NoteStorage {
     }
   }
 
+  async getConflictsAsync(): Promise<NoteConflict[]> {
+    try {
+      if (this.useIndexedDB) {
+        const data = await IDB.getItem(this.conflictsKey);
+        if (data) return data as NoteConflict[];
+      }
+      const raw = localStorage.getItem(this.conflictsKey);
+      return raw ? (JSON.parse(raw) as NoteConflict[]) : [];
+    } catch (e) {
+      console.error('[NoteStorage] getConflictsAsync failed', e);
+      return [];
+    }
+  }
+
+  async setConflictsAsync(conflicts: NoteConflict[]): Promise<boolean> {
+    try {
+      if (this.useIndexedDB) {
+        await IDB.setItem(this.conflictsKey, conflicts);
+      } else {
+        try {
+          await IDB.setItem(this.conflictsKey, conflicts);
+          this.useIndexedDB = true;
+        } catch (_) {
+          localStorage.setItem(this.conflictsKey, JSON.stringify(conflicts));
+        }
+      }
+      return true;
+    } catch (e) {
+      console.error('[NoteStorage] setConflictsAsync failed', e);
+      return false;
+    }
+  }
+
+  async addConflictAsync(conflict: NoteConflict): Promise<boolean> {
+    const conflicts = await this.getConflictsAsync();
+    conflicts.push(conflict);
+    return this.setConflictsAsync(conflicts);
+  }
+
+  async resolveConflictAsync(id: string, resolvedNote: NoteItem): Promise<boolean> {
+    const conflicts = await this.getConflictsAsync();
+    const index = conflicts.findIndex(c => c.id === id);
+    if (index === -1) return false;
+    conflicts.splice(index, 1);
+    await this.setConflictsAsync(conflicts);
+    // Update the note
+    const notes = (await this.getDataAsync()) || [];
+    const noteIndex = notes.findIndex(n => n.id === id);
+    if (noteIndex !== -1) {
+      notes[noteIndex] = resolvedNote;
+    } else {
+      notes.push(resolvedNote);
+    }
+    return this.setDataAsync(notes);
+  }
+
   private async webdavFetch(method: string, url: string, config: WebDAVConfig, body?: string): Promise<Response> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/octet-stream',
@@ -333,11 +399,51 @@ export class NoteStorage {
       if (decrypt && config.encryptionKey && config.encryptionKey.length > 0) {
         content = await this.decryptText(raw, config.encryptionKey);
       }
-      const notes = JSON.parse(content) as NoteItem[];
-      if (!Array.isArray(notes)) {
+      const remoteNotes = JSON.parse(content) as NoteItem[];
+      if (!Array.isArray(remoteNotes)) {
         throw new Error('WebDAV 数据格式错误');
       }
-      await this.setDataAsync(notes);
+
+      const localNotes = (await this.getDataAsync()) || [];
+      const localMap = new Map(localNotes.map(n => [n.id, n]));
+      const mergedNotes: NoteItem[] = [];
+      const conflicts: NoteConflict[] = [];
+
+      for (const remote of remoteNotes) {
+        const local = localMap.get(remote.id);
+        if (local) {
+          // Check for conflict: if local is newer or content differs
+          if (local.updatedAt > remote.updatedAt || local.content !== remote.content || local.title !== remote.title) {
+            conflicts.push({
+              id: remote.id,
+              local,
+              remote,
+              resolved: false,
+              createdAt: Date.now(),
+            });
+            // Keep local for now
+            mergedNotes.push(local);
+          } else {
+            // Remote is same or newer, use remote
+            mergedNotes.push(remote);
+          }
+        } else {
+          // New remote note
+          mergedNotes.push(remote);
+        }
+      }
+
+      // Add local notes not in remote
+      for (const local of localNotes) {
+        if (!remoteNotes.some(r => r.id === local.id)) {
+          mergedNotes.push(local);
+        }
+      }
+
+      await this.setDataAsync(mergedNotes);
+      if (conflicts.length > 0) {
+        await this.setConflictsAsync(conflicts);
+      }
       return true;
     } catch (e) {
       console.error('[NoteStorage] pullFromWebDAVAsync failed', e);

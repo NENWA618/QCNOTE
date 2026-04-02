@@ -366,4 +366,53 @@ describe('NoteStorage', () => {
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('Conflicts', () => {
+    it('should get and set conflicts', async () => {
+      const conflicts = [
+        {
+          id: '1',
+          local: { id: '1', title: 'Local', content: 'Local content', createdAt: 1, updatedAt: 1 },
+          remote: { id: '1', title: 'Remote', content: 'Remote content', createdAt: 1, updatedAt: 2 },
+          resolved: false,
+          createdAt: Date.now(),
+        },
+      ];
+      await storage.setConflictsAsync(conflicts);
+      const retrieved = await storage.getConflictsAsync();
+      expect(retrieved).toEqual(conflicts);
+    });
+
+    it('should add conflict', async () => {
+      const conflict = {
+        id: '1',
+        local: { id: '1', title: 'Local', content: 'Local content', createdAt: 1, updatedAt: 1 },
+        remote: { id: '1', title: 'Remote', content: 'Remote content', createdAt: 1, updatedAt: 2 },
+        resolved: false,
+        createdAt: Date.now(),
+      };
+      await storage.addConflictAsync(conflict);
+      const conflicts = await storage.getConflictsAsync();
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0]).toEqual(conflict);
+    });
+
+    it('should resolve conflict', async () => {
+      const conflict = {
+        id: '1',
+        local: { id: '1', title: 'Local', content: 'Local content', createdAt: 1, updatedAt: 1 },
+        remote: { id: '1', title: 'Remote', content: 'Remote content', createdAt: 1, updatedAt: 2 },
+        resolved: false,
+        createdAt: Date.now(),
+      };
+      await storage.addConflictAsync(conflict);
+      const resolvedNote = { ...conflict.local, content: 'Merged content', updatedAt: Date.now() };
+      await storage.resolveConflictAsync('1', resolvedNote);
+      const conflicts = await storage.getConflictsAsync();
+      expect(conflicts).toHaveLength(0);
+      const notes = await storage.getDataAsync();
+      const updatedNote = notes.find(n => n.id === '1');
+      expect(updatedNote?.content).toBe('Merged content');
+    });
+  });
 });

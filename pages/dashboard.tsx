@@ -12,7 +12,8 @@ import { Calendar } from '../components/Calendar';
 import { Timeline } from '../components/Timeline';
 import { KnowledgeGraph } from '../components/KnowledgeGraph';
 import WebDAVSync from '../components/WebDAVSync';
-import { NoteItem, NoteStorage, Stats, NoteVersion, WebDAVConfig, initWindowStorage } from '../lib/storage';
+import Conflicts from '../components/Conflicts';
+import { NoteItem, NoteStorage, Stats, NoteVersion, WebDAVConfig, NoteConflict, initWindowStorage } from '../lib/storage';
 
 const Dashboard: React.FC = () => {
   const storageRef = useRef<NoteStorage | null>(null);
@@ -32,7 +33,7 @@ const Dashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewingTrash, setViewingTrash] = useState(false);
   const [trashNotes, setTrashNotes] = useState<NoteItem[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline' | 'graph'>('list');
+  const [conflicts, setConflicts] = useState<NoteConflict[]>([]);  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts'>('list');
   const [webdavConfig, setWebdavConfig] = useState({
     url: '',
     username: '',
@@ -76,6 +77,10 @@ const Dashboard: React.FC = () => {
     // Load trash notes
     const trash = await s.getTrashNotesAsync();
     setTrashNotes(trash);
+
+    // Load conflicts
+    const conflicts = await s.getConflictsAsync();
+    setConflicts(conflicts);
   };
 
   // Filtered and sorted notes
@@ -263,6 +268,13 @@ const Dashboard: React.FC = () => {
     await loadNotes();
   };
 
+  const handleResolveConflict = async (id: string, resolvedNote: NoteItem) => {
+    const s = storageRef.current;
+    if (!s) return;
+    await s.resolveConflictAsync(id, resolvedNote);
+    await loadNotes();
+  };
+
   const handleRevertVersion = async (version: NoteVersion) => {
     const s = storageRef.current;
     if (!s || !editingNote) return;
@@ -378,6 +390,14 @@ const Dashboard: React.FC = () => {
                     🧠 图谱
                   </button>
                   <button
+                    onClick={() => setViewMode('conflicts')}
+                    className={`btn-secondary flex items-center gap-1 ${
+                      viewMode === 'conflicts' ? 'bg-yellow-100 text-yellow-600' : ''
+                    }`}
+                  >
+                    ⚠️ 冲突 {conflicts.length > 0 ? `(${conflicts.length})` : ''}
+                  </button>
+                  <button
                     onClick={handleNewNote}
                     className="btn-primary flex items-center gap-1"
                   >
@@ -423,6 +443,11 @@ const Dashboard: React.FC = () => {
             <KnowledgeGraph
               notes={notes}
               onSelectNote={handleEditNote}
+            />
+          ) : viewMode === 'conflicts' ? (
+            <Conflicts
+              conflicts={conflicts}
+              onResolve={handleResolveConflict}
             />
           ) : (
             <div className="space-y-4">
