@@ -83,7 +83,7 @@ function GM_xmlhttpRequest(opt) {
             modelTexturesId: 53,
             dockSide: 'right', // 'left' 或 'right'，记住停靠位置
             localModels: [
-                { id: 1, name: 'koharu', modelUrl: '/live2d/koharu/koharu.model3.json' }
+                { id: 1, name: 'koharu', modelUrl: '/live2d/koharu/koharu.model.json' }
             ],
             modelIndex: 0
         },
@@ -2380,7 +2380,7 @@ function GM_xmlhttpRequest(opt) {
         live2d_settings['waifuDraggable'] = 'disable';
         live2d_settings['modelStorage'] = true;
         live2d_settings['modelAPI'] = '/live2d/';
-        live2d_settings['localModelUrl'] = (config.waifu.localModels && config.waifu.localModels[config.waifu.modelIndex] && config.waifu.localModels[config.waifu.modelIndex].modelUrl) || '/live2d/koharu/koharu.model3.json';
+        live2d_settings['localModelUrl'] = (config.waifu.localModels && config.waifu.localModels[config.waifu.modelIndex] && config.waifu.localModels[config.waifu.modelIndex].modelUrl) || '/live2d/koharu/koharu.model.json';
         live2d_settings['showWelcomeMessage'] = false;
         live2d_settings['showHitokoto'] = false;
         live2d_settings['showCopyMessage'] = false;
