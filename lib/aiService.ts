@@ -1,0 +1,150 @@
+import OpenAI from 'openai';
+
+class AIService {
+  private client: OpenAI | null = null;
+
+  constructor(apiKey?: string) {
+    if (apiKey) {
+      this.client = new OpenAI({
+        apiKey,
+        dangerouslyAllowBrowser: true // Note: In production, use a backend proxy
+      });
+    }
+  }
+
+  setApiKey(apiKey: string) {
+    this.client = new OpenAI({
+      apiKey,
+      dangerouslyAllowBrowser: true
+    });
+  }
+
+  async generateTags(content: string): Promise<string[]> {
+    if (!this.client) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    try {
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that generates relevant tags for notes. Generate 3-5 concise, relevant tags for the given content. Return only the tags separated by commas, no other text.'
+          },
+          {
+            role: 'user',
+            content: `Generate tags for this note content:\n\n${content.substring(0, 1000)}`
+          }
+        ],
+        max_tokens: 100,
+        temperature: 0.3
+      });
+
+      const tagsText = response.choices[0]?.message?.content?.trim() || '';
+      return tagsText.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    } catch (error) {
+      console.error('Error generating tags:', error);
+      return [];
+    }
+  }
+
+  async generateSummary(content: string): Promise<string> {
+    if (!this.client) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    try {
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that creates concise summaries of notes. Create a brief 1-2 sentence summary that captures the main points.'
+          },
+          {
+            role: 'user',
+            content: `Summarize this note content:\n\n${content.substring(0, 2000)}`
+          }
+        ],
+        max_tokens: 150,
+        temperature: 0.3
+      });
+
+      return response.choices[0]?.message?.content?.trim() || 'Unable to generate summary';
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      return 'Summary generation failed';
+    }
+  }
+
+  async categorizeNote(title: string, content: string): Promise<string> {
+    if (!this.client) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    try {
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that categorizes notes. Choose the most appropriate category from: 工作, 学习, 生活, 灵感, 其他. Return only the category name.'
+          },
+          {
+            role: 'user',
+            content: `Categorize this note:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`
+          }
+        ],
+        max_tokens: 20,
+        temperature: 0.2
+      });
+
+      const category = response.choices[0]?.message?.content?.trim() || '其他';
+      return ['工作', '学习', '生活', '灵感', '其他'].includes(category) ? category : '其他';
+    } catch (error) {
+      console.error('Error categorizing note:', error);
+      return '其他';
+    }
+  }
+
+  async suggestRelatedNotes(currentNote: string, allNotes: Array<{ title: string; content: string }>): Promise<Array<{ title: string; similarity: number }>> {
+    if (!this.client) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    try {
+      const notesText = allNotes.map(note =>
+        `Title: ${note.title}\nContent: ${note.content.substring(0, 200)}\n---`
+      ).join('\n');
+
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that finds related notes. Analyze the current note and find the 3 most related notes from the list. Return the titles of related notes separated by newlines, ranked by relevance.'
+          },
+          {
+            role: 'user',
+            content: `Current note: ${currentNote.substring(0, 500)}\n\nAll notes:\n${notesText}`
+          }
+        ],
+        max_tokens: 200,
+        temperature: 0.3
+      });
+
+      const suggestions = response.choices[0]?.message?.content?.split('\n')
+        .filter(title => title.trim().length > 0)
+        .slice(0, 3)
+        .map(title => ({ title: title.trim(), similarity: 0.8 })) || [];
+
+      return suggestions;
+    } catch (error) {
+      console.error('Error suggesting related notes:', error);
+      return [];
+    }
+  }
+}
+
+export default AIService;
