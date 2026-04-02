@@ -10,15 +10,8 @@ try {
   logger = console;
 }
 
-let vector: { computeVector: (text: string) => Record<string, number>; cosine: (a: Record<string, number>, b: Record<string, number>) => number };
-let sentiment: { analyzeEmotion: (text: string) => { score: number; comparative: number } };
-try {
-  vector = require(path.resolve(__dirname, './vector')).default;
-  sentiment = require(path.resolve(__dirname, './sentiment')).default;
-} catch (e) {
-  vector = require(path.resolve(__dirname, '../lib/vector')).default;
-  sentiment = require(path.resolve(__dirname, '../lib/sentiment')).default;
-}
+import vector from './vector';
+import sentiment from './sentiment';
 
 interface Note { id: string; title: string; content: string; }
 interface IndexState { lunr: any | null; vectors: Record<string, Record<string, number>>; sentiments: Record<string, unknown>; }
@@ -199,5 +192,8 @@ function searchServerNotes(query: string): { id: string }[] {
 
 function generateReplyFromMemory(message: string, memory: any, persona: any, noteSnippet: string | null): any {
   // 这是示例函数、可按原逻辑补全
-  return { message: `收到：${message}` };
+  return {
+    reply: `收到：${message}`,
+    mood: 'neutral'
+  };
 }

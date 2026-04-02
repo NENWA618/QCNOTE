@@ -14,7 +14,12 @@
 npm install
 ```
 
-2. **生成 VAPID keys（用于推送）**
+2. **运行测试（可选，确保一切正常）**
+```bash
+npm test  # 59个测试全部通过
+```
+
+3. **生成 VAPID keys（用于推送，可选）**
 ```bash
 npx web-push generate-vapid-keys --json
 # 输出内容形如：
@@ -22,13 +27,13 @@ npx web-push generate-vapid-keys --json
 ```
 保存两个 key，后续需要。
 
-3. **启动前端（开发）**
+4. **启动前端（开发）**
 ```bash
 npm run dev
 # 访问 http://localhost:3000
 ```
 
-4. **启动后端（可选，用于推送和高级对话）**
+5. **启动后端（可选，用于推送和高级对话）**
 
 首先在 `server/` 目录安装依赖：
 ```bash
