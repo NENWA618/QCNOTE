@@ -1,0 +1,7 @@
+/* Content script styles for NOTE Web Clipper */
+
+.note-clipper-highlight {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 4px !important;
+}

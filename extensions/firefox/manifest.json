@@ -1,0 +1,34 @@
+{
+  "manifest_version": 2,
+  "name": "NOTE Web Clipper",
+  "version": "1.0.0",
+  "description": "从网页快速剪藏内容到 NOTE 应用",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "http://localhost:3000/*",
+    "https://your-note-app-domain.com/*"
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_title": "NOTE 网页剪藏",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png"
+  }
+}
