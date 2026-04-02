@@ -1,0 +1,203 @@
+import Fastify from 'fastify';
+import fs from 'fs/promises';
+import path from 'path';
+
+// logger is optional; in tests we may not have a real implementation
+let logger: { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void };
+try {
+  logger = require('../lib/logger');
+} catch (e) {
+  logger = console;
+}
+
+let vector: { computeVector: (text: string) => Record<string, number>; cosine: (a: Record<string, number>, b: Record<string, number>) => number };
+let sentiment: { analyzeEmotion: (text: string) => { score: number; comparative: number } };
+try {
+  vector = require(path.resolve(__dirname, './vector')).default;
+  sentiment = require(path.resolve(__dirname, './sentiment')).default;
+} catch (e) {
+  vector = require(path.resolve(__dirname, '../lib/vector')).default;
+  sentiment = require(path.resolve(__dirname, '../lib/sentiment')).default;
+}
+
+interface Note { id: string; title: string; content: string; }
+interface IndexState { lunr: any | null; vectors: Record<string, Record<string, number>>; sentiments: Record<string, unknown>; }
+
+let serverNotes: Note[] = [];
+let serverIndex: IndexState = { lunr: null, vectors: {}, sentiments: {} };
+
+const NOTES_PERSIST_PATH = path.join(__dirname, '.notes-cache.json');
+
+const DEFAULT_PERSONA = {
+  id: 'waifu_character',
+  name: '看板娘',
+  displayName: 'Waifu',
+  ageRange: '20s',
+  style: '活泼可爱，智能陪伴',
+  colors: { primary: '#ff69b4', hair: '#ffb6c1', outfit: '#ffe4e1' },
+  shortBio: 'Live2D看板娘，通过你的笔记来了解你，陪伴你探索知识的世界。',
+  greetings: ['こんにちは！私は看板娘です。', '今日も一緒に頑張りましょう！', 'また会えて嬉しいです。'],
+  happyReplies: ['それはいいですね！楽しそうですね。', 'あなたの喜びが私にも伝わってきます。'],
+  sadReplies: ['そうですか。でも大丈夫、ここにいますよ。', '一緒に頑張りましょう。'],
+  playfulReplies: ['ふふふ、面白いですね。', 'そのような考えもいいですね。'],
+  fallbackReplies: ['えっと...何かお話しましょうか？', 'どうぞ、聞きますよ。', 'それは興味深いです。'],
+  templates: {
+    noNotes: 'まだメモがありませんね。これから一緒に記録していきましょう。',
+    summary: (total: number, topTag?: string, topCat?: string) => {
+      let s = `あなたは ${total} 個のメモを持っています`;
+      if (topTag) s += `。最も使うタグは「${topTag}」ですね`;
+      if (topCat) s += `。主に ${topCat} に関することが多いようです`;
+      s += '。';
+      return s;
+    },
+  },
+};
+
+function buildFastify() {
+  const fastify = Fastify({ logger: true });
+  fastify.register(require('@fastify/cors'), { origin: true });
+  if (typeof registerRoutes === 'function') {
+    registerRoutes(fastify);
+  }
+  return fastify;
+}
+
+const fastify = buildFastify();
+
+function registerRoutes(app: any) {
+  if (app.__routesRegistered) return;
+  app.__routesRegistered = true;
+
+  app.post('/reply', async (request: any, reply: any) => {
+    const body = request.body as Record<string, unknown> | undefined;
+    const memory = body?.memory ?? {};
+    const message = typeof body?.message === 'string' ? body.message : '';
+
+    const searchResults = searchServerNotes(message);
+    let noteSnippet: string | null = null;
+    if (searchResults.length > 0) {
+      const topResultId = searchResults[0].id;
+      const topNote = serverNotes.find((n) => n.id === topResultId);
+      if (topNote) {
+        noteSnippet = topNote.content.slice(0, 150) + (topNote.content.length > 150 ? '...' : '');
+      }
+    }
+
+    const result = generateReplyFromMemory(message, memory as any, DEFAULT_PERSONA as any, noteSnippet);
+    return result;
+  });
+
+  app.post('/syncNote', async (request: any, reply: any) => {
+    const note = request.body as Note | undefined;
+    if (note && note.id) {
+      const idx = serverNotes.findIndex((n) => n.id === note.id);
+      if (idx !== -1) serverNotes[idx] = note;
+      else serverNotes.push(note);
+      await rebuildIndex();
+      await saveNotesToDisk();
+      return { ok: true, message: `Note ${note.id} synced and indexed` };
+    }
+    return { ok: false, message: 'Invalid note' };
+  });
+
+  app.get('/stats', async () => {
+    return {
+      totalNotes: serverNotes.length,
+      indexReady: serverIndex.lunr !== null,
+      vectorsCount: Object.keys(serverIndex.vectors).length,
+      sentimentsCount: Object.keys(serverIndex.sentiments).length,
+    };
+  });
+}
+
+registerRoutes(fastify);
+
+try {
+  const pushModule = require(path.resolve(__dirname, './push'));
+  if (pushModule && typeof pushModule.registerRoutes === 'function') {
+    pushModule.registerRoutes(fastify);
+  }
+  if (pushModule && typeof pushModule.startReminderLoop === 'function') {
+    pushModule.startReminderLoop();
+  }
+} catch (e) {
+  logger.info('[Server] Push module not registered:', e && (e as Error).message);
+}
+
+try {
+  const queueModule = require(path.resolve(__dirname, './queue'));
+  const workerModule = require(path.resolve(__dirname, './worker'));
+  if (queueModule && typeof queueModule.initQueue === 'function') queueModule.initQueue();
+  if (workerModule && typeof workerModule.startWorker === 'function') workerModule.startWorker();
+} catch (e) {
+  // no-op
+}
+
+module.exports = { buildFastify };
+
+async function loadNotesFromDisk(): Promise<void> {
+  try {
+    const data = await fs.readFile(NOTES_PERSIST_PATH, 'utf-8');
+    serverNotes = JSON.parse(data);
+    logger.info(`[Server] Loaded ${serverNotes.length} notes from disk`);
+    await rebuildIndex();
+  } catch (e) {
+    logger.info('[Server] No persisted notes found; starting fresh');
+  }
+}
+
+async function saveNotesToDisk(): Promise<void> {
+  try {
+    await fs.writeFile(NOTES_PERSIST_PATH, JSON.stringify(serverNotes, null, 2), 'utf-8');
+    logger.info('[Server] Notes persisted to disk');
+  } catch (e) {
+    logger.warn('[Server] Failed to persist notes:', e);
+  }
+}
+
+async function rebuildIndex(): Promise<void> {
+  if (serverNotes.length === 0) {
+    serverIndex = { lunr: null, vectors: {}, sentiments: {} };
+    return;
+  }
+
+  try {
+    const lunr = require('lunr');
+    serverIndex.lunr = lunr(function (builder: any) {
+      builder.ref('id');
+      builder.field('title');
+      builder.field('content');
+      serverNotes.forEach((note) => builder.add({ id: note.id, title: note.title, content: note.content }));
+    });
+
+    serverIndex.vectors = {};
+    serverIndex.sentiments = {};
+    serverNotes.forEach((note) => {
+      const text = `${note.title} ${note.content}`;
+      serverIndex.vectors[note.id] = vector.computeVector(text);
+      serverIndex.sentiments[note.id] = sentiment.analyzeEmotion(text);
+    });
+    logger.info(`[Server] Rebuilt index for ${serverNotes.length} notes`);
+  } catch (e) {
+    logger.error('[Server] Error rebuilding index:', e);
+    throw e;
+  }
+}
+
+function containsAny(text: string, keywords: string[]): boolean {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return keywords.some((k) => lower.includes(k));
+}
+
+function searchServerNotes(query: string): { id: string }[] {
+  const results: { id: string }[] = [];
+  if (!query || typeof query !== 'string') return results;
+  // 此处请继续补充搜索逻辑（从原 index.js 中同步）
+  return results;
+}
+
+function generateReplyFromMemory(message: string, memory: any, persona: any, noteSnippet: string | null): any {
+  // 这是示例函数、可按原逻辑补全
+  return { message: `收到：${message}` };
+}

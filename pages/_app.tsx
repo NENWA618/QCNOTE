@@ -36,23 +36,28 @@ export default function App({ Component, pageProps }: AppProps) {
           NEXT_PUBLIC_LIVE2D_VERSION or defaults to build timestamp. */}
       <Script
         src={ "/js/jquery.min.js" }
-        strategy="afterInteractive"
+        strategy="beforeInteractive"
+        onError={(e) => console.error('jquery 加载失败', e)}
       />
       <Script
         src={ "/js/jquery-ui.min.js" }
-        strategy="afterInteractive"
+        strategy="beforeInteractive"
+        onError={(e) => console.error('jquery-ui 加载失败', e)}
       />
       <Script
         src={ "/js/live2d.min.js" }
         strategy="afterInteractive"
+        onError={(e) => console.error('live2d 加载失败', e)}
       />
       <Script
         src={ "/js/waifu-tips.min.js" }
         strategy="afterInteractive"
+        onError={(e) => console.error('waifu-tips 加载失败', e)}
       />
       <Script
         src={ "/js/waifu.js" }
         strategy="afterInteractive"
+        onError={(e) => console.error('waifu 脚本加载失败', e)}
       />
       {!ready ? (
         <div className="min-h-screen flex items-center justify-center">加载中…</div>
