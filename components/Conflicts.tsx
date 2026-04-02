@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDiffViewer from 'react-diff-viewer';
 import { NoteConflict, NoteItem } from '../lib/storage';
 
 interface ConflictsProps {
@@ -65,35 +66,43 @@ const Conflicts: React.FC<ConflictsProps> = ({ conflicts, onResolve }) => {
 
       {selectedConflict && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded max-w-4xl w-full max-h-96 overflow-auto">
+          <div className="bg-white p-6 rounded max-w-6xl w-full max-h-screen overflow-auto">
             <h3 className="text-lg font-bold mb-4">Resolve Conflict: {selectedConflict.local.title}</h3>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <h4 className="font-semibold">Local Version</h4>
-                <textarea
-                  readOnly
-                  value={selectedConflict.local.content}
-                  className="w-full h-32 border rounded p-2"
-                />
-              </div>
-              <div>
-                <h4 className="font-semibold">Remote Version</h4>
-                <textarea
-                  readOnly
-                  value={selectedConflict.remote.content}
-                  className="w-full h-32 border rounded p-2"
-                />
-              </div>
+
+            {/* Diff Viewer */}
+            <div className="mb-4">
+              <ReactDiffViewer
+                oldValue={selectedConflict.local.content}
+                newValue={selectedConflict.remote.content}
+                splitView={true}
+                compareMethod="diffWords"
+                leftTitle="Local Version"
+                rightTitle="Remote Version"
+                disableWordDiff={false}
+                useDarkTheme={false}
+                styles={{
+                  contentText: {
+                    fontSize: '14px',
+                    lineHeight: '1.4',
+                  },
+                  diffContainer: {
+                    fontSize: '14px',
+                  },
+                }}
+              />
             </div>
+
+            {/* Manual Merge Section */}
             <div>
-              <h4 className="font-semibold">Merged Version</h4>
+              <h4 className="font-semibold mb-2">Manual Merge (Optional)</h4>
               <textarea
                 value={mergedContent}
                 onChange={(e) => setMergedContent(e.target.value)}
-                placeholder="Edit to merge both versions..."
+                placeholder="Edit to create a merged version..."
                 className="w-full h-32 border rounded p-2"
               />
             </div>
+
             <div className="mt-4 flex space-x-2">
               <button
                 onClick={() => handleResolve(selectedConflict, 'merged')}
@@ -101,6 +110,18 @@ const Conflicts: React.FC<ConflictsProps> = ({ conflicts, onResolve }) => {
                 className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50"
               >
                 Save Merged
+              </button>
+              <button
+                onClick={() => handleResolve(selectedConflict, 'local')}
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+              >
+                Keep Local
+              </button>
+              <button
+                onClick={() => handleResolve(selectedConflict, 'remote')}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Use Remote
               </button>
               <button
                 onClick={() => setSelectedConflict(null)}
