@@ -562,15 +562,15 @@ const Dashboard: React.FC = () => {
             />
           ) : viewMode === 'graph' ? (
             <KnowledgeGraph
-              viewMode === 'tags' ? (
+              notes={notes}
+              onSelectNote={handleEditNote}
+            />
+          ) : viewMode === 'tags' ? (
             <TagManager
               notes={notes}
               onTagRename={handleTagRename}
               onTagDelete={handleTagDelete}
               onBulkTagOperation={handleBulkTagOperation}
-            />
-          ) : notes={notes}
-              onSelectNote={handleEditNote}
             />
           ) : viewMode === 'conflicts' ? (
             <Conflicts
