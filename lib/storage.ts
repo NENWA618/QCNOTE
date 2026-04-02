@@ -28,6 +28,8 @@ export interface NoteItem {
   links?: string[];
   backlinks?: string[];
   versions?: NoteVersion[];
+  isDeleted?: boolean;
+  deletedAt?: number;
 }
 
 export interface Stats {
@@ -411,9 +413,45 @@ export class NoteStorage {
 
   async deleteNoteAsync(id: string) {
     const notes = (await this.getDataAsync()) || [];
+    const index = notes.findIndex((n) => n.id === id);
+    if (index !== -1) {
+      notes[index] = {
+        ...notes[index],
+        isDeleted: true,
+        deletedAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      const updatedNotes = this.syncLinkGraph(notes);
+      await this.setDataAsync(updatedNotes);
+      return true;
+    }
+    return false;
+  }
+
+  async permanentlyDeleteNoteAsync(id: string) {
+    const notes = (await this.getDataAsync()) || [];
     const filteredNotes = notes.filter((n) => n.id !== id);
     await this.setDataAsync(filteredNotes);
     return true;
+  }
+
+  async restoreNoteAsync(id: string) {
+    const notes = (await this.getDataAsync()) || [];
+    const note = notes.find((n) => n.id === id);
+    if (note && note.isDeleted) {
+      note.isDeleted = false;
+      note.deletedAt = undefined;
+      note.updatedAt = Date.now();
+      const updatedNotes = this.syncLinkGraph(notes);
+      await this.setDataAsync(updatedNotes);
+      return true;
+    }
+    return false;
+  }
+
+  async getTrashNotesAsync() {
+    const notes = (await this.getDataAsync()) || [];
+    return notes.filter((n) => n.isDeleted);
   }
 
 
@@ -423,12 +461,16 @@ export class NoteStorage {
   }
 
 
-  async searchNotesAsync(keyword?: string) {
+  async searchNotesAsync(keyword?: string, includeDeleted = false) {
     const notes = (await this.getDataAsync()) || [];
-    if (!keyword) return notes;
+    let filtered = notes;
+    if (!includeDeleted) {
+      filtered = filtered.filter((n) => !n.isDeleted);
+    }
+    if (!keyword) return filtered;
 
     const lowerKeyword = keyword.toLowerCase();
-    return notes.filter(
+    return filtered.filter(
       (note) =>
         note.title.toLowerCase().includes(lowerKeyword) ||
         note.content.toLowerCase().includes(lowerKeyword) ||
@@ -437,16 +479,20 @@ export class NoteStorage {
   }
 
 
-  async getNotesByCategoryAsync(category: string) {
+  async getNotesByCategoryAsync(category: string, includeDeleted = false) {
     const notes = (await this.getDataAsync()) || [];
-    if (category === 'all') return notes;
-    return notes.filter((n) => n.category === category);
+    let filtered = notes;
+    if (!includeDeleted) {
+      filtered = filtered.filter((n) => !n.isDeleted);
+    }
+    if (category === 'all') return filtered;
+    return filtered.filter((n) => n.category === category);
   }
 
 
   async getFavoriteNotesAsync() {
     const notes = (await this.getDataAsync()) || [];
-    return notes.filter((n) => n.isFavorite);
+    return notes.filter((n) => !n.isDeleted && n.isFavorite);
   }
 
 
@@ -535,20 +581,21 @@ export class NoteStorage {
 
   async getStatsAsync(): Promise<Stats> {
     const notes = (await this.getDataAsync()) || [];
+    const aliveNotes = notes.filter((n) => !n.isDeleted);
     const categories = await this.getCategoriesAsync();
     const categoryStats: Record<string, number> = {};
 
     categories.forEach((cat) => {
-      categoryStats[cat] = notes.filter((n) => n.category === cat).length;
+      categoryStats[cat] = aliveNotes.filter((n) => n.category === cat).length;
     });
 
     return {
-      totalNotes: notes.length,
-      favoriteNotes: notes.filter((n) => n.isFavorite).length,
-      archivedNotes: notes.filter((n) => n.isArchived).length,
+      totalNotes: aliveNotes.length,
+      favoriteNotes: aliveNotes.filter((n) => n.isFavorite).length,
+      archivedNotes: aliveNotes.filter((n) => n.isArchived).length,
       categories: categoryStats,
       totalTags: (await this.getAllTagsAsync()).length,
-      createdToday: notes.filter((n) => {
+      createdToday: aliveNotes.filter((n) => {
         const today = new Date().toDateString();
         return new Date(n.createdAt).toDateString() === today;
       }).length,

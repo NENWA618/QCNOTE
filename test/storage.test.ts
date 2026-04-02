@@ -92,7 +92,8 @@ describe('NoteStorage', () => {
       const note = await storage.addNoteAsync({ title: 'To Delete' });
       await storage.deleteNoteAsync(note.id);
       const data = await storage.getDataAsync();
-      expect(data).toHaveLength(0);
+      const deletedNote = data?.find((n) => n.id === note.id);
+      expect(deletedNote?.isDeleted).toBe(true);
     });
   });
 

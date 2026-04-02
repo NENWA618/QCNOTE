@@ -7,6 +7,7 @@ import NoteList from '../components/NoteList';
 import NoteEditor from '../components/NoteEditor';
 import NoteStats from '../components/NoteStats';
 import ImportExport from '../components/ImportExport';
+import { Trash } from '../components/Trash';
 import { NoteItem, NoteStorage, Stats, initWindowStorage } from '../lib/storage';
 
 const Dashboard: React.FC = () => {
@@ -25,6 +26,8 @@ const Dashboard: React.FC = () => {
     createdToday: 0,
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [viewingTrash, setViewingTrash] = useState(false);
+  const [trashNotes, setTrashNotes] = useState<NoteItem[]>([]);
 
   // Editor state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -45,11 +48,20 @@ const Dashboard: React.FC = () => {
     setNotes(all);
     setCategories(await s.getCategoriesAsync());
     setStats(await s.getStatsAsync());
+    
+    // Load trash notes
+    const trash = await s.getTrashNotesAsync();
+    setTrashNotes(trash);
   };
 
   // Filtered and sorted notes
   const filteredNotes = useMemo(() => {
     let filtered = notes;
+
+    // Exclude deleted notes from regular view
+    if (!viewingTrash) {
+      filtered = filtered.filter((n) => !n.isDeleted);
+    }
 
     // Search filter
     if (search) {
@@ -62,7 +74,7 @@ const Dashboard: React.FC = () => {
     }
 
     // Category filter
-    if (category !== 'all') {
+    if (category !== 'all' && !viewingTrash) {
       filtered = filtered.filter(note => note.category === category);
     }
 
@@ -81,7 +93,7 @@ const Dashboard: React.FC = () => {
     });
 
     return filtered;
-  }, [notes, search, category, sortBy]);
+  }, [notes, search, category, sortBy, viewingTrash]);
 
   const relatedNotes = useMemo(() => {
     if (!editingNote) return [];
@@ -175,6 +187,20 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleRestoreNote = async (id: string) => {
+    const s = storageRef.current;
+    if (!s) return;
+    await s.restoreNoteAsync(id);
+    await loadNotes();
+  };
+
+  const handlePermanentlyDeleteNote = async (id: string) => {
+    const s = storageRef.current;
+    if (!s) return;
+    await s.permanentlyDeleteNoteAsync(id);
+    await loadNotes();
+  };
+
   return (
     <>
       <Head>
@@ -227,32 +253,52 @@ const Dashboard: React.FC = () => {
             {/* Actions */}
             <div className="flex gap-2">
               <button
-                onClick={handleNewNote}
-                className="btn-primary flex items-center gap-2"
+                onClick={() => setViewingTrash(!viewingTrash)}
+                className={`btn-secondary flex items-center gap-2 ${
+                  viewingTrash ? 'bg-red-100 text-red-600' : ''
+                }`}
               >
-                ➕ 新建笔记
+                🗑️ 回收站 {trashNotes.length > 0 ? `(${trashNotes.length})` : ''}
               </button>
+              {!viewingTrash && (
+                <button
+                  onClick={handleNewNote}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  ➕ 新建笔记
+                </button>
+              )}
             </div>
           </div>
 
           {/* Stats */}
-          <NoteStats stats={stats} categories={categories} />
+          {!viewingTrash && <NoteStats stats={stats} categories={categories} />}
 
           {/* Import/Export */}
-          <ImportExport
-            onExport={handleExport}
-            onImport={handleImport}
-            onClearAll={handleClearAll}
-          />
+          {!viewingTrash && (
+            <ImportExport
+              onExport={handleExport}
+              onImport={handleImport}
+              onClearAll={handleClearAll}
+            />
+          )}
 
-          {/* Notes List */}
-          <NoteList
-            notes={filteredNotes}
-            onEdit={handleEditNote}
-            onDelete={handleDeleteNote}
-            onToggleFavorite={handleToggleFavorite}
-            onToggleArchive={handleToggleArchive}
-          />
+          {/* View Content */}
+          {viewingTrash ? (
+            <Trash
+              trashNotes={trashNotes}
+              onRestore={handleRestoreNote}
+              onPermanentlyDelete={handlePermanentlyDeleteNote}
+            />
+          ) : (
+            <NoteList
+              notes={filteredNotes}
+              onEdit={handleEditNote}
+              onDelete={handleDeleteNote}
+              onToggleFavorite={handleToggleFavorite}
+              onToggleArchive={handleToggleArchive}
+            />
+          )}
         </main>
       </div>
 
