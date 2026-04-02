@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { NoteItem } from '../lib/storage';
+import { NoteItem, NoteVersion } from '../lib/storage';
+import { VersionHistory } from './VersionHistory';
 
 interface NoteEditorProps {
   note: NoteItem | null;
@@ -12,6 +13,7 @@ interface NoteEditorProps {
   onCancel: () => void;
   onChange: (field: keyof NoteItem, value: any) => void;
   onTogglePreview: () => void;
+  onRevertVersion?: (version: NoteVersion) => void;
 }
 
 const NoteEditor: React.FC<NoteEditorProps> = ({
@@ -22,9 +24,11 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
   onSave,
   onCancel,
   onChange,
-  onTogglePreview
+  onTogglePreview,
+  onRevertVersion
 }) => {
   const [localNote, setLocalNote] = useState<NoteItem | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   useEffect(() => {
     setLocalNote(note);
@@ -53,6 +57,15 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
             {localNote.id ? '编辑笔记' : '新建笔记'}
           </h2>
           <div className="flex gap-2">
+            {localNote.versions && localNote.versions.length > 0 && (
+              <button
+                onClick={() => setShowVersionHistory(true)}
+                className="btn-secondary"
+                title="查看版本历史"
+              >
+                ⏱️ 历史 ({localNote.versions.length})
+              </button>
+            )}
             <button
               onClick={onTogglePreview}
               className={`btn-secondary ${isPreview ? 'bg-primary text-white' : ''}`}
@@ -244,6 +257,24 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
           )}
         </div>
       </div>
+
+      <VersionHistory
+        note={localNote}
+        isVisible={showVersionHistory}
+        onRevert={(version) => {
+          if (onRevertVersion) {
+            onRevertVersion(version);
+            handleFieldChange('title', version.title);
+            handleFieldChange('content', version.content);
+            handleFieldChange('category', version.category);
+            handleFieldChange('tags', version.tags);
+            handleFieldChange('color', version.color);
+            handleFieldChange('isFavorite', version.isFavorite);
+            handleFieldChange('isArchived', version.isArchived);
+          }
+        }}
+        onClose={() => setShowVersionHistory(false)}
+      />
     </div>
   );
 };

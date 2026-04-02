@@ -8,7 +8,7 @@ import NoteEditor from '../components/NoteEditor';
 import NoteStats from '../components/NoteStats';
 import ImportExport from '../components/ImportExport';
 import { Trash } from '../components/Trash';
-import { NoteItem, NoteStorage, Stats, initWindowStorage } from '../lib/storage';
+import { NoteItem, NoteStorage, Stats, NoteVersion, initWindowStorage } from '../lib/storage';
 
 const Dashboard: React.FC = () => {
   const storageRef = useRef<NoteStorage | null>(null);
@@ -201,6 +201,27 @@ const Dashboard: React.FC = () => {
     await loadNotes();
   };
 
+  const handleRevertVersion = async (version: NoteVersion) => {
+    const s = storageRef.current;
+    if (!s || !editingNote) return;
+    
+    const revertedNote: NoteItem = {
+      ...editingNote,
+      title: version.title,
+      content: version.content,
+      category: version.category,
+      tags: version.tags,
+      color: version.color,
+      isFavorite: version.isFavorite,
+      isArchived: version.isArchived,
+      updatedAt: Date.now(),
+    };
+    
+    await s.updateNoteAsync(editingNote.id, revertedNote);
+    await loadNotes();
+    alert('✅ 成功恢复到版本！');
+  };
+
   return (
     <>
       <Head>
@@ -319,6 +340,7 @@ const Dashboard: React.FC = () => {
           }
         }}
         onTogglePreview={() => setIsPreview(!isPreview)}
+        onRevertVersion={handleRevertVersion}
       />
 
       <Footer />
