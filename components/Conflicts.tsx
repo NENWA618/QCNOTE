@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ReactDiffViewer from 'react-diff-viewer';
+import ReactDiffViewer from 'react-diff-viewer-continued';
 import { NoteConflict, NoteItem } from '../lib/storage';
 
 interface ConflictsProps {
