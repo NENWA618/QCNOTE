@@ -13,6 +13,7 @@ import { Timeline } from '../components/Timeline';
 import { KnowledgeGraph } from '../components/KnowledgeGraph';
 import WebDAVSync from '../components/WebDAVSync';
 import Conflicts from '../components/Conflicts';
+import TagManager from '../components/TagManager';
 import WebDAVSyncManager from '../lib/webdavSyncManager';
 import { NoteItem, NoteStorage, Stats, NoteVersion, WebDAVConfig, NoteConflict, initWindowStorage } from '../lib/storage';
 
@@ -34,7 +35,7 @@ const Dashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewingTrash, setViewingTrash] = useState(false);
   const [trashNotes, setTrashNotes] = useState<NoteItem[]>([]);
-  const [conflicts, setConflicts] = useState<NoteConflict[]>([]);  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts'>('list');
+  const [conflicts, setConflicts] = useState<NoteConflict[]>([]);  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts' | 'tags'>('list');
   const [webdavConfig, setWebdavConfig] = useState({
     url: '',
     username: '',
@@ -320,6 +321,55 @@ const Dashboard: React.FC = () => {
     await loadNotes();
   };
 
+  const handleTagRename = async (oldTag: string, newTag: string) => {
+    const s = storageRef.current;
+    if (!s) return;
+
+    const updatedNotes = notes.map(note => ({
+      ...note,
+      tags: note.tags?.map(tag => tag === oldTag ? newTag : tag) || []
+    }));
+
+    await s.setDataAsync(updatedNotes);
+    await loadNotes();
+  };
+
+  const handleTagDelete = async (tagToDelete: string) => {
+    const s = storageRef.current;
+    if (!s) return;
+
+    const updatedNotes = notes.map(note => ({
+      ...note,
+      tags: note.tags?.filter(tag => tag !== tagToDelete) || []
+    }));
+
+    await s.setDataAsync(updatedNotes);
+    await loadNotes();
+  };
+
+  const handleBulkTagOperation = async (operation: 'add' | 'remove', tag: string, noteIds: string[]) => {
+    const s = storageRef.current;
+    if (!s) return;
+
+    const updatedNotes = notes.map(note => {
+      if (!noteIds.includes(note.id)) return note;
+
+      const currentTags = note.tags || [];
+      let newTags: string[];
+
+      if (operation === 'add') {
+        newTags = currentTags.includes(tag) ? currentTags : [...currentTags, tag];
+      } else {
+        newTags = currentTags.filter(t => t !== tag);
+      }
+
+      return { ...note, tags: newTags };
+    });
+
+    await s.setDataAsync(updatedNotes);
+    await loadNotes();
+  };
+
   const handleRevertVersion = async (version: NoteVersion) => {
     const s = storageRef.current;
     if (!s || !editingNote) return;
@@ -444,6 +494,14 @@ const Dashboard: React.FC = () => {
                     ⚠️ 冲突 {conflicts.length > 0 ? `(${conflicts.length})` : ''}
                   </button>
                   <button
+                    onClick={() => setViewMode('tags')}
+                    className={`btn-secondary flex items-center gap-1 ${
+                      viewMode === 'tags' ? 'bg-purple-100 text-purple-600' : ''
+                    }`}
+                  >
+                    🏷️ 标签管理
+                  </button>
+                  <button
                     onClick={handleNewNote}
                     className="btn-primary flex items-center gap-1"
                   >
@@ -487,7 +545,14 @@ const Dashboard: React.FC = () => {
             />
           ) : viewMode === 'graph' ? (
             <KnowledgeGraph
+              viewMode === 'tags' ? (
+            <TagManager
               notes={notes}
+              onTagRename={handleTagRename}
+              onTagDelete={handleTagDelete}
+              onBulkTagOperation={handleBulkTagOperation}
+            />
+          ) : notes={notes}
               onSelectNote={handleEditNote}
             />
           ) : viewMode === 'conflicts' ? (
