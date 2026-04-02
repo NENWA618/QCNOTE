@@ -91,7 +91,8 @@ function GM_xmlhttpRequest(opt) {
         // 天气设置
         weather: {
             province: '广东',
-            city: '广州'
+            city: '广州',
+            mode: 'local' // 可选值: local（本地缓存/本地离线文件），api（旧网络API，可能已失效）
         },
 
         // 待办提醒设置
@@ -2007,42 +2008,94 @@ function GM_xmlhttpRequest(opt) {
         }
     }
 
-    // ========== 天气功能（本地模式，已抛弃外部 API）======================
+    // ========== 天气功能（本地离线优先，支持本地缓存数据）======================
     function getWeather() {
         const province = config.weather.province;
         const city = config.weather.city;
+        const mode = config.weather.mode || 'local';
+        const today = new Date().toISOString().slice(0, 10);
 
-        messageSystem.showImportant('正在获取天气信息（本地模式）...', 2000);
-        console.log('[Live2D] 本地天气模式，省份:', province, '城市:', city);
+        function formatWeather(weather, source) {
+            const messages = [
+                `今日${city}天气：${weather.type}（${source}）\n当前温度：${weather.temp}°C 湿度：${weather.humidity}%`,
+                `风向：${weather.wind || '东南风'} ${weather.windLevel || '2-3'}级\n空气质量：${weather.air || '良'}`,
+                `提醒：${weather.desc || '出门要注意哦~'}`
+            ];
 
-        const localWeatherOptions = [
-            { type: '晴', desc: '风和日丽，适合出门散步' },
-            { type: '多云', desc: '云淡风轻，心情也随之舒畅' },
-            { type: '小雨', desc: '带上雨伞，记得到处点小心路' },
-            { type: '中雨', desc: '雨天适合放慢节奏, 稳稳的幸福' },
-            { type: '大雨', desc: '雨势较大，注意防滑、避免出行' },
-            { type: '雾', desc: '能见度低，出行一定要多加小心' },
-            { type: '晴转多云', desc: '天气稍有变化，早晚温差大' },
-            { type: '阴', desc: '略显舒适，适合读书和写作' }
-        ];
+            messages.forEach((msg, index) => {
+                setTimeout(() => {
+                    messageSystem.showImportant(msg, 5000);
+                }, index * 5200);
+            });
+        }
 
-        const pick = localWeatherOptions[Math.floor(Math.random() * localWeatherOptions.length)];
-        const temp = (18 + Math.floor(Math.random() * 12));
-        const humidity = (40 + Math.floor(Math.random() * 40));
-        const airQualityLevels = ['优', '良', '轻度污染'];
-        const air = airQualityLevels[Math.floor(Math.random() * airQualityLevels.length)];
+        function fallbackWeather() {
+            // 基于城市+日期的确定性算法（稳定但仅作为“无网络可用时”的近似）
+            const seed = `${province}-${city}-${today}`;
+            let hash = 0;
+            for (let i = 0; i < seed.length; i++) {
+                hash = (hash << 5) - hash + seed.charCodeAt(i);
+                hash |= 0;
+            }
+            hash = Math.abs(hash);
 
-        const messages = [
-            `今日${city}天气：${pick.type}（本地模拟）\n当前温度：${temp}°C 湿度：${humidity}%`,
-            `风向：东南风 2-3 级\n空气质量：${air}`,
-            `提醒：${pick.desc}`
-        ];
+            const types = ['晴', '多云', '小雨', '中雨', '阴', '雾', '雷阵雨'];
+            const airLevels = ['优', '良', '轻度污染', '中度污染'];
+            const weather = {
+                type: types[hash % types.length],
+                temp: 10 + (hash % 20),
+                humidity: 35 + (hash % 50),
+                air: airLevels[hash % airLevels.length],
+                wind: ['东南风', '西北风', '南风', '北风'][hash % 4],
+                windLevel: `${2 + (hash % 4)}`,
+                desc: '本地离线估算结果，建议使用 local-weather.json 提供真实数据'
+            };
 
-        messages.forEach((msg, index) => {
-            setTimeout(() => {
-                messageSystem.showImportant(msg, 5000);
-            }, index * 5200);
-        });
+            formatWeather(weather, '本地估算');
+        }
+
+        messageSystem.showImportant('正在获取天气信息 （本地离线优先）...', 2000);
+        console.log('[Live2D] 天气模式:', mode, '省份:', province, '城市:', city);
+
+        if (mode === 'api') {
+            console.warn('[Live2D] 旧API模式启用（仅在有网络时可用），推荐切换到 local 模式。');
+        }
+
+        fetch('/data/local-weather.json', { cache: 'no-store' })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('本地天气文件未找到');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const provinceData = data[province] || data[province?.toLowerCase()];
+                const cityData = provinceData && (provinceData[city] || provinceData[city?.toLowerCase()]);
+
+                let weatherData = null;
+                if (cityData) {
+                    weatherData = cityData[today] || cityData.default;
+                }
+
+                if (!weatherData && provinceData) {
+                    weatherData = provinceData.default;
+                }
+
+                if (!weatherData && data.default) {
+                    weatherData = data.default;
+                }
+
+                if (weatherData) {
+                    formatWeather(weatherData, '本地缓存');
+                } else {
+                    console.warn('[Live2D] 本地天气数据缺失，启用本地估算。');
+                    fallbackWeather();
+                }
+            })
+            .catch(err => {
+                console.warn('[Live2D] 本地天气获取失败：', err);
+                fallbackWeather();
+            });
     }
 
     // ========== 自定义消息 ==========
