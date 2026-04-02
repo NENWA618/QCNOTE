@@ -197,3 +197,16 @@ function generateReplyFromMemory(message: string, memory: any, persona: any, not
     mood: 'neutral'
   };
 }
+
+// 启动服务：确保 Render、Heroku 等平台可检测到端口
+const PORT = Number(process.env.PORT || process.env.REDIRECT_PORT || 3000);
+const HOST = process.env.HOST || '0.0.0.0';
+
+fastify.listen({ port: PORT, host: HOST })
+  .then(() => {
+    logger.info(`[Server] listening on ${HOST}:${PORT}`);
+  })
+  .catch((err: unknown) => {
+    logger.error('[Server] failed to start', err);
+    process.exit(1);
+  });
