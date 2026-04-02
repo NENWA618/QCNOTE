@@ -83,6 +83,19 @@ const Dashboard: React.FC = () => {
     return filtered;
   }, [notes, search, category, sortBy]);
 
+  const relatedNotes = useMemo(() => {
+    if (!editingNote) return [];
+
+    const linkTargets = new Set<string>();
+    (editingNote.links || []).forEach((title) => {
+      const target = notes.find((n) => n.title === title);
+      if (target) linkTargets.add(target.id);
+    });
+    (editingNote.backlinks || []).forEach((id) => linkTargets.add(id));
+
+    return notes.filter((note) => linkTargets.has(note.id));
+  }, [editingNote, notes]);
+
   const handleNewNote = async () => {
     const s = storageRef.current;
     if (!s) return;
@@ -248,6 +261,7 @@ const Dashboard: React.FC = () => {
         note={editingNote}
         isVisible={editorVisible}
         isPreview={isPreview}
+        relatedNotes={relatedNotes}
         onSave={handleSaveNote}
         onCancel={() => {
           setEditorVisible(false);

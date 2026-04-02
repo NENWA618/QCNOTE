@@ -7,6 +7,7 @@ interface NoteEditorProps {
   note: NoteItem | null;
   isVisible: boolean;
   isPreview: boolean;
+  relatedNotes?: NoteItem[];
   onSave: () => void;
   onCancel: () => void;
   onChange: (field: keyof NoteItem, value: any) => void;
@@ -17,6 +18,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
   note,
   isVisible,
   isPreview,
+  relatedNotes = [],
   onSave,
   onCancel,
   onChange,
@@ -174,6 +176,16 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                 {localNote.title || '无标题'}
               </h1>
 
+              <div className="mb-3 text-sm text-gray-600">
+                <span className="inline-flex items-center gap-1 mr-3">🔗 引用: {localNote.links?.length ?? 0}</span>
+                <span className="inline-flex items-center gap-1">↩️ 被引用: {localNote.backlinks?.length ?? 0}</span>
+              </div>
+              {localNote.versions && localNote.versions.length > 0 && (
+                <div className="mb-4 p-3 border border-gray-200 rounded bg-gray-50 text-xs">
+                  最近版本：{localNote.versions.length} 次，最早版本 {new Date(localNote.versions[0].updatedAt).toLocaleString()}
+                </div>
+              )}
+
               <div className="prose prose-lg max-w-none">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
@@ -217,6 +229,17 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                 {localNote.isFavorite && <span className="mr-4">⭐ 已收藏</span>}
                 {localNote.isArchived && <span className="mr-4">📦 已归档</span>}
               </div>
+
+              {relatedNotes.length > 0 && (
+                <div className="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
+                  <p className="text-sm font-semibold mb-2">相关笔记</p>
+                  <ul className="text-sm list-disc pl-5 space-y-1">
+                    {relatedNotes.slice(0, 5).map((related) => (
+                      <li key={related.id}>{related.title || '无标题'}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>

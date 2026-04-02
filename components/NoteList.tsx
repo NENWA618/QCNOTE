@@ -55,6 +55,10 @@ const NoteList: React.FC<NoteListProps> = ({
             <h3 className="font-semibold text-lg truncate flex-1 mr-2">
               {note.title || '无标题'}
             </h3>
+            <div className="flex gap-2 items-center text-xs text-gray-500 mr-2">
+              <span>🔗{note.links?.length || 0}</span>
+              <span>↩️{note.backlinks?.length || 0}</span>
+            </div>
             <div className="flex gap-1 flex-shrink-0">
               <button
                 onClick={(e) => {

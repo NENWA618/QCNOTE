@@ -2,6 +2,18 @@ import Utils from './utils';
 import IDB from './idb';
 import logger from './logger';
 
+export interface NoteVersion {
+  versionId: string;
+  title: string;
+  content: string;
+  category: string;
+  tags: string[];
+  color: string;
+  isFavorite: boolean;
+  isArchived: boolean;
+  updatedAt: number;
+}
+
 export interface NoteItem {
   id: string;
   title: string;
@@ -13,6 +25,9 @@ export interface NoteItem {
   createdAt: number;
   updatedAt: number;
   isArchived: boolean;
+  links?: string[];
+  backlinks?: string[];
+  versions?: NoteVersion[];
 }
 
 export interface Stats {
@@ -65,6 +80,56 @@ export class NoteStorage {
       // IndexedDB 不可用或出错，保持 useIndexedDB = false
     }
   }
+
+  private parseWikiLinks(text: string): string[] {
+    const re = /\[\[([^\]]+)\]\]/g;
+    const links = new Set<string>();
+    let match;
+    while ((match = re.exec(text)) !== null) {
+      const label = match[1].trim();
+      if (label) links.add(label);
+    }
+    return Array.from(links);
+  }
+
+  private normalizeNote(note: NoteItem): NoteItem {
+    return {
+      ...note,
+      links: note.links || [],
+      backlinks: note.backlinks || [],
+      versions: note.versions || [],
+    };
+  }
+
+  private syncLinkGraph(notes: NoteItem[]): NoteItem[] {
+    const titleToId = new Map<string, string>();
+    notes.forEach((note) => {
+      titleToId.set(note.title, note.id);
+    });
+
+    const backlinksMap = new Map<string, Set<string>>();
+
+    const enriched = notes.map((note) => {
+      const normalizedNote = this.normalizeNote(note);
+      const links = this.parseWikiLinks(normalizedNote.content);
+      links.forEach((linkTitle) => {
+        const targetId = titleToId.get(linkTitle);
+        if (!targetId) return;
+        if (!backlinksMap.has(targetId)) backlinksMap.set(targetId, new Set());
+        backlinksMap.get(targetId)?.add(normalizedNote.id);
+      });
+      return {
+        ...normalizedNote,
+        links,
+      };
+    });
+
+    return enriched.map((note) => ({
+      ...note,
+      backlinks: Array.from(backlinksMap.get(note.id) || []),
+    }));
+  }
+
   /**
    * Internal helpers for localStorage access.
    *
@@ -145,12 +210,12 @@ export class NoteStorage {
       const idbData = await IDB.getItem(this.storageKey);
       if (idbData) {
         this.useIndexedDB = true; // 确保标志正确设置
-        return idbData as NoteItem[];
+        return (idbData as NoteItem[]).map((note) => this.normalizeNote(note));
       }
       // IndexedDB 无数据，尝试 localStorage
       const lsData = this._getDataLocal();
       if (lsData) {
-        return lsData;
+        return lsData.map((note) => this.normalizeNote(note));
       }
       return null;
     } catch (e) {
@@ -161,10 +226,11 @@ export class NoteStorage {
   }
 
   async setDataAsync(notes: NoteItem[]): Promise<boolean> {
+    const normalizedNotes = notes.map((note) => this.normalizeNote(note));
     try {
       // 优先 IndexedDB，次之 localStorage
       if (this.useIndexedDB) {
-        await IDB.setItem(this.storageKey, notes);
+        await IDB.setItem(this.storageKey, normalizedNotes);
       } else {
         // 尝试写入 IndexedDB（可能在启用过程中）
         try {
@@ -174,7 +240,7 @@ export class NoteStorage {
           localStorage.removeItem(this.storageKey);
         } catch (_) {
           // IndexedDB 失败，回退到本地 localStorage
-          this._setDataLocal(notes);
+          this._setDataLocal(normalizedNotes);
         }
       }
 
@@ -286,6 +352,7 @@ export class NoteStorage {
 
   async addNoteAsync(note: Partial<NoteItem>) {
     const notes = (await this.getDataAsync()) || [];
+
     const newNote: NoteItem = {
       id: `note_${Date.now()}`,
       title: note.title || '无标题',
@@ -297,10 +364,15 @@ export class NoteStorage {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       isArchived: false,
+      links: [],
+      backlinks: [],
+      versions: [],
     };
+
     notes.unshift(newNote);
-    await this.setDataAsync(notes);
-    return newNote;
+    const updatedNotes = this.syncLinkGraph(notes);
+    await this.setDataAsync(updatedNotes);
+    return updatedNotes.find((n) => n.id === newNote.id) as NoteItem;
   }
 
 
@@ -308,13 +380,30 @@ export class NoteStorage {
     const notes = (await this.getDataAsync()) || [];
     const index = notes.findIndex((n) => n.id === id);
     if (index !== -1) {
+      const existing = notes[index];
+      const version: NoteVersion = {
+        versionId: `ver_${Date.now()}`,
+        title: existing.title,
+        content: existing.content,
+        category: existing.category,
+        tags: [...existing.tags],
+        color: existing.color,
+        isFavorite: existing.isFavorite,
+        isArchived: existing.isArchived,
+        updatedAt: existing.updatedAt,
+      };
+      const updatedVersionList = [...(existing.versions || []), version].slice(-20);
+
       notes[index] = {
-        ...notes[index],
+        ...existing,
         ...updates,
         updatedAt: Date.now(),
+        versions: updatedVersionList,
       };
-      await this.setDataAsync(notes);
-      return notes[index];
+
+      const updatedNotes = this.syncLinkGraph(notes);
+      await this.setDataAsync(updatedNotes);
+      return updatedNotes.find((n) => n.id === id) || null;
     }
     return null;
   }
