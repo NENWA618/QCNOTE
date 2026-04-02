@@ -8,6 +8,8 @@ import NoteEditor from '../components/NoteEditor';
 import NoteStats from '../components/NoteStats';
 import ImportExport from '../components/ImportExport';
 import { Trash } from '../components/Trash';
+import { Calendar } from '../components/Calendar';
+import { Timeline } from '../components/Timeline';
 import { NoteItem, NoteStorage, Stats, NoteVersion, initWindowStorage } from '../lib/storage';
 
 const Dashboard: React.FC = () => {
@@ -28,6 +30,7 @@ const Dashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewingTrash, setViewingTrash] = useState(false);
   const [trashNotes, setTrashNotes] = useState<NoteItem[]>([]);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline'>('list');
 
   // Editor state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -272,31 +275,57 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setViewingTrash(!viewingTrash)}
-                className={`btn-secondary flex items-center gap-2 ${
+                className={`btn-secondary flex items-center gap-1 ${
                   viewingTrash ? 'bg-red-100 text-red-600' : ''
                 }`}
               >
                 🗑️ 回收站 {trashNotes.length > 0 ? `(${trashNotes.length})` : ''}
               </button>
               {!viewingTrash && (
-                <button
-                  onClick={handleNewNote}
-                  className="btn-primary flex items-center gap-2"
-                >
-                  ➕ 新建笔记
-                </button>
+                <>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`btn-secondary flex items-center gap-1 ${
+                      viewMode === 'list' ? 'bg-blue-100 text-blue-600' : ''
+                    }`}
+                  >
+                    📝 列表
+                  </button>
+                  <button
+                    onClick={() => setViewMode('calendar')}
+                    className={`btn-secondary flex items-center gap-1 ${
+                      viewMode === 'calendar' ? 'bg-blue-100 text-blue-600' : ''
+                    }`}
+                  >
+                    📅 日历
+                  </button>
+                  <button
+                    onClick={() => setViewMode('timeline')}
+                    className={`btn-secondary flex items-center gap-1 ${
+                      viewMode === 'timeline' ? 'bg-blue-100 text-blue-600' : ''
+                    }`}
+                  >
+                    📊 时间线
+                  </button>
+                  <button
+                    onClick={handleNewNote}
+                    className="btn-primary flex items-center gap-1"
+                  >
+                    ➕ 新建笔记
+                  </button>
+                </>
               )}
             </div>
           </div>
 
           {/* Stats */}
-          {!viewingTrash && <NoteStats stats={stats} categories={categories} />}
+          {!viewingTrash && viewMode === 'list' && <NoteStats stats={stats} categories={categories} />}
 
           {/* Import/Export */}
-          {!viewingTrash && (
+          {!viewingTrash && viewMode === 'list' && (
             <ImportExport
               onExport={handleExport}
               onImport={handleImport}
@@ -310,6 +339,18 @@ const Dashboard: React.FC = () => {
               trashNotes={trashNotes}
               onRestore={handleRestoreNote}
               onPermanentlyDelete={handlePermanentlyDeleteNote}
+            />
+          ) : viewMode === 'calendar' ? (
+            <Calendar
+              notes={notes}
+              onSelectDate={(date) => {
+                // You can add logic here to filter notes by date if needed
+              }}
+            />
+          ) : viewMode === 'timeline' ? (
+            <Timeline
+              notes={notes}
+              onSelectNote={handleEditNote}
             />
           ) : (
             <NoteList
