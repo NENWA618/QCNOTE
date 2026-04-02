@@ -41,7 +41,10 @@ const Dashboard: React.FC = () => {
     password: '',
     remotePath: 'notes.json',
     encryptionKey: '',
+    autoSyncEnabled: false,
+    syncInterval: 5 * 60 * 1000, // 5 minutes default
   });
+  const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
   const [syncManager, setSyncManager] = useState<WebDAVSyncManager | null>(null);
 
   // Editor state
@@ -56,6 +59,36 @@ const Dashboard: React.FC = () => {
     setSyncManager(new WebDAVSyncManager(s));
     loadNotes();
   }, []);
+
+  // Auto-sync effect
+  useEffect(() => {
+    if (!webdavConfig.autoSyncEnabled || !storageRef.current) return;
+
+    const interval = setInterval(async () => {
+      const s = storageRef.current;
+      if (!s) return;
+
+      // Skip if there are unresolved conflicts
+      const currentConflicts = await s.getConflictsAsync();
+      if (currentConflicts.length > 0) {
+        console.log('[Auto-sync] Skipping due to unresolved conflicts');
+        return;
+      }
+
+      // Perform sync
+      const config = { ...webdavConfig };
+      const pushResult = await s.pushToWebDAVAsync(config, Boolean(config.encryptionKey));
+      if (pushResult) {
+        const pullResult = await s.pullFromWebDAVAsync(config, Boolean(config.encryptionKey));
+        if (pullResult) {
+          setLastSyncTime(Date.now());
+          await loadNotes(); // Refresh data
+        }
+      }
+    }, webdavConfig.syncInterval);
+
+    return () => clearInterval(interval);
+  }, [webdavConfig.autoSyncEnabled, webdavConfig.syncInterval]);
 
   const loadNotes = async () => {
     const s = storageRef.current;
@@ -74,7 +107,10 @@ const Dashboard: React.FC = () => {
         password: config.password,
         remotePath: config.remotePath,
         encryptionKey: config.encryptionKey || '',
+        autoSyncEnabled: config.autoSyncEnabled || false,
+        syncInterval: config.syncInterval || 5 * 60 * 1000,
       });
+      setLastSyncTime(config.lastSyncTime || null);
     }
 
     // Load trash notes
@@ -97,12 +133,7 @@ const Dashboard: React.FC = () => {
 
     // Search filter
     if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(note =>
-        note.title.toLowerCase().includes(searchLower) ||
-        note.content.toLowerCase().includes(searchLower) ||
-        note.tags.some(tag => tag.toLowerCase().includes(searchLower))
-      );
+      filtered = Utils.searchNotes(filtered, search);
     }
 
     // Category filter
@@ -222,7 +253,8 @@ const Dashboard: React.FC = () => {
   const handleSaveWebdavConfig = async (config: WebDAVConfig) => {
     const s = storageRef.current;
     if (!s) return false;
-    const result = await s.setWebDAVConfigAsync(config);
+    const fullConfig = { ...config, lastSyncTime };
+    const result = await s.setWebDAVConfigAsync(fullConfig);
     if (result) {
       setWebdavConfig({
         url: config.url,
@@ -230,6 +262,8 @@ const Dashboard: React.FC = () => {
         password: config.password,
         remotePath: config.remotePath,
         encryptionKey: config.encryptionKey || '',
+        autoSyncEnabled: config.autoSyncEnabled || false,
+        syncInterval: config.syncInterval || 5 * 60 * 1000,
       });
     }
     return result;
@@ -335,10 +369,11 @@ const Dashboard: React.FC = () => {
               <div className="flex-1 max-w-md">
                 <input
                   type="text"
-                  placeholder="搜索笔记..."
+                  placeholder="搜索笔记... (支持 title:关键词 content:内容 tag:标签 date:2024-01-01)"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  title="高级搜索语法：title:关键词, content:内容, tag:标签, category:分类, date:2024-01-01 或 date:2024-01-01..2024-12-31。支持 AND/OR/NOT 操作符。"
                 />
               </div>
 

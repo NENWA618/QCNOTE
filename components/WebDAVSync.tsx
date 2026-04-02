@@ -225,6 +225,32 @@ const WebDAVSync: React.FC<WebDAVSyncProps> = ({
           placeholder="加密密钥（可选）"
           className="w-full p-2 border rounded"
         />
+
+        {/* Auto-sync settings */}
+        <div className="mt-4 p-3 bg-gray-50 rounded">
+          <h4 className="font-semibold mb-2">自动同步设置</h4>
+          <label className="flex items-center mb-2">
+            <input
+              type="checkbox"
+              checked={localConfig.autoSyncEnabled || false}
+              onChange={(e) => setLocalConfig({ ...localConfig, autoSyncEnabled: e.target.checked })}
+              className="mr-2"
+            />
+            启用自动同步
+          </label>
+          <select
+            value={localConfig.syncInterval || 5 * 60 * 1000}
+            onChange={(e) => setLocalConfig({ ...localConfig, syncInterval: parseInt(e.target.value) })}
+            className="w-full p-2 border rounded"
+            disabled={!localConfig.autoSyncEnabled}
+          >
+            {SYNC_INTERVALS.map((interval) => (
+              <option key={interval.value} value={interval.value}>
+                {interval.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Basic Actions */}
