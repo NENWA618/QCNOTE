@@ -56,6 +56,7 @@ const Dashboard: React.FC = () => {
   const [noteCache, setNoteCache] = useState<Map<string, NoteItem>>(new Map());
   const [searchCache, setSearchCache] = useState<Map<string, NoteItem[]>>(new Map());
   const [syncManager, setSyncManager] = useState<WebDAVSyncManager | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
   // Editor state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -598,8 +599,10 @@ const Dashboard: React.FC = () => {
                 onEdit={handleEditNote}
                 onDelete={handleDeleteNote}
                 onToggleFavorite={handleToggleFavorite}
-                onToggleFavorite={handleToggleFavorite}
                 onToggleArchive={handleToggleArchive}
+                searchQuery={searchQuery}
+                selectedTags={selectedTags}
+                onTagClick={handleTagClick}
               />
             </div>
           )}
