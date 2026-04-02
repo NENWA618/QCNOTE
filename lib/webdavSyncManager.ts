@@ -13,7 +13,7 @@ export type SyncDirection = 'push' | 'pull' | 'both';
 
 export class WebDAVSyncManager {
   private storage: NoteStorage | null = null;
-  private syncInterval: NodeJS.Timeout | null = null;
+  private syncInterval: ReturnType<typeof setInterval> | null = null;
   private syncInProgress = false;
   private lastSyncTime: number | null = null;
   private lastSyncStatus: 'success' | 'failure' | 'pending' | 'idle' = 'idle';
@@ -48,7 +48,7 @@ export class WebDAVSyncManager {
     this.syncInterval = setInterval(
       () => this.executeSync(config, direction),
       config.syncInterval
-    ) as unknown as NodeJS.Timeout;
+    );
   }
 
   /**

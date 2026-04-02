@@ -7,6 +7,9 @@ interface NoteListProps {
   onDelete: (id: string) => void;
   onToggleFavorite: (id: string) => void;
   onToggleArchive: (id: string) => void;
+  searchQuery: string;
+  selectedTags: string[];
+  onTagClick: (tag: string) => void;
 }
 
 const NoteList: React.FC<NoteListProps> = ({

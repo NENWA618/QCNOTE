@@ -17,6 +17,7 @@ import TagManager from '../components/TagManager';
 import OneDriveSync from '../components/OneDriveSync';
 import WebDAVSyncManager from '../lib/webdavSyncManager';
 import { NoteItem, NoteStorage, Stats, NoteVersion, WebDAVConfig, NoteConflict, initWindowStorage } from '../lib/storage';
+import { Utils } from '../lib/utils';
 
 const Dashboard: React.FC = () => {
   const storageRef = useRef<NoteStorage | null>(null);
@@ -57,6 +58,8 @@ const Dashboard: React.FC = () => {
   const [searchCache, setSearchCache] = useState<Map<string, NoteItem[]>>(new Map());
   const [syncManager, setSyncManager] = useState<WebDAVSyncManager | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // Editor state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -92,7 +95,7 @@ const Dashboard: React.FC = () => {
       if (pushResult) {
         const pullResult = await s.pullFromWebDAVAsync(config, Boolean(config.encryptionKey));
         if (pullResult) {
-          setLastSyncTime(Date.now());
+          setLastSyncTime(new Date());
           await loadNotes(); // Refresh data
         }
       }
@@ -128,7 +131,7 @@ const Dashboard: React.FC = () => {
         syncInterval: config.syncInterval || 5 * 60 * 1000,
         conflictStrategy: config.conflictStrategy || 'manual',
       });
-      setLastSyncTime(config.lastSyncTime || null);
+      setLastSyncTime(config.lastSyncTime ? new Date(config.lastSyncTime) : null);
     }
 
     // Load trash notes
@@ -271,7 +274,7 @@ const Dashboard: React.FC = () => {
   const handleSaveWebdavConfig = async (config: WebDAVConfig) => {
     const s = storageRef.current;
     if (!s) return false;
-    const fullConfig = { ...config, lastSyncTime };
+    const fullConfig = { ...config, lastSyncTime: lastSyncTime?.getTime() };
     const result = await s.setWebDAVConfigAsync(fullConfig);
     if (result) {
       setWebdavConfig({
@@ -386,6 +389,37 @@ const Dashboard: React.FC = () => {
 
     await s.setDataAsync(updatedNotes);
     await loadNotes();
+  };
+
+  const handleTagClick = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag) 
+        : [...prev, tag]
+    );
+  };
+
+  const handleClearWebdavConfig = async (): Promise<boolean> => {
+    const s = storageRef.current;
+    if (!s) return false;
+    try {
+      await s.clearWebDAVConfigAsync();
+      setWebdavConfig({
+        url: '',
+        username: '',
+        password: '',
+        remotePath: 'notes.json',
+        encryptionKey: '',
+        autoSyncEnabled: false,
+        syncInterval: 5 * 60 * 1000,
+        conflictStrategy: 'manual',
+      });
+      setLastSyncTime(null);
+      return true;
+    } catch (error) {
+      console.error('Failed to clear WebDAV config:', error);
+      return false;
+    }
   };
 
   const handleRevertVersion = async (version: NoteVersion) => {

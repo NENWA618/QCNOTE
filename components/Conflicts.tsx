@@ -75,7 +75,6 @@ const Conflicts: React.FC<ConflictsProps> = ({ conflicts, onResolve }) => {
                 oldValue={selectedConflict.local.content}
                 newValue={selectedConflict.remote.content}
                 splitView={true}
-                compareMethod="diffWords"
                 leftTitle="Local Version"
                 rightTitle="Remote Version"
                 disableWordDiff={false}
