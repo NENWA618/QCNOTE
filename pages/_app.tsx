@@ -36,12 +36,12 @@ export default function App({ Component, pageProps }: AppProps) {
           NEXT_PUBLIC_LIVE2D_VERSION or defaults to build timestamp. */}
       <Script
         src={ "/js/jquery.min.js" }
-        strategy="beforeInteractive"
+        strategy="afterInteractive"
         onError={(e) => console.error('jquery 加载失败', e)}
       />
       <Script
         src={ "/js/jquery-ui.min.js" }
-        strategy="beforeInteractive"
+        strategy="afterInteractive"
         onError={(e) => console.error('jquery-ui 加载失败', e)}
       />
       <Script

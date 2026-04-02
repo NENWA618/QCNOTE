@@ -1,18 +1,30 @@
-import { Queue, QueueScheduler } from 'bullmq';
-import IORedis from 'ioredis';
-import logger from '../lib/logger';
-
-const connectionString = process.env.REDIS_URL || process.env.REDIS || 'redis://127.0.0.1:6379';
-let connection: IORedis | null;
+let Queue: any, QueueScheduler: any, IORedis: any;
 try {
-  connection = new IORedis(connectionString);
+  const bullmq = require('bullmq');
+  Queue = bullmq.Queue;
+  QueueScheduler = bullmq.QueueScheduler;
+} catch (e) {
+  // bullmq is optional
+}
+
+try {
+  IORedis = require('ioredis');
+} catch (e) {
+  // ioredis is optional
+}
+
+const logger = require('../lib/logger');
+const connectionString = process.env.REDIS_URL || process.env.REDIS || 'redis://127.0.0.1:6379';
+let connection: any;
+try {
+  connection = IORedis ? new IORedis(connectionString) : null;
 } catch (e) {
   logger.warn('[Queue] Failed to create Redis connection:', e instanceof Error ? e.message : e);
   connection = null;
 }
 
-let reminderQueue: Queue | null = null;
-let reminderScheduler: QueueScheduler | null = null;
+let reminderQueue: any = null;
+let reminderScheduler: any = null;
 
 export function initQueue() {
   if (!connection) return null;

@@ -1,21 +1,39 @@
-import { Worker } from 'bullmq';
-import path from 'path';
-import logger from '../lib/logger';
-import pushModule from './push';
-import IORedis from 'ioredis';
+let Worker: any, IORedis: any;
+try {
+  const bullmq = require('bullmq');
+  Worker = bullmq.Worker;
+} catch (e) {
+  // bullmq is optional
+}
+
+try {
+  IORedis = require('ioredis');
+} catch (e) {
+  // ioredis is optional
+}
+
+const path = require('path');
+const logger = require('../lib/logger');
+
+let pushModule: any;
+try {
+  pushModule = require('./push');
+} catch (e) {
+  // push module optional
+}
 
 const connectionString = process.env.REDIS_URL || process.env.REDIS || 'redis://127.0.0.1:6379';
-let connection: IORedis | null;
+let connection: any;
 try {
-  connection = new IORedis(connectionString);
+  connection = IORedis ? new IORedis(connectionString) : null;
 } catch (e) {
   logger.warn('[Worker] Redis connection failed:', e instanceof Error ? e.message : e);
   connection = null;
 }
 
 export async function startWorker() {
-  if (!connection) {
-    logger.info('[Worker] No Redis connection; worker not started');
+  if (!connection || !Worker) {
+    logger.info('[Worker] No Redis connection or Worker module; worker not started');
     return null;
   }
 
