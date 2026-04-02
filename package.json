@@ -17,7 +17,9 @@
   "license": "MIT",
   "dependencies": {
     "@fastify/cors": "^11.2.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "fastify": "^5.7.4",
+    "isomorphic-fetch": "^3.0.0",
     "lunr": "^2.3.9",
     "next": "^14.0.0",
     "pixi-live2d-display": "^0.2.2",

@@ -14,6 +14,7 @@ import { KnowledgeGraph } from '../components/KnowledgeGraph';
 import WebDAVSync from '../components/WebDAVSync';
 import Conflicts from '../components/Conflicts';
 import TagManager from '../components/TagManager';
+import OneDriveSync from '../components/OneDriveSync';
 import WebDAVSyncManager from '../lib/webdavSyncManager';
 import { NoteItem, NoteStorage, Stats, NoteVersion, WebDAVConfig, NoteConflict, initWindowStorage } from '../lib/storage';
 
@@ -44,6 +45,13 @@ const Dashboard: React.FC = () => {
     encryptionKey: '',
     autoSyncEnabled: false,
     syncInterval: 5 * 60 * 1000, // 5 minutes default
+    conflictStrategy: 'manual' as 'manual' | 'prefer-local' | 'prefer-remote',
+  });
+  const [onedriveConfig, setOnedriveConfig] = useState({
+    clientId: '',
+    tenantId: '',
+    accessToken: '',
+    folderPath: 'Notes',
   });
   const [noteCache, setNoteCache] = useState<Map<string, NoteItem>>(new Map());
   const [searchCache, setSearchCache] = useState<Map<string, NoteItem[]>>(new Map());
@@ -299,12 +307,14 @@ const Dashboard: React.FC = () => {
     return result;
   };
 
-  const handleClearWebdavConfig = async () => {
-    const s = storageRef.current;
-    if (!s) return false;
-    const result = await s.clearWebDAVConfigAsync();
-    if (result) setWebdavConfig({ url: '', username: '', password: '', remotePath: 'notes.json', encryptionKey: '' });
-    return result;
+  const handleOneDriveSync = async () => {
+    // OneDrive sync logic would go here
+    await loadNotes();
+  };
+
+  const handleSaveOneDriveConfig = (config: any) => {
+    setOnedriveConfig(config);
+    // Save to storage
   };
 
   const handleRestoreNote = async (id: string) => {
@@ -576,7 +586,12 @@ const Dashboard: React.FC = () => {
                 onPush={handleWebdavPush}
                 onPull={handleWebdavPull}
                 onClearConfig={handleClearWebdavConfig}
-                onConfigChange={handleWebdavConfigChange}
+               OneDriveSync
+                config={onedriveConfig}
+                onSync={handleOneDriveSync}
+                onSaveConfig={handleSaveOneDriveConfig}
+              />
+              < onConfigChange={handleWebdavConfigChange}
               />
               <NoteList
                 notes={filteredNotes}
