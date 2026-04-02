@@ -210,19 +210,17 @@ function GM_xmlhttpRequest(opt) {
         /* 看板娘基础样式 */
         .waifu {
             position: fixed;
-            bottom: -15px;
+            bottom: 0;
             right: 0;
             z-index: 999999 !important;
             font-size: 0;
-            transform: translateY(15px) scale(0.7);
+            transform: translateY(3px);
             transform-origin: bottom right;
             opacity: 0;
             transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
-            overflow: hidden;
-            max-height: 220px;
         }
         .waifu.loaded { opacity: 1; }
-        .waifu:hover { transform: translateY(15px) scale(0.7); }
+        .waifu:hover { transform: translateY(0); }
 
         .waifu-tips {
             opacity: 0;
