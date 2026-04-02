@@ -1,574 +1,155 @@
-# NOTE - 个人笔记应用
+﻿# NOTE 个人笔记应用（重构文档）
 
-[![build](https://github.com/NENWA618/NOTE/actions/workflows/ci.yml/badge.svg)](https://github.com/NENWA618/NOTE/actions)
-[![version](https://img.shields.io/badge/frontend-1.0.0-blue)](https://github.com/NENWA618/NOTE)
-[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![tests](https://img.shields.io/badge/tests-59%20passed-brightgreen)](https://github.com/NENWA618/NOTE)
+> 简洁优雅的全功能笔记管理系统，支持本地存储、Live2D 看板娘、全文 + 向量搜索、离线敏感内容保护，以及可选后端增强服务。
 
-一个简洁而优雅的个人笔记应用，配备完全本地化的 Live2D 看板娘。前端100%本地存储（隐私优先），后端可选部署以启用高级功能。
+## 🌟 项目简介
 
-- 🎨 **Next.js 14** + TypeScript + Tailwind CSS
-- 💾 **IndexedDB 本地存储** 零隐私泄露风险
-- 🎭 **Live2D 看板娘** 本地模型 + 自定义台词 + 健康提醒 + 移动端优化
-- 🌤️ **本地天气系统** 无API依赖 + 确定性fallback
-- 🚀 **可选后端** TypeScript + Fastify + Node.js（推荐部署到 Render）
-- 📱 **响应式设计** 完美支持移动端和桌面端
+- 技术栈：Next.js 14 + React 18 + TypeScript 5 + Tailwind CSS 3
+- 数据存储：前端首选 IndexedDB（lib/storage.ts, lib/idb.ts），保护隐私，支持离线。
+- 动画助手：本地 Live2D 模型（public/js/waifu.js + public/models/*），包括交互、提醒、台词。
+- 搜索能力：lunr + 自定义向量检索（lib/indexer.ts, lib/vector.ts），支持全文检索与相似笔记推荐。
+- 可选后端：Node + Fastify（server/index.ts）用于队列、情感分析、推送等高级功能。
 
-## ✨ 核心功能
+## ✅ 核心功能
 
-| 功能 | 说明 |
-|------|------|
-| 📝 笔记管理 | 创建、编辑、删除、收藏、归档 |
-| 📋 Markdown 富文本 | 表格、代码块、列表等支持 |
-| 🏷️ 分类 + 标签 | 灵活的笔记组织 |
-| 🔍 智能搜索 | 全文搜索 + 向量相似度搜索 |
-| 📊 统计仪表板 | 笔记数量、标签热力、类别分布 |
-| 🎭 看板娘 | 本地Live2D模型，健康提醒、自定义台词、移动端触摸支持 |
-| 🌤️ 天气显示 | 本地数据优先 + 确定性算法fallback |
-| 📤 数据管理 | JSON 导入导出 + 批量操作 |
-| 📱 响应式设计 | 完美适配手机、平板、桌面 |
+- 笔记 CRUD：新建、编辑、删除、归档、收藏
+- Markdown 支持：react-markdown + remark-gfm + rehype-sanitize
+- 标签/分类：多维度笔记组合组织，支持多标签搜索
+- 数据导入/导出：JSON 批量操作与迁移（components/ImportExport.tsx）
+- 仪表盘：统计、热力、趋势图（components/NoteStats.tsx）
+- 本地天气：public/data/local-weather.json + 非依赖 API fallback
+- 看板娘：本地交互模型 + 健康提示（components/Character.tsx, public/js/waifu*.js）
 
-## 🚀 快速开始
+## 📁 目录说明
 
-### 前置要求
+- pages/: Next.js 页面入口
+- components/: UI 组件
+- lib/: 业务逻辑、存储、搜索、辅助函数
+- public/: 静态资源（js、模型、图片、数据）
+- server/: 可选后端服务（推荐 Render 部署）
+- test/: Vitest 单测
 
-- Node.js 18+
-- npm
+## 🚀 本地运行
 
-### 安装并启动
+### 1. 前端
 
 ```bash
+cd c:\Users\USER\OneDrive\Documents\NOTE
 npm install
 npm run dev
 ```
 
-访问 http://localhost:3000
+访问：`http://localhost:3000`
 
-### 常用命令
+### 2. 可选后端（启动与同步）
 
 ```bash
-npm run build      # 生产构建
-npm start          # 启动生产服务器
-npm run lint       # ESLint 检查
-npm test           # 单元测试（59个测试全部通过）
-npm run format     # 代码格式化
+cd server
+npm install
+npm start
 ```
 
-## 📁 项目结构
+默认：`http://localhost:10000`
 
-```
-NOTE/
-├── pages/                   # Next.js 页面
-│   ├── _app.tsx            # 应用入口（初始化存储、Live2D脚本）
-│   ├── index.tsx           # 首页
-│   ├── dashboard.tsx       # 笔记管理主页面
-│   ├── contact.tsx         # 联系页面
-│   ├── privacy.tsx         # 隐私政策
-│   └── terms.tsx           # 使用条款
-├── components/             # React 组件（模块化架构）
-│   ├── Character.tsx       # 虚拟助手展示
-│   ├── Header.tsx          # 导航栏
-│   ├── Sidebar.tsx         # 侧边栏
-│   ├── Footer.tsx          # 页脚
-│   ├── NoteList.tsx        # 笔记列表网格
-│   ├── NoteEditor.tsx      # 笔记编辑器模态框
-│   ├── NoteStats.tsx       # 统计仪表板
-│   ├── ImportExport.tsx    # 数据导入导出
-│   └── MarkdownView.tsx    # Markdown 渲染
-├── lib/                    # 业务逻辑与工具
-│   ├── idb.ts              # IndexedDB 助手
-│   ├── storage.ts          # 存储层（IndexedDB + localStorage）
-│   ├── indexer.ts          # 全文搜索与向量索引
-│   ├── vector.ts           # 向量计算
-│   ├── sentiment.ts        # 情感分析
-│   ├── utils.ts            # 工具函数
-│   ├── ui.ts               # UI 工具
-│   ├── logger.ts           # 日志工具
-│   └── types/              # TypeScript 类型定义
-├── public/                 # 静态资源
-│   ├── js/
-│   │   ├── waifu.js        # Live2D 看板娘脚本（移动端优化）
-│   │   ├── waifu-tips.js   # 台词配置
-│   │   ├── live2d.min.js   # Live2D 运行时
-│   │   ├── jquery.min.js   # jQuery
-│   │   └── jquery-ui.min.js # jQuery UI
-│   ├── data/
-│   │   └── local-weather.json # 本地天气数据
-│   ├── models/             # Live2D 模型文件
-│   │   ├── miku/           # 初音未来模型
-│   │   └── toronomiya/     # 其他模型
-│   ├── service-worker.js   # Service Worker
-│   └── images/             # 图片资源
-├── server/                 # 后端服务（可选，TypeScript）
-│   ├── index.ts            # 主服务器
-│   ├── queue.ts            # 任务队列
-│   ├── worker.ts           # 后台工作进程
-│   ├── sentiment.ts        # 情感分析服务
-│   ├── vector.ts           # 向量计算服务
-│   └── package.json        # 后端依赖
-├── test/                   # 单元测试（59个测试）
-│   ├── storage.test.ts     # 存储层测试
-│   ├── vector.test.ts      # 向量计算测试
-│   ├── server.test.ts      # 服务器API测试
-│   ├── live2d.test.tsx     # Live2D组件测试
-│   └── ...
-├── styles/                 # 样式文件
-│   └── globals.css         # Tailwind CSS + 自定义组件样式
-├── tailwind.config.js      # Tailwind 主题配置
-├── tsconfig.json           # TypeScript 配置
-├── vitest.config.ts        # 测试配置
-└── package.json            # 前端依赖
+### 3. 常用脚本
+
+```bash
+npm run build
+npm start
+npm run lint
+npm test
+npm run format
 ```
 
-## 🎨 技术栈
+## ⚙️ 配置与环境变量
 
-**前端**
-
-| 部分 | 技术 | 版本 |
-|------|------|------|
-| 框架 | Next.js | 14.2 |
-| UI | React | 18 |
-| 语言 | TypeScript | 5.2 |
-| 样式 | Tailwind CSS | 3.4 |
-| 存储 | IndexedDB | 原生 |
-| 搜索 | lunr | 2.3 |
-| Markdown | react-markdown | 10.1 |
-| Live2D | pixi-live2d-display | 0.2.2 |
-| 测试 | Vitest | 1.4 |
-
-**后端（可选）**
-
-| 部分 | 技术 | 版本 |
-|------|------|------|
-| 框架 | Fastify | 5.7 |
-| 运行时 | Node.js | 18+ |
-| 队列 | BullMQ | 5.0 |
-| 缓存 | Redis | 5.3 |
-| 语言 | TypeScript | 5.2 |
-
-## 🔧 环境变量
-
-**前端（`.env.local`）**
+### 前端（./.env.local）
 
 ```env
-# 可选：后端 API 地址
 NEXT_PUBLIC_CHARACTER_SERVER_URL=http://localhost:10000
-
-# 可选：Web Push 公钥
 NEXT_PUBLIC_VAPID_PUBLIC=<your-vapid-public-key>
 ```
 
-**后端**
+### 后端（server/.env 或环境变量）
 
 ```env
-# Web Push 密钥对
-VAPID_PUBLIC=<your-vapid-public-key>
-VAPID_PRIVATE=<your-vapid-private-key>
-
-# Redis 连接（可选）
-REDIS_URL=redis://<user>:<password>@<host>:<port>
-
-# 监听端口
 PORT=10000
+REDIS_URL=redis://<user>:<password>@<host>:<port>
+VAPID_PUBLIC=<publicKey>
+VAPID_PRIVATE=<privateKey>
 ```
 
-## 🚀 部署指南
+## 🧩 数据模型
 
-### 前端部署（Vercel）
-
-1. Fork 仓库到 GitHub
-2. 在 Vercel 导入项目
-3. 配置环境变量（可选）
-4. 自动构建部署
-
-### 后端部署（Render）
-
-1. Fork 仓库到 GitHub
-2. 在 Render 创建 Web Service
-3. 构建命令：`npm install`
-4. 启动命令：`npm start`
-5. 配置环境变量（见上方）
-
-### 本地开发
-
-```bash
-# 前端
-npm install
-npm run dev        # http://localhost:3000
-
-# 后端（可选）
-cd server
-npm install
-npm start          # http://localhost:10000
-```
-
-## 💾 数据结构
-
-笔记对象：
+笔记说明（lib/types/ 和 lib/storage.ts）：
 
 ```json
 {
   "id": "note_1708262400000",
-  "title": "笔记标题",
-  "content": "笔记内容...",
-  "category": "生活|工作|学习|灵感",
-  "tags": ["标签1", "标签2"],
+  "title": "示例标题",
+  "content": "Markdown 内容",
+  "category": "生活|工作",
+  "tags": ["tag1", "tag2"],
   "color": "#dc96b4",
   "isFavorite": false,
+  "isArchived": false,
   "createdAt": 1708262400000,
-  "updatedAt": 1708262400000,
-  "isArchived": false
+  "updatedAt": 1708262400000
 }
 ```
 
-## 🎭 Live2D 看板娘
+## 📦 部署建议
 
-看板娘配置位于 [public/js/waifu.js](public/js/waifu.js)。
-
-**特性**
-
-- 🎨 支持本地 Live2D 模型（默认 miku 和 toronomiya）
-- 💬 可自定义台词、问候、提醒语
-- ⏰ 健康提醒：喝水、休息、坐姿、睡眠
-- 🎮 交互功能：拖拽、点击、显示/隐藏
-- 📱 移动端优化：400px以下屏幕正常显示，支持触摸
-- 💾 配置保存在 `localStorage`，无需后端
-
-**授权**
-
-- 脚本：GPL-2.0（来自 [fghrsh/live2d_demo](https://github.com/fghrsh/live2d_demo)）
-- 模型：遵循对应 Live2D 模型的许可证
-
-## 🌤️ 本地天气系统
-
-天气数据存储在 [public/data/local-weather.json](public/data/local-weather.json)。
-
-**架构**
-
-```json
-{
-  "default": {
-    "weather": "晴",
-    "temperature": "25°C",
-    "description": "万里无云"
-  },
-  "广东": {
-    "广州": {
-      "2026-04-02": {
-        "weather": "多云",
-        "temperature": "28°C",
-        "description": "局部多云"
-      },
-      "default": {
-        "weather": "晴",
-        "temperature": "25°C",
-        "description": "万里无云"
-      }
-    }
-  }
-}
-```
-
-## 📊 组件架构
-
-项目采用模块化组件架构，提高可维护性和复用性：
-
-- **NoteList**: 笔记网格显示，支持搜索、过滤和操作
-- **NoteEditor**: 模态编辑器，支持实时预览和元数据管理
-- **NoteStats**: 统计仪表板，显示笔记数量和分类信息
-- **ImportExport**: 数据导入导出管理组件
-
-## 🧪 测试覆盖
-
-项目包含完整的单元测试套件：
-
-- **59个测试**全部通过
-- 覆盖存储层、向量计算、服务器API、Live2D组件
-- 使用 Vitest + Testing Library
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 创建 Pull Request
-
-## 📄 许可证
-
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
-
-## 🙏 致谢
-
-- [fghrsh/live2d_demo](https://github.com/fghrsh/live2d_demo) - Live2D 看板娘脚本
-- [Next.js](https://nextjs.org/) - React 框架
-- [Tailwind CSS](https://tailwindcss.com/) - 实用优先的CSS框架
-- [Vercel](https://vercel.com/) - 前端部署平台
-- [Render](https://render.com/) - 后端部署平台
-
-**前端（`.env.local`）**
-
-```env
-# 可选：后端 API 地址
-NEXT_PUBLIC_CHARACTER_SERVER_URL=http://localhost:10000
-
-# 可选：Web Push 公钥
-NEXT_PUBLIC_VAPID_PUBLIC=<your-vapid-public-key>
-```
-
-**后端**
-│   ├── contact.tsx         # 联系页面
-│   ├── privacy.tsx         # 隐私政策
-│   └── terms.tsx           # 使用条款
-├── components/             # React 组件
-│   ├── Character.tsx       # 虚拟助手展示
-│   ├── Header.tsx          # 导航栏
-│   ├── Sidebar.tsx         # 侧边栏
-│   ├── Footer.tsx          # 页脚
-│   └── MarkdownView.tsx    # Markdown 渲染
-├── lib/                    # 业务逻辑与工具
-│   ├── idb.ts              # IndexedDB 助手
-│   ├── storage.ts          # 存储层（IndexedDB + localStorage）
-│   ├── indexer.ts          # 全文搜索与向量索引
-│   ├── vector.ts           # 向量计算
-│   ├── sentiment.ts        # 情感分析
-│   ├── utils.ts            # 工具函数
-│   ├── ui.ts               # UI 工具
-│   ├── logger.ts           # 日志工具
-│   └── types/              # 类型定义
-├── public/                 # 静态资源
-│   ├── js/
-│   │   ├── waifu.js        # Live2D 看板娘脚本
-│   │   ├── waifu-tips.js   # 台词配置
-│   │   ├── live2d.min.js   # Live2D 运行时
-│   │   ├── jquery.min.js   # jQuery
-│   │   └── jquery-ui.min.js # jQuery UI
-│   ├── data/
-│   │   └── local-weather.json # 本地天气数据
-│   ├── live2d/koharu/      # Live2D 模型文件
-│   ├── service-worker.js   # Service Worker
-│   └── images/             # 图片资源
-├── server/                 # 后端服务（可选，TypeScript）
-│   ├── index.ts            # 主服务器
-│   ├── queue.ts            # 任务队列
-│   ├── worker.ts           # 后台工作进程
-│   ├── sentiment.ts        # 情感分析服务
-│   ├── vector.ts           # 向量计算服务
-│   └── package.json        # 后端依赖
-├── test/                   # 单元测试
-│   ├── storage.test.ts
-│   ├── vector.test.ts
-│   ├── live2d.test.tsx
-│   └── ...
-├── styles/                 # 样式文件
-│   └── globals.css         # Tailwind 配置
-├── tailwind.config.js      # Tailwind 主题
-├── tsconfig.json           # TypeScript 配置
-├── vitest.config.ts        # 测试配置
-└── package.json            # 前端依赖
-```
-
-## 🎨 技术栈
-
-**前端**
-
-| 部分 | 技术 | 版本 |
-|------|------|------|
-| 框架 | Next.js | 14.2 |
-| UI | React | 18 |
-| 语言 | TypeScript | 5.2 |
-| 样式 | Tailwind CSS | 3.4 |
-| 存储 | IndexedDB | 原生 |
-| 搜索 | lunr | 2.3 |
-| 解析 | react-markdown | 10.1 |
-| 测试 | Vitest | 1.4 |
-
-**后端（可选）**
-
-| 部分 | 技术 | 版本 |
-|------|------|------|
-| 框架 | Fastify | 4.24 |
-| 运行时 | Node.js | 18+ |
-| 队列 | BullMQ | 5.0 |
-| 缓存 | Redis | 5.3 |
-| 语言 | TypeScript | 5.2 |
-
-## 🔧 环境变量
-
-**前端（`.env.local`）**
-
-```env
-# 可选：后端 API 地址
-NEXT_PUBLIC_CHARACTER_SERVER_URL=http://localhost:10000
-
-# 可选：Web Push 公钥
-NEXT_PUBLIC_VAPID_PUBLIC=<your-vapid-public-key>
-```
-
-**后端**
-
-```env
-# Web Push 密钥对
-VAPID_PUBLIC=<your-vapid-public-key>
-VAPID_PRIVATE=<your-vapid-private-key>
-
-# Redis 连接（可选）
-REDIS_URL=redis://<user>:<password>@<host>:<port>
-
-# 监听端口
-PORT=10000
-```
-
-## 🚀 部署指南
-
-### 前端部署（Vercel）
-
-1. Fork 仓库到 GitHub
-2. 在 Vercel 导入项目
-3. 配置环境变量（可选）
-4. 自动构建部署
-
-### 后端部署（Render）
-
-1. Fork 仓库到 GitHub
-2. 在 Render 创建 Web Service
-3. 构建命令：`npm install`
+### 前端：Vercel
+1. 连接 GitHub 仓库
+2. 设置环境变量
+   - NEXT_PUBLIC_CHARACTER_SERVER_URL
+   - NEXT_PUBLIC_VAPID_PUBLIC
+3. 构建命令：`npm install && npm run build`
 4. 启动命令：`npm start`
-5. 配置环境变量（见上方）
 
-### 本地开发
+### 后端：Render
+1. 目标目录：server
+2. Build：`npm install`
+3. Start：`node index.js`
+4. Redis：建议使用 Render Key Value /外部 Redis
+
+## 🛠️ 快速故障排查
+
+- 页面空白：浏览器控制台是否 waifu.js / Live2D 加载失败
+- 数据无法保存：IndexedDB 权限或存储异常（lib/idb.ts）
+- 搜索不准：重建全文和向量索引，查看 lib/indexer.ts
+- 后端 500：server/log 及 REDIS_URL/VAPID 配置
+
+## 🔐 隐私与授权
+
+- 前端默认仅本地存储，无远程同步
+- Live2D 资源遵循源项目许可证（GPL-2.0 或模型对应授权）
+- 敏感信息请断网使用或自行扩展加密存储
+
+## 🧪 测试
 
 ```bash
-# 前端
-npm install
-npm run dev        # http://localhost:3000
-
-# 后端（可选）
-cd server
-npm install
-npm start          # http://localhost:10000
+npm test
 ```
 
-## 💾 数据结构
+## 📌 贡献指南
 
-笔记对象：
+- 代码风格：ESLint + Prettier
+- 分支策略：main + 特性分支
+- PR 内容：功能说明、测试覆盖、文档变更
 
-```json
-{
-  "id": "note_1708262400000",
-  "title": "笔记标题",
-  "content": "笔记内容...",
-  "category": "生活|工作|学习|灵感",
-  "tags": ["标签1", "标签2"],
-  "color": "#dc96b4",
-  "isFavorite": false,
-  "createdAt": 1708262400000,
-  "updatedAt": 1708262400000,
-  "isArchived": false
-}
-```
+## 📚 参考链接
 
-## 🎭 Live2D 看板娘
+- pages/index.tsx, pages/dashboard.tsx
+- lib/storage.ts, lib/indexer.ts, lib/vector.ts
+- components/Character.tsx, public/js/waifu.js
+- server/index.ts, server/queue.ts, server/worker.ts
 
-看板娘配置位于 [public/js/waifu.js](public/js/waifu.js)。
+## 🏷️ 版本
 
-**特性**
+- 当前：1.0.0
 
-- 🎨 支持本地 Live2D 模型（默认 koharu）
-- 💬 可自定义台词、问候、提醒语
-- ⏰ 健康提醒：喝水、休息、坐姿、睡眠
-- 🎮 交互功能：拖拽、点击、显示/隐藏
-- 💾 配置保存在 `localStorage`，无需后端
+## 📜 许可证
 
-**授权**
-
-- 脚本：GPL-2.0（来自 [fghrsh/live2d_demo](https://github.com/fghrsh/live2d_demo)）
-- 模型：遵循对应 Live2D 模型的许可证
-
-## 🌤️ 本地天气系统
-
-天气数据存储在 [public/data/local-weather.json](public/data/local-weather.json)。
-
-**架构**
-
-```json
-{
-  "default": {
-    "weather": "晴",
-    "temperature": "25°C",
-    "description": "万里无云"
-  },
-  "广东": {
-    "广州": {
-      "2026-04-02": {
-        "weather": "多云",
-        "temperature": "28°C",
-        "description": "局部多云"
-      },
-      "default": {
-        "weather": "晴",
-        "temperature": "26°C",
-        "description": "阳光明媚"
-      }
-    },
-    "default": {
-      "weather": "晴",
-      "temperature": "25°C",
-      "description": "广东天气"
-    }
-  }
-}
-```
-
-**fallback机制**
-
-当本地数据不可用时，使用确定性哈希算法基于城市+日期生成天气：
-
-```javascript
-function fallbackWeather(city, date) {
-  const hash = hashCode(city + date);
-  const weathers = ['晴', '多云', '阴', '小雨', '中雨'];
-  const temps = ['20°C', '22°C', '25°C', '28°C', '30°C'];
-  return {
-    weather: weathers[Math.abs(hash) % weathers.length],
-    temperature: temps[Math.abs(hash) % temps.length],
-    description: '本地算法生成'
-  };
-}
-```
-
-## 🛠️ 开发指南
-
-### 添加新笔记功能
-
-编辑 `components/` 中的组件，使用 `await storage.getDataAsync()` 获取数据。
-
-### 扩展搜索功能
-
-参考 `lib/indexer.ts`，支持全文搜索和向量搜索。
-
-### 自定义样式
-
-在 `tailwind.config.js` 定义颜色和组件，在 `styles/globals.css` 使用 `@layer components`。
-
-## 📦 贡献
-
-欢迎 Fork、Issue 和 Pull Request。
-
-## 📄 许可证
-
-MIT License - 自由使用、修改、分发
-
-## 👨‍💻 开发者
-
-NOTE 由热爱笔记的开发者创建。
-
----
-
-**更新日期**：2026 年 4 月  
-**版本**：1.0.0  
-**构建状态**：✅ 7页编译成功
-
-享受记录的过程，让思考变成力量。✨
+MIT
