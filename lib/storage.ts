@@ -54,6 +54,13 @@ export interface WebDAVConfig {
   password: string;
   remotePath: string;
   encryptionKey?: string;
+  // Auto-sync settings
+  autoSyncEnabled?: boolean;
+  syncInterval?: number; // in milliseconds
+  lastSyncTime?: number; // timestamp
+  lastSyncStatus?: 'success' | 'failure' | 'pending';
+  lastSyncError?: string;
+  conflictStrategy?: 'prefer-local' | 'prefer-remote' | 'manual';
 }
 
 export interface NoteConflict {

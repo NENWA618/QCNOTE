@@ -13,6 +13,7 @@ import { Timeline } from '../components/Timeline';
 import { KnowledgeGraph } from '../components/KnowledgeGraph';
 import WebDAVSync from '../components/WebDAVSync';
 import Conflicts from '../components/Conflicts';
+import WebDAVSyncManager from '../lib/webdavSyncManager';
 import { NoteItem, NoteStorage, Stats, NoteVersion, WebDAVConfig, NoteConflict, initWindowStorage } from '../lib/storage';
 
 const Dashboard: React.FC = () => {
@@ -41,6 +42,7 @@ const Dashboard: React.FC = () => {
     remotePath: 'notes.json',
     encryptionKey: '',
   });
+  const [syncManager, setSyncManager] = useState<WebDAVSyncManager | null>(null);
 
   // Editor state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -51,6 +53,7 @@ const Dashboard: React.FC = () => {
     if (typeof window === 'undefined') return;
     const s = initWindowStorage() || new NoteStorage();
     storageRef.current = s;
+    setSyncManager(new WebDAVSyncManager(s));
     loadNotes();
   }, []);
 
@@ -230,6 +233,12 @@ const Dashboard: React.FC = () => {
       });
     }
     return result;
+  };
+
+  const handleWebdavConfigChange = async (config: WebDAVConfig) => {
+    if (syncManager) {
+      await syncManager.updateConfig(config);
+    }
   };
 
   const handleWebdavPush = async (config: WebDAVConfig) => {
@@ -453,10 +462,12 @@ const Dashboard: React.FC = () => {
             <div className="space-y-4">
               <WebDAVSync
                 config={webdavConfig}
+                syncManager={syncManager}
                 onSaveConfig={handleSaveWebdavConfig}
                 onPush={handleWebdavPush}
                 onPull={handleWebdavPull}
                 onClearConfig={handleClearWebdavConfig}
+                onConfigChange={handleWebdavConfigChange}
               />
               <NoteList
                 notes={filteredNotes}
