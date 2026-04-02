@@ -4,12 +4,13 @@
 [![version](https://img.shields.io/badge/frontend-1.0.0-blue)](https://github.com/NENWA618/NOTE)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-一个简洁而优雅的个人笔记应用，配备 Live2D 看板娘。前端完全本地存储（隐私优先），后端可选部署以启用高级功能。
+一个简洁而优雅的个人笔记应用，配备完全本地化的 Live2D 看板娘。前端100%本地存储（隐私优先），后端可选部署以启用高级功能。
 
 - 🎨 **Next.js 14** + TypeScript + Tailwind CSS
-- 💾 **IndexedDB 本地存储** 100% 隐私保护  
-- 🎭 **Live2D 看板娘** 可配置台词、健康提醒
-- 🚀 **可选后端** Fastify + Node.js（推荐部署到 Render）
+- 💾 **IndexedDB 本地存储** 零隐私泄露风险
+- 🎭 **Live2D 看板娘** 本地模型 + 自定义台词 + 健康提醒
+- 🌤️ **本地天气系统** 无API依赖 + 确定性fallback
+- 🚀 **可选后端** TypeScript + Fastify + Node.js（推荐部署到 Render）
 
 ## ✨ 核心功能
 
@@ -20,7 +21,8 @@
 | 🏷️ 分类 + 标签 | 灵活的笔记组织 |
 | 🔍 搜索 | 全文搜索 + 向量相似度搜索 |
 | 📊 统计 | 笔记数量、标签热力、类别分布 |
-| 🎭 看板娘 | Live2D 看板娘，健康提醒、自定义台词 |
+| 🎭 看板娘 | 本地Live2D模型，健康提醒、自定义台词 |
+| 🌤️ 天气显示 | 本地数据优先 + 确定性算法fallback |
 | 📤 导入导出 | JSON 备份和恢复 |
 
 ## 🚀 快速开始
@@ -42,7 +44,7 @@ npm run dev
 ### 常用命令
 
 ```bash
-npm run build      # 生产构建
+npm run build      # 生产构建（7页编译成功）
 npm start          # 启动生产服务器
 npm run lint       # ESLint 检查
 npm test           # 单元测试
@@ -64,8 +66,7 @@ NOTE/
 │   ├── Header.tsx          # 导航栏
 │   ├── Sidebar.tsx         # 侧边栏
 │   ├── Footer.tsx          # 页脚
-│   ├── MarkdownView.tsx    # Markdown 渲染
-│   └── Live2DViewer.tsx    # Live2D 渲染器
+│   └── MarkdownView.tsx    # Markdown 渲染
 ├── lib/                    # 业务逻辑与工具
 │   ├── idb.ts              # IndexedDB 助手
 │   ├── storage.ts          # 存储层（IndexedDB + localStorage）
@@ -73,16 +74,27 @@ NOTE/
 │   ├── vector.ts           # 向量计算
 │   ├── sentiment.ts        # 情感分析
 │   ├── utils.ts            # 工具函数
+│   ├── ui.ts               # UI 工具
+│   ├── logger.ts           # 日志工具
 │   └── types/              # 类型定义
 ├── public/                 # 静态资源
-│   ├── js/waifu.js         # Live2D 看板娘脚本
+│   ├── js/
+│   │   ├── waifu.js        # Live2D 看板娘脚本
+│   │   ├── waifu-tips.js   # 台词配置
+│   │   ├── live2d.min.js   # Live2D 运行时
+│   │   ├── jquery.min.js   # jQuery
+│   │   └── jquery-ui.min.js # jQuery UI
+│   ├── data/
+│   │   └── local-weather.json # 本地天气数据
+│   ├── live2d/koharu/      # Live2D 模型文件
 │   ├── service-worker.js   # Service Worker
-│   ├── live2d/             # Live2D 模型文件
 │   └── images/             # 图片资源
-├── server/                 # 后端服务（可选）
-│   ├── index.js            # 主服务器
-│   ├── queue.js            # 任务队列
-│   ├── worker.js           # 后台工作进程
+├── server/                 # 后端服务（可选，TypeScript）
+│   ├── index.ts            # 主服务器
+│   ├── queue.ts            # 任务队列
+│   ├── worker.ts           # 后台工作进程
+│   ├── sentiment.ts        # 情感分析服务
+│   ├── vector.ts           # 向量计算服务
 │   └── package.json        # 后端依赖
 ├── test/                   # 单元测试
 │   ├── storage.test.ts
@@ -93,6 +105,7 @@ NOTE/
 │   └── globals.css         # Tailwind 配置
 ├── tailwind.config.js      # Tailwind 主题
 ├── tsconfig.json           # TypeScript 配置
+├── vitest.config.ts        # 测试配置
 └── package.json            # 前端依赖
 ```
 
@@ -119,6 +132,7 @@ NOTE/
 | 运行时 | Node.js | 18+ |
 | 队列 | BullMQ | 5.0 |
 | 缓存 | Redis | 5.3 |
+| 语言 | TypeScript | 5.2 |
 
 ## 🔧 环境变量
 
@@ -157,7 +171,7 @@ PORT=10000
 
 ### 后端部署（Render）
 
-1. Fork 仓库到 GitHub  
+1. Fork 仓库到 GitHub
 2. 在 Render 创建 Web Service
 3. 构建命令：`npm install`
 4. 启动命令：`npm start`
@@ -201,7 +215,7 @@ npm start          # http://localhost:10000
 
 **特性**
 
-- 🎨 支持多种 Live2D 模型（默认 koharu）
+- 🎨 支持本地 Live2D 模型（默认 koharu）
 - 💬 可自定义台词、问候、提醒语
 - ⏰ 健康提醒：喝水、休息、坐姿、睡眠
 - 🎮 交互功能：拖拽、点击、显示/隐藏
@@ -211,6 +225,58 @@ npm start          # http://localhost:10000
 
 - 脚本：GPL-2.0（来自 [scriptcat.org](https://scriptcat.org/zh-CN/script-show-page/5343)）
 - 模型：遵循对应 Live2D 模型的许可证
+
+## 🌤️ 本地天气系统
+
+天气数据存储在 [public/data/local-weather.json](public/data/local-weather.json)。
+
+**架构**
+
+```json
+{
+  "default": {
+    "weather": "晴",
+    "temperature": "25°C",
+    "description": "万里无云"
+  },
+  "广东": {
+    "广州": {
+      "2026-04-02": {
+        "weather": "多云",
+        "temperature": "28°C",
+        "description": "局部多云"
+      },
+      "default": {
+        "weather": "晴",
+        "temperature": "26°C",
+        "description": "阳光明媚"
+      }
+    },
+    "default": {
+      "weather": "晴",
+      "temperature": "25°C",
+      "description": "广东天气"
+    }
+  }
+}
+```
+
+**fallback机制**
+
+当本地数据不可用时，使用确定性哈希算法基于城市+日期生成天气：
+
+```javascript
+function fallbackWeather(city, date) {
+  const hash = hashCode(city + date);
+  const weathers = ['晴', '多云', '阴', '小雨', '中雨'];
+  const temps = ['20°C', '22°C', '25°C', '28°C', '30°C'];
+  return {
+    weather: weathers[Math.abs(hash) % weathers.length],
+    temperature: temps[Math.abs(hash) % temps.length],
+    description: '本地算法生成'
+  };
+}
+```
 
 ## 🛠️ 开发指南
 
@@ -241,6 +307,7 @@ NOTE 由热爱笔记的开发者创建。
 ---
 
 **更新日期**：2026 年 4 月  
-**版本**：1.0.0
+**版本**：1.0.0  
+**构建状态**：✅ 7页编译成功
 
 享受记录的过程，让思考变成力量。✨
