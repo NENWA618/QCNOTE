@@ -586,8 +586,14 @@ const Dashboard: React.FC = () => {
                 onPush={handleWebdavPush}
                 onPull={handleWebdavPull}
                 onClearConfig={handleClearWebdavConfig}
-               OneDriveSync
+                onConfigChange={handleWebdavConfigChange}
+              />
+              <OneDriveSync
                 config={onedriveConfig}
+                onSync={handleOneDriveSync}
+                onSaveConfig={handleSaveOneDriveConfig}
+              />
+              <NoteList
                 onSync={handleOneDriveSync}
                 onSaveConfig={handleSaveOneDriveConfig}
               />
