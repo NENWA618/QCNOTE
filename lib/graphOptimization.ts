@@ -108,16 +108,18 @@ export class LODManager {
     const detail = this.getDetailLevel();
 
     switch (detail) {
-      case 'low':
+      case 'low': {
         // Show only top 30% by importance
         const sorted = [...nodes].sort((a, b) => b.importance - a.importance);
         return sorted.slice(0, Math.ceil(nodes.length * 0.3));
+      }
 
-      case 'medium':
+      case 'medium': {
         // Show top 70% by importance
         return [...nodes]
           .sort((a, b) => b.importance - a.importance)
           .slice(0, Math.ceil(nodes.length * 0.7));
+      }
 
       case 'high':
         // Show all nodes
