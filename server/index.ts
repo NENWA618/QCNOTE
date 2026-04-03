@@ -13,6 +13,7 @@ try {
 import vector from './vector';
 import sentiment from './sentiment';
 import AIService from './aiService';
+import { rateLimitMiddleware, apiKeyMiddleware, startRateLimitCleanup } from './middleware';
 
 interface Note { id: string; title: string; content: string; }
 interface IndexState { lunr: any | null; vectors: Record<string, Record<string, number>>; sentiments: Record<string, unknown>; }
@@ -50,6 +51,11 @@ const DEFAULT_PERSONA = {
 function buildFastify() {
   const fastify = Fastify({ logger: true });
   fastify.register(require('@fastify/cors'), { origin: true });
+  
+  // Register security middleware
+  rateLimitMiddleware(fastify);
+  apiKeyMiddleware(fastify);
+  
   if (typeof registerRoutes === 'function') {
     registerRoutes(fastify);
   }
@@ -270,9 +276,16 @@ function generateReplyFromMemory(message: string, memory: any, persona: any, not
 const PORT = Number(process.env.PORT || process.env.REDIRECT_PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
 
+// Start rate limit cleanup
+startRateLimitCleanup();
+
 fastify.listen({ port: PORT, host: HOST })
   .then(() => {
     logger.info(`[Server] listening on ${HOST}:${PORT}`);
+    logger.info('[Server] Rate limiting enabled: 30 requests per minute per IP');
+    if (process.env.REQUIRE_API_KEY === 'true') {
+      logger.info('[Server] API key validation enabled');
+    }
   })
   .catch((err: unknown) => {
     logger.error('[Server] failed to start', err);

@@ -1,4 +1,4 @@
-﻿# NOTE 个人笔记应用（重构文档）
+﻿# NOTE 个人笔记应用
 
 > 简洁优雅的全功能笔记管理系统，支持本地存储、Live2D 看板娘、全文 + 向量搜索、离线敏感内容保护，以及可选后端增强服务。
 
@@ -19,6 +19,13 @@
 - 仪表盘：统计、热力、趋势图（components/NoteStats.tsx）
 - 本地天气：public/data/local-weather.json + 非依赖 API fallback
 - 看板娘：本地交互模型 + 健康提示（components/Character.tsx, public/js/waifu*.js）
+
+## 🔒 安全特性
+
+- **错误隔离**：全局 ErrorBoundary 组件，应用级别故障不会导致完全崩溃
+- **后端代理**：所有 AI API 调用通过后端代理（server/aiService.ts），API 密钥不暴露浏览器
+- **速率限制**：后端中间件限制每IP 30次请求/分钟，防止 API 滥用
+- **可选认证**：支持 X-API-Key 请求头认证（REQUIRE_API_KEY=true 启用）
 
 ## 📁 目录说明
 
@@ -54,11 +61,14 @@ npm start
 ### 3. 常用脚本
 
 ```bash
-npm run build
-npm start
-npm run lint
-npm test
-npm run format
+npm run dev           # 开发服务器（HMR 启用）
+npm run build         # 生产构建
+npm start             # 启动生产服务器
+npm run lint          # ESLint 检查
+npm run format        # Prettier 格式化
+npm test              # Vitest 单元测试
+npm run test:e2e      # Playwright 端到端测试
+npm run test:e2e:ui   # E2E 测试 UI 模式（调试）
 ```
 
 ## ⚙️ 配置与环境变量
@@ -74,9 +84,33 @@ NEXT_PUBLIC_VAPID_PUBLIC=<your-vapid-public-key>
 
 ```env
 PORT=10000
+NODE_ENV=development
+OPENAI_API_KEY=<your-openai-key>
 REDIS_URL=redis://<user>:<password>@<host>:<port>
 VAPID_PUBLIC=<publicKey>
 VAPID_PRIVATE=<privateKey>
+REQUIRE_API_KEY=false         # 设为 true 启用 X-API-Key 认证
+```
+
+### 速率限制与安全
+
+后端自动限制 AI 端点速率：
+- **限制**：每个 IP 30 次请求/分钟
+- **响应头**：X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
+- **超限状态码**：429 Too Many Requests
+
+启用 API 密钥认证：
+```bash
+REQUIRE_API_KEY=true API_KEY=your-secret-key npm start
+```
+
+客户端需在请求头添加：
+```javascript
+fetch('/api/ai/generateTags', {
+  method: 'POST',
+  headers: { 'X-API-Key': 'your-secret-key' },
+  body: JSON.stringify({ content: '...' })
+})
 ```
 
 ## 🧩 数据模型
@@ -121,17 +155,66 @@ VAPID_PRIVATE=<privateKey>
 - 搜索不准：重建全文和向量索引，查看 lib/indexer.ts
 - 后端 500：server/log 及 REDIS_URL/VAPID 配置
 
+## ♿ 可访问性
+
+项目支持 WCAG 2.1 Level AA 可访问性标准：
+- ✓ 键盘导航支持
+- ✓ 屏幕阅读器兼容
+- ✓ 充分的颜色对比度
+- ✓ 触摸友好的按钮大小（移动设备）
+
+运行可访问性测试：
+```bash
+npm run test:e2e -- accessibility.spec.ts
+```
+
 ## 🔐 隐私与授权
 
 - 前端默认仅本地存储，无远程同步
 - Live2D 资源遵循源项目许可证（GPL-2.0 或模型对应授权）
 - 敏感信息请断网使用或自行扩展加密存储
+- API 密钥通过后端代理安全处理，不暴露客户端
 
-## 🧪 测试
+## 🧪 测试与质量
 
+### 单元测试（Vitest）
 ```bash
-npm test
+npm test              # 运行所有单元测试
+npm test -- --ui     # 打开测试 UI
 ```
+
+**覆盖范围：**
+- ✓ 存储操作（test/storage.test.ts）
+- ✓ 搜索索引（test/indexer.test.ts）
+- ✓ 向量计算（test/vector.test.ts）
+- ✓ 服务端路由（test/server.test.ts）
+- ✓ 组件行为（test/NoteList.test.tsx）
+
+### E2E 测试（Playwright）
+```bash
+npm run test:e2e      # 跨浏览器测试
+npm run test:e2e:ui   # 交互式调试
+```
+
+**覆盖场景：**
+- ✓ 基础 CRUD 操作
+- ✓ 笔记搜索与过滤
+- ✓ 标签与分类管理
+- ✓ WCAG 可访问性检查
+- ✓ 错误处理行为
+
+### 代码质量
+**预提交钩子（Husky + lint-staged）**
+```bash
+npx husky install    # 初始化钩子（一次性）
+```
+
+现在每次提交都会自动：
+- ✓ ESLint 检查
+- ✓ Prettier 格式化
+- ✓ TypeScript 类型检查
+
+推送前会自动运行完整测试套件。
 
 ## 📌 贡献指南
 

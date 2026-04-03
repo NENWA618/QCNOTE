@@ -15,22 +15,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
   onUpdateNote,
   onClose
 }) => {
-  const [aiService] = useState(() => new AIService(process.env.NEXT_PUBLIC_OPENAI_API_KEY));
+  // Use backend service proxy (secure - no client-side API key)
+  const [aiService] = useState(() => new AIService());
   const [isProcessing, setIsProcessing] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [isConfigured, setIsConfigured] = useState(!!process.env.NEXT_PUBLIC_OPENAI_API_KEY);
-
-  const handleConfigureAPI = () => {
-    if (apiKey.trim()) {
-      aiService.setApiKey(apiKey.trim());
-      setIsConfigured(true);
-      localStorage.setItem('openai_api_key', apiKey.trim());
-    }
-  };
 
   const handleGenerateTags = async () => {
-    if (!isConfigured) return;
-
     setIsProcessing(true);
     try {
       const newTags = await aiService.generateTags(note.content);
@@ -38,41 +27,35 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
       const combinedTags = [...new Set([...existingTags, ...newTags])];
       onUpdateNote({ tags: combinedTags });
     } catch (error) {
-      alert('生成标签失败：' + error);
+      alert('生成标签失败：' + (error instanceof Error ? error.message : String(error)));
     }
     setIsProcessing(false);
   };
 
   const handleGenerateSummary = async () => {
-    if (!isConfigured) return;
-
     setIsProcessing(true);
     try {
       const summary = await aiService.generateSummary(note.content);
       const updatedContent = `${note.content}\n\n---\n**AI 摘要：** ${summary}`;
       onUpdateNote({ content: updatedContent });
     } catch (error) {
-      alert('生成摘要失败：' + error);
+      alert('生成摘要失败：' + (error instanceof Error ? error.message : String(error)));
     }
     setIsProcessing(false);
   };
 
   const handleAutoCategorize = async () => {
-    if (!isConfigured) return;
-
     setIsProcessing(true);
     try {
       const category = await aiService.categorizeNote(note.title, note.content);
       onUpdateNote({ category });
     } catch (error) {
-      alert('自动分类失败：' + error);
+      alert('自动分类失败：' + (error instanceof Error ? error.message : String(error)));
     }
     setIsProcessing(false);
   };
 
   const handleSuggestRelated = async () => {
-    if (!isConfigured) return;
-
     setIsProcessing(true);
     try {
       const otherNotes = allNotes
@@ -89,47 +72,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
         alert('未找到相关笔记');
       }
     } catch (error) {
-      alert('生成相关笔记建议失败：' + error);
+      alert('生成相关笔记建议失败：' + (error instanceof Error ? error.message : String(error)));
     }
     setIsProcessing(false);
   };
-
-  if (!isConfigured) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
-          <h3 className="text-lg font-semibold mb-4">配置 AI 助手</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            需要 OpenAI API Key 来使用 AI 功能。请在环境变量中设置 NEXT_PUBLIC_OPENAI_API_KEY，或在此输入：
-          </p>
-
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk-..."
-            className="w-full p-2 border rounded mb-4"
-          />
-
-          <div className="flex gap-2">
-            <button
-              onClick={handleConfigureAPI}
-              disabled={!apiKey.trim()}
-              className="flex-1 btn-primary disabled:opacity-50"
-            >
-              配置
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 btn-secondary"
-            >
-              取消
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

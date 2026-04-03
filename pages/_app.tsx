@@ -4,6 +4,7 @@ import Script from 'next/script';
 import '../styles/globals.css';
 import { Inter } from 'next/font/google';
 import { initWindowStorage } from '../lib/storage';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
@@ -69,9 +70,11 @@ export default function App({ Component, pageProps }: AppProps) {
           </div>
         </div>
       ) : (
-        <main className={inter.className}>
-          <Component {...pageProps} />
-        </main>
+        <ErrorBoundary>
+          <main className={inter.className}>
+            <Component {...pageProps} />
+          </main>
+        </ErrorBoundary>
       )}
     </>
   );
