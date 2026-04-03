@@ -247,9 +247,15 @@ function containsAny(text: string, keywords: string[]): boolean {
 
 function searchServerNotes(query: string): { id: string }[] {
   const results: { id: string }[] = [];
-  if (!query || typeof query !== 'string') return results;
-  // 此处请继续补充搜索逻辑（从原 index.js 中同步）
-  return results;
+  if (!query || typeof query !== 'string' || !serverIndex.lunr) return results;
+
+  try {
+    const searchResults = serverIndex.lunr.search(query);
+    return searchResults.map((result: any) => ({ id: result.ref }));
+  } catch (error) {
+    logger.warn('[Server] Search failed:', error);
+    return results;
+  }
 }
 
 function generateReplyFromMemory(message: string, memory: any, persona: any, noteSnippet: string | null): any {

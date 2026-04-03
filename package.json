@@ -38,6 +38,7 @@
     "sentiment": "^5.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.40.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -63,6 +64,8 @@
     "start-server": "node server/index.js",
     "lint": "next lint",
     "format": "prettier --write .",
-    "test": "vitest"
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   }
 }
