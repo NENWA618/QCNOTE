@@ -92,13 +92,13 @@ class AIService {
   /**
    * Categorize note via backend proxy (secure method)
    */
-  async categorizeNote(content: string): Promise<string> {
+  async categorizeNote(title: string, content: string): Promise<string> {
     try {
       // Try backend first (secure)
       const response = await fetch(`${this.backendUrl}/categorizeNote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ title, content })
       });
 
       if (!response.ok) {
@@ -112,10 +112,40 @@ class AIService {
 
       // Fallback to client-side
       if (this.client) {
-        return await this.categorizeNoteClientSide(content);
+        return await this.categorizeNoteClientSide(title, content);
       }
 
       return '其他';
+    }
+  }
+
+  /**
+   * Suggest related notes via backend proxy (secure method)
+   */
+  async suggestRelatedNotes(currentNote: string, allNotes: Array<{ title: string; content: string }>): Promise<Array<{ title: string; similarity: number }>> {
+    try {
+      // Try backend first (secure)
+      const response = await fetch(`${this.backendUrl}/suggestRelatedNotes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentNote, allNotes })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.suggestions || [];
+    } catch (error) {
+      console.warn('Backend suggestRelatedNotes failed, falling back to client-side:', error);
+
+      // Fallback to client-side
+      if (this.client) {
+        return await this.suggestRelatedNotesClientSide(currentNote, allNotes);
+      }
+
+      return [];
     }
   }
 
@@ -179,7 +209,7 @@ class AIService {
     }
   }
 
-  private async categorizeNoteClientSide(content: string): Promise<string> {
+  private async categorizeNoteClientSide(title: string, content: string): Promise<string> {
     if (!this.client) {
       throw new Error('OpenAI API key not configured');
     }
@@ -194,7 +224,7 @@ class AIService {
           },
           {
             role: 'user',
-            content: `Categorize this note:\n\n${content.substring(0, 1000)}`
+            content: `Categorize this note:\nTitle: ${title}\nContent: ${content.substring(0, 1000)}`
           }
         ],
         max_tokens: 20,
@@ -207,41 +237,8 @@ class AIService {
       return '其他';
     }
   }
-}
 
-export default AIService;
-
-  async categorizeNote(title: string, content: string): Promise<string> {
-    if (!this.client) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    try {
-      const response = await this.client.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant that categorizes notes. Choose the most appropriate category from: 工作, 学习, 生活, 灵感, 其他. Return only the category name.'
-          },
-          {
-            role: 'user',
-            content: `Categorize this note:\nTitle: ${title}\nContent: ${content.substring(0, 500)}`
-          }
-        ],
-        max_tokens: 20,
-        temperature: 0.2
-      });
-
-      const category = response.choices[0]?.message?.content?.trim() || '其他';
-      return ['工作', '学习', '生活', '灵感', '其他'].includes(category) ? category : '其他';
-    } catch (error) {
-      console.error('Error categorizing note:', error);
-      return '其他';
-    }
-  }
-
-  async suggestRelatedNotes(currentNote: string, allNotes: Array<{ title: string; content: string }>): Promise<Array<{ title: string; similarity: number }>> {
+  private async suggestRelatedNotesClientSide(currentNote: string, allNotes: Array<{ title: string; content: string }>): Promise<Array<{ title: string; similarity: number }>> {
     if (!this.client) {
       throw new Error('OpenAI API key not configured');
     }
@@ -274,7 +271,7 @@ export default AIService;
 
       return suggestions;
     } catch (error) {
-      console.error('Error suggesting related notes:', error);
+      console.error('Error suggesting related notes (client-side fallback):', error);
       return [];
     }
   }

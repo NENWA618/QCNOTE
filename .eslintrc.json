@@ -1,13 +1,19 @@
 {
   "extends": ["next/core-web-vitals", "eslint:recommended"],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2021,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
   "env": {
     "browser": true,
     "es2021": true,
     "node": true
   },
   "rules": {
-    // unused vars often occur in type definitions or placeholder parameters,
-    // we rely on TypeScript for unused detection and disable ESLint rule entirely.
     "no-unused-vars": "off",
     "react/react-in-jsx-scope": "off"
   }

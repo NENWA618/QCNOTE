@@ -48,7 +48,7 @@ export const NoteEditorProvider: React.FC<NoteEditorProviderProps> = ({
   onCancel,
   onRevertVersion,
   getRelatedNotes,
-}) => {
+}): React.ReactElement => {
   const [editingNote, setEditingNote] = useState<NoteItem | null>(null);
   const [isEditorVisible, setIsEditorVisible] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
