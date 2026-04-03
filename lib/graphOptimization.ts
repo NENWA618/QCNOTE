@@ -204,7 +204,9 @@ export class LayoutCache {
     if (this.cache.size > 10) {
       // Keep only 10 most recent layouts
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      if (firstKey) {
+        this.cache.delete(firstKey);
+      }
     }
     this.cache.set(hash, positions);
   }
