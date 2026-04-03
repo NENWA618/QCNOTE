@@ -11,26 +11,6 @@ function GM_getValue(key, defaultValue) {
 function GM_setValue(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
-function GM_registerMenuCommand(name, fn) {
-  const existing = document.getElementById('waifu-menu-btn');
-  if (!existing) {
-    const btn = document.createElement('button');
-    btn.id = 'waifu-menu-btn';
-    btn.textContent = name;
-    btn.style.position = 'fixed';
-    btn.style.bottom = '70px';
-    btn.style.left = '10px';
-    btn.style.zIndex = '999999';
-    btn.style.padding = '8px 12px';
-    btn.style.borderRadius = '6px';
-    btn.style.background = '#ff4d4f';
-    btn.style.color = '#fff';
-    btn.style.border = 'none';
-    btn.style.cursor = 'pointer';
-    btn.onclick = fn;
-    document.body.appendChild(btn);
-  }
-}
 function GM_xmlhttpRequest(opt) {
   const { method = 'GET', url, headers = {}, data, onload, onerror } = opt;
   fetch(url, { method, headers, body: data }).then(async (res) => {
@@ -198,7 +178,8 @@ function GM_xmlhttpRequest(opt) {
 
     console.log('[Live2D] 看板娘增强版开始加载...');
 
-    GM_registerMenuCommand('⚙ 看板娘设置', showConfigPanel);
+    // 已移除左下角菜单按钮，改为仅保留右下角看板娘工具栏中的设置入口
+    // GM_registerMenuCommand('⚙ 看板娘设置', showConfigPanel);
 
     // ========== 引入 Element UI 样式 ==========
     const elementUILink = document.createElement('link');
