@@ -2,24 +2,125 @@ import OpenAI from 'openai';
 
 class AIService {
   private client: OpenAI | null = null;
+  private backendUrl: string;
+  private useBackend: boolean = true; // Always use backend by default
 
-  constructor(apiKey?: string) {
-    if (apiKey) {
+  constructor(apiKey?: string, backendUrl?: string) {
+    this.backendUrl = backendUrl || (typeof window !== 'undefined' 
+      ? `${window.location.origin}/api/ai` 
+      : '/api/ai');
+    
+    // Keep client for fallback only (if backend is down)
+    if (apiKey && !this.useBackend) {
       this.client = new OpenAI({
         apiKey,
-        dangerouslyAllowBrowser: true // Note: In production, use a backend proxy
+        dangerouslyAllowBrowser: true
       });
     }
   }
 
   setApiKey(apiKey: string) {
-    this.client = new OpenAI({
-      apiKey,
-      dangerouslyAllowBrowser: true
-    });
+    if (!this.useBackend && apiKey) {
+      this.client = new OpenAI({
+        apiKey,
+        dangerouslyAllowBrowser: true
+      });
+    }
   }
 
+  /**
+   * Generate tags via backend proxy (secure method)
+   * Falls back to client-side OpenAI if backend fails
+   */
   async generateTags(content: string): Promise<string[]> {
+    try {
+      // Try backend first (secure)
+      const response = await fetch(`${this.backendUrl}/generateTags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.tags || [];
+    } catch (error) {
+      console.warn('Backend generateTags failed, falling back to client-side:', error);
+      
+      // Fallback to client-side
+      if (this.client) {
+        return await this.generateTagsClientSide(content);
+      }
+      
+      return [];
+    }
+  }
+
+  /**
+   * Generate summary via backend proxy (secure method)
+   */
+  async generateSummary(content: string): Promise<string> {
+    try {
+      // Try backend first (secure)
+      const response = await fetch(`${this.backendUrl}/generateSummary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.summary || 'Unable to generate summary';
+    } catch (error) {
+      console.warn('Backend generateSummary failed, falling back to client-side:', error);
+
+      // Fallback to client-side
+      if (this.client) {
+        return await this.generateSummaryClientSide(content);
+      }
+
+      return 'Summary generation failed';
+    }
+  }
+
+  /**
+   * Categorize note via backend proxy (secure method)
+   */
+  async categorizeNote(content: string): Promise<string> {
+    try {
+      // Try backend first (secure)
+      const response = await fetch(`${this.backendUrl}/categorizeNote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.category || '其他';
+    } catch (error) {
+      console.warn('Backend categorizeNote failed, falling back to client-side:', error);
+
+      // Fallback to client-side
+      if (this.client) {
+        return await this.categorizeNoteClientSide(content);
+      }
+
+      return '其他';
+    }
+  }
+
+  // Private fallback methods (client-side OpenAI calls - DEPRECATED)
+  private async generateTagsClientSide(content: string): Promise<string[]> {
     if (!this.client) {
       throw new Error('OpenAI API key not configured');
     }
@@ -44,12 +145,12 @@ class AIService {
       const tagsText = response.choices[0]?.message?.content?.trim() || '';
       return tagsText.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
     } catch (error) {
-      console.error('Error generating tags:', error);
+      console.error('Error generating tags (client-side fallback):', error);
       return [];
     }
   }
 
-  async generateSummary(content: string): Promise<string> {
+  private async generateSummaryClientSide(content: string): Promise<string> {
     if (!this.client) {
       throw new Error('OpenAI API key not configured');
     }
@@ -73,10 +174,42 @@ class AIService {
 
       return response.choices[0]?.message?.content?.trim() || 'Unable to generate summary';
     } catch (error) {
-      console.error('Error generating summary:', error);
+      console.error('Error generating summary (client-side fallback):', error);
       return 'Summary generation failed';
     }
   }
+
+  private async categorizeNoteClientSide(content: string): Promise<string> {
+    if (!this.client) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    try {
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that categorizes notes. Return one of: 生活, 工作, 学习, 灵感, 其他'
+          },
+          {
+            role: 'user',
+            content: `Categorize this note:\n\n${content.substring(0, 1000)}`
+          }
+        ],
+        max_tokens: 20,
+        temperature: 0.3
+      });
+
+      return response.choices[0]?.message?.content?.trim() || '其他';
+    } catch (error) {
+      console.error('Error categorizing note (client-side fallback):', error);
+      return '其他';
+    }
+  }
+}
+
+export default AIService;
 
   async categorizeNote(title: string, content: string): Promise<string> {
     if (!this.client) {

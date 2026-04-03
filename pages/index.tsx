@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
+import Footer from '../components/Footer';
 
 export default function Home() {
   return (
@@ -208,31 +209,7 @@ export default function Home() {
         </section>
       </div>
 
-      <footer>
-        <p>© 2026 NOTE. 用心记录每一刻。</p>
-        <p className="text-xs mt-2 text-gray-400">
-          本站使用 <a href="https://pixijs.com/" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Pixi.js</a>、
-          <a href="https://github.com/guansss/pixi-live2d-display" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">pixi-live2d-display</a> 等开源库（MIT/Apache 等）。
-        </p>
-        <p className="text-xs text-gray-400">
-          看板娘基于 <a href="https://github.com/fghrsh/live2d_demo" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Live2D 看板娘</a> 开源项目（GPL-2.0），支持自定义台词、健康提醒、天气查询、待办事项等功能。
-        </p>
-        <p className="mt-4 text-sm">
-          <Link
-            href="/privacy"
-            className="text-primary-light no-underline hover:text-white transition-colors"
-          >
-            隐私政策
-          </Link>{' '}
-          |{' '}
-          <Link
-            href="/terms"
-            className="text-primary-light no-underline hover:text-white transition-colors"
-          >
-            使用条款
-          </Link>
-        </p>
-      </footer>
+      <Footer layout="minimal" />
     </>
   );
 }

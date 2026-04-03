@@ -1,6 +1,7 @@
 import Utils from './utils';
 import IDB from './idb';
 import logger from './logger';
+import Indexer from './indexer';
 
 export interface NoteVersion {
   versionId: string;
@@ -682,6 +683,7 @@ export class NoteStorage {
     notes.unshift(newNote);
     const updatedNotes = this.syncLinkGraph(notes);
     await this.setDataAsync(updatedNotes);
+    Indexer.invalidateIndex(); // Invalidate search index cache
     return updatedNotes.find((n) => n.id === newNote.id) as NoteItem;
   }
 
@@ -713,6 +715,7 @@ export class NoteStorage {
 
       const updatedNotes = this.syncLinkGraph(notes);
       await this.setDataAsync(updatedNotes);
+      Indexer.invalidateIndex(); // Invalidate search index cache
       return updatedNotes.find((n) => n.id === id) || null;
     }
     return null;
@@ -731,6 +734,7 @@ export class NoteStorage {
       };
       const updatedNotes = this.syncLinkGraph(notes);
       await this.setDataAsync(updatedNotes);
+      Indexer.invalidateIndex(); // Invalidate search index cache
       return true;
     }
     return false;
@@ -740,6 +744,7 @@ export class NoteStorage {
     const notes = (await this.getDataAsync()) || [];
     const filteredNotes = notes.filter((n) => n.id !== id);
     await this.setDataAsync(filteredNotes);
+    Indexer.invalidateIndex(); // Invalidate search index cache
     return true;
   }
 
@@ -752,6 +757,7 @@ export class NoteStorage {
       note.updatedAt = Date.now();
       const updatedNotes = this.syncLinkGraph(notes);
       await this.setDataAsync(updatedNotes);
+      Indexer.invalidateIndex(); // Invalidate search index cache
       return true;
     }
     return false;

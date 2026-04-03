@@ -12,6 +12,7 @@ try {
 
 import vector from './vector';
 import sentiment from './sentiment';
+import AIService from './aiService';
 
 interface Note { id: string; title: string; content: string; }
 interface IndexState { lunr: any | null; vectors: Record<string, Record<string, number>>; sentiments: Record<string, unknown>; }
@@ -60,6 +61,67 @@ const fastify = buildFastify();
 function registerRoutes(app: any) {
   if (app.__routesRegistered) return;
   app.__routesRegistered = true;
+
+  // Initialize AI Service with backend API key (secure)
+  const aiService = new AIService(process.env.OPENAI_API_KEY);
+
+  // AI API Endpoints (Backend Proxy for OpenAI)
+  app.post('/api/ai/generateTags', async (request: any, reply: any) => {
+    try {
+      const body = request.body as Record<string, unknown> | undefined;
+      const content = typeof body?.content === 'string' ? body.content : '';
+      
+      if (!content) {
+        return reply.status(400).send({ error: 'content is required' });
+      }
+
+      const tags = await aiService.generateTags(content);
+      return { success: true, tags };
+    } catch (error) {
+      console.error('Error in generateTags endpoint:', error);
+      return reply.status(500).send({ 
+        error: error instanceof Error ? error.message : 'Failed to generate tags' 
+      });
+    }
+  });
+
+  app.post('/api/ai/generateSummary', async (request: any, reply: any) => {
+    try {
+      const body = request.body as Record<string, unknown> | undefined;
+      const content = typeof body?.content === 'string' ? body.content : '';
+      
+      if (!content) {
+        return reply.status(400).send({ error: 'content is required' });
+      }
+
+      const summary = await aiService.generateSummary(content);
+      return { success: true, summary };
+    } catch (error) {
+      console.error('Error in generateSummary endpoint:', error);
+      return reply.status(500).send({ 
+        error: error instanceof Error ? error.message : 'Failed to generate summary' 
+      });
+    }
+  });
+
+  app.post('/api/ai/categorizeNote', async (request: any, reply: any) => {
+    try {
+      const body = request.body as Record<string, unknown> | undefined;
+      const content = typeof body?.content === 'string' ? body.content : '';
+      
+      if (!content) {
+        return reply.status(400).send({ error: 'content is required' });
+      }
+
+      const category = await aiService.categorizeNote(content);
+      return { success: true, category };
+    } catch (error) {
+      console.error('Error in categorizeNote endpoint:', error);
+      return reply.status(500).send({ 
+        error: error instanceof Error ? error.message : 'Failed to categorize note' 
+      });
+    }
+  });
 
   app.post('/reply', async (request: any, reply: any) => {
     const body = request.body as Record<string, unknown> | undefined;

@@ -150,6 +150,52 @@ npm test
 
 - 当前：1.0.0
 
-## 📜 许可证
+## 📜 许可证与致谢
 
-MIT
+### 主项目许可证
+
+**MIT License** - 详见 [LICENSE](LICENSE) 文件
+
+```
+Copyright (c) 2026 LEE YU HAO
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software...
+```
+
+### 第三方开源项目
+
+NOTE 应用建立在众多优秀开源项目之上。主要技术依赖包括：
+
+| 项目 | 许可证 | 用途 |
+|------|-------|------|
+| [React](https://react.dev) | MIT | UI 框架 |
+| [Next.js](https://nextjs.org) | MIT | Web 框架 |
+| [Lunr.js](https://lunrjs.com) | MIT | 全文搜索 |
+| [Pixi.js](https://pixijs.com) | MIT | 2D 渲染 |
+| [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) | MIT | Live2D 显示 |
+| [Live2D 看板娘](https://github.com/fghrsh/live2d_demo) | GPL-2.0 | 看板娘实现 |
+| [react-markdown](https://github.com/remarkjs/react-markdown) | MIT | Markdown 渲染 |
+| [Tailwind CSS](https://tailwindcss.com) | MIT | CSS 框架 |
+
+**完整许可证详见：**
+- 📄 [CREDITS.md](CREDITS.md) - 所有依赖项的完整列表和许可证
+- 📊 [FOOTER_COPYRIGHT_AUDIT.md](FOOTER_COPYRIGHT_AUDIT.md) - 版权审计报告
+
+### 许可证兼容性
+
+- ✅ MIT + GPL-2.0：兼容（项目使用 MIT，可包装 GPL-2.0）
+- ✅ MIT + Apache-2.0：兼容（都是宽松许可证）
+
+### 特别感谢
+
+感谢以下项目的贡献者和维护者，使得 NOTE 的开发成为可能：
+
+- **Live2D 官方团队** - 强大的 3D 角色系统
+- **React 和 Next.js 团队** - 现代化的开发体验
+- **开源社区** - 数百个小型但关键的库维护者
+
+

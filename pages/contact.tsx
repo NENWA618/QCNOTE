@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
+import Footer from '../components/Footer';
 
 const Contact: React.FC = () => {
   return (
@@ -172,62 +173,13 @@ const Contact: React.FC = () => {
         </section>
       </div>
 
-      <footer>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-          <div>
-            <h4 className="text-white mb-4 font-bold">📝 关于 NOTE</h4>
-            <p className="text-sm leading-relaxed">
-              NOTE 是一个简洁而优雅的个人笔记应用。完全本地存储，100% 隐私保护。
-            </p>
-          </div>
-          <div>
-            <h4 className="text-white mb-4 font-bold">🔗 快速链接</h4>
-            <p className="text-sm">
-              <Link href="/" className="text-primary-light no-underline hover:underline block my-2">
-                首页
-              </Link>
-              <Link
-                href="/dashboard"
-                className="text-primary-light no-underline hover:underline block my-2"
-              >
-                笔记
-              </Link>
-            </p>
-          </div>
-          <div>
-            <h4 className="text-white mb-4 font-bold">📞 联系我们</h4>
-            <p className="text-sm">
-              📧 i24026878@student.newinti.edu.my
-              <br />
-              💬 扫码支持
-            </p>
-          </div>
-        </div>
-        <hr className="border-0 border-t border-white border-opacity-20 my-8" />
-        <p>© 2026 NOTE. 用心记录每一刻。</p>
-        <p className="text-xs mt-2 text-gray-400">
-          本站使用 <a href="https://pixijs.com/" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Pixi.js</a>、
-          <a href="https://github.com/guansss/pixi-live2d-display" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">pixi-live2d-display</a> 等开源库（MIT/Apache 等）。
-        </p>
-        <p className="text-xs text-gray-400">
-          看板娘基于 <a href="https://github.com/fghrsh/live2d_demo" className="text-primary-light underline hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Live2D 看板娘</a> 开源项目（GPL-2.0），支持自定义台词、健康提醒、天气查询、待办事项等功能。
-        </p>
-        <p className="mt-4 text-sm">
-          <Link
-            href="/privacy"
-            className="text-primary-light no-underline hover:text-white transition-colors"
-          >
-            隐私政策
-          </Link>{' '}
-          |{' '}
-          <Link
-            href="/terms"
-            className="text-primary-light no-underline hover:text-white transition-colors"
-          >
-            使用条款
-          </Link>
-        </p>
-      </footer>
+      <Footer
+        layout="full"
+        customLinks={[
+          { label: '首页', href: '/' },
+          { label: '笔记', href: '/dashboard' },
+        ]}
+      />
     </>
   );
 };
