@@ -165,7 +165,7 @@ export async function searchNotes(query: string, notes: NoteItem[]): Promise<str
     }
     sims.sort((a, b) => b.score - a.score);
     for (const s of sims) {
-      if (!hits.includes(s.id) && s.score > 0.1) {
+      if (!hits.includes(s.id) && s.score > 0.3) { // Increased threshold from 0.1 to 0.3
         hits.push(s.id);
       }
     }

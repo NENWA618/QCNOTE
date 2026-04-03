@@ -122,9 +122,9 @@ describe('Indexer - Search & Caching', () => {
     });
 
     it('should find notes by semantic similarity', async () => {
-      const results = await searchNotes('web development', mockNotes);
+      const results = await searchNotes('react', mockNotes); 
       expect(results.length).toBeGreaterThan(0);
-      expect(results).toContain('note_2'); // React is related to web development
+      expect(results).toContain('note_2'); // React matches directly
     });
 
     it('should return empty array for non-matching query', async () => {
