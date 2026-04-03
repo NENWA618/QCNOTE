@@ -26,6 +26,11 @@ const connectionString = process.env.REDIS_URL || process.env.REDIS || 'redis://
 let connection: any;
 try {
   connection = IORedis ? new IORedis(connectionString) : null;
+  if (connection) {
+    connection.on('error', (err: unknown) => {
+      logger.warn('[Worker] Redis connection error (ignored):', err instanceof Error ? err.message : err);
+    });
+  }
 } catch (e) {
   logger.warn('[Worker] Redis connection failed:', e instanceof Error ? e.message : e);
   connection = null;
