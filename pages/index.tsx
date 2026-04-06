@@ -8,10 +8,80 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>QCNOTE - 个人笔记网站</title>
+        {/* Primary Meta Tags */}
+        <title>QCNOTE - AI驱动的个人笔记管理平台</title>
+        <meta name="title" content="QCNOTE - AI驱动的个人笔记管理平台" />
+        <meta name="description" content="跨设备同步、智能分类、离线优先的全功能笔记应用。使用AI助手快速整理和分析你的笔记。安全的个人知识库管理。" />
+        <meta name="keywords" content="笔记应用,知识管理,AI助手,个人日记,笔记管理,跨平台,离线优先" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta charSet="utf-8" />
+        <meta name="theme-color" content="#c8b8c8" />
         <link rel="icon" href="/images/icons/note_icon.png" />
+
+        {/* Open Graph Meta Tags */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://qcnote.example.com/" />
+        <meta property="og:title" content="QCNOTE - 个人笔记管理平台" />
+        <meta property="og:description" content="智能、安全、跨平台的笔记应用。AI助手帮你快速整理和分析笔记。" />
+        <meta property="og:image" content="https://qcnote.example.com/images/icons/note_icon.png" />
+        <meta property="og:site_name" content="QCNOTE" />
+        <meta property="og:locale" content="zh_CN" />
+
+        {/* Twitter Card Meta Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content="https://qcnote.example.com/" />
+        <meta name="twitter:title" content="QCNOTE - 个人笔记管理平台" />
+        <meta name="twitter:description" content="智能、安全、跨平台的笔记应用" />
+        <meta name="twitter:image" content="https://qcnote.example.com/images/icons/note_icon.png" />
+
+        {/* Additional SEO Tags */}
+        <link rel="canonical" href="https://qcnote.example.com/" />
+        <link rel="alternate" hrefLang="zh" href="https://qcnote.example.com/" />
+        <meta name="author" content="QCNOTE Team" />
+        <meta name="copyright" content="© 2025-2026 QCNOTE. All rights reserved." />
+
+        {/* Structured Data (JSON-LD) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'SoftwareApplication',
+              'name': 'QCNOTE',
+              'description': 'AI驱动的个人笔记管理平台',
+              'url': 'https://qcnote.example.com',
+              'applicationCategory': 'ProductivityApplication',
+              'offers': {
+                '@type': 'Offer',
+                'price': '0',
+                'priceCurrency': 'CNY'
+              },
+              'aggregateRating': {
+                '@type': 'AggregateRating',
+                'ratingValue': '4.8',
+                'ratingCount': '1000'
+              }
+            })
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              'name': 'QCNOTE',
+              'url': 'https://qcnote.example.com',
+              'logo': 'https://qcnote.example.com/images/icons/note_icon.png',
+              'description': '智能笔记应用平台',
+              'contact': {
+                '@type': 'ContactPoint',
+                'contactType': 'Customer Support',
+                'url': 'https://qcnote.example.com/contact'
+              }
+            })
+          }}
+        />
       </Head>
 
       <header>

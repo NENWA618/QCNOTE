@@ -8,6 +8,7 @@ interface RateLimitEntry {
 }
 
 const rateLimitStore = new Map<string, RateLimitEntry>();
+const MAX_TRACKED_IPS = 100000; // Prevent unbounded memory growth
 
 // Configuration
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
@@ -27,11 +28,27 @@ export function rateLimitMiddleware(fastify: any) {
     const clientIp = request.ip || 'unknown';
     const now = Date.now();
 
+    // Check for expired entries and clean up periodically (lazy cleanup)
+    if (rateLimitStore.size > MAX_TRACKED_IPS) {
+      const entriesToDelete: string[] = [];
+      for (const [ip, entry] of rateLimitStore.entries()) {
+        if (now > entry.resetTime + RATE_LIMIT_WINDOW_MS) {
+          entriesToDelete.push(ip);
+        }
+      }
+      entriesToDelete.forEach(ip => rateLimitStore.delete(ip));
+    }
+
     // Initialize or retrieve rate limit entry
     let entry = rateLimitStore.get(clientIp);
     if (!entry || now > entry.resetTime) {
       entry = { count: 0, resetTime: now + RATE_LIMIT_WINDOW_MS };
-      rateLimitStore.set(clientIp, entry);
+      if (rateLimitStore.size < MAX_TRACKED_IPS) {
+        rateLimitStore.set(clientIp, entry);
+      } else {
+        // Gracefully handle capacity - use temporary entry
+        entry = { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS };
+      }
     }
 
     // Increment request count
@@ -93,14 +110,20 @@ export function apiKeyMiddleware(fastify: any) {
  * Prevents memory leak from long-lived processes
  */
 export function startRateLimitCleanup() {
+  const cleanupIntervalMs = Math.min(RATE_LIMIT_WINDOW_MS * 10, 600000); // Max 10 min interval
   setInterval(() => {
     const now = Date.now();
+    let deletedCount = 0;
     for (const [clientIp, entry] of rateLimitStore.entries()) {
       if (now > entry.resetTime + RATE_LIMIT_WINDOW_MS) {
         rateLimitStore.delete(clientIp);
+        deletedCount++;
       }
     }
-  }, RATE_LIMIT_WINDOW_MS * 2);
+    if (deletedCount > 0) {
+      console.log(`[RateLimit] Cleaned up ${deletedCount} expired entries. Current size: ${rateLimitStore.size}`);
+    }
+  }, cleanupIntervalMs);
 }
 
 /**

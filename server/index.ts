@@ -15,6 +15,20 @@ import sentiment from './sentiment';
 import AIService from './aiService';
 import { rateLimitMiddleware, apiKeyMiddleware, startRateLimitCleanup } from './middleware';
 
+// Import quota management
+let QuotaManager: any;
+try {
+  QuotaManager = require('../lib/quotaManager');
+} catch (e) {
+  // Fallback: quota management not available
+  QuotaManager = {
+    checkQuota: () => true,
+    recordUsage: () => {},
+    estimateTokens: () => ({ inputTokens: 0, outputTokens: 0 }),
+    estimateAPICost: () => 0,
+  };
+}
+
 interface Note { id: string; title: string; content: string; }
 interface IndexState { lunr: any | null; vectors: Record<string, Record<string, number>>; sentiments: Record<string, unknown>; }
 
@@ -76,17 +90,30 @@ function registerRoutes(app: any) {
     try {
       const body = request.body as Record<string, unknown> | undefined;
       const content = typeof body?.content === 'string' ? body.content : '';
+      const clientId = request.ip || 'unknown';
       
       if (!content) {
         return reply.status(400).send({ error: 'content is required' });
       }
 
+      // Check quota
+      const tokens = QuotaManager.estimateTokens(content);
+      const estimatedCost = QuotaManager.estimateAPICost(tokens);
+      
+      if (!QuotaManager.checkQuota(clientId, estimatedCost)) {
+        return reply.status(429).send({
+          error: 'Daily API quota exceeded',
+          message: 'You have reached your daily API usage limit. Please try again tomorrow.',
+        });
+      }
+
       const tags = await aiService.generateTags(content);
+      QuotaManager.recordUsage(clientId, estimatedCost);
       return { success: true, tags };
     } catch (error) {
-      console.error('Error in generateTags endpoint:', error);
+      logger.error('Error in generateTags endpoint:', error);
       return reply.status(500).send({ 
-        error: error instanceof Error ? error.message : 'Failed to generate tags' 
+        error: 'An error occurred while processing your request. Please try again.' 
       });
     }
   });
@@ -95,17 +122,30 @@ function registerRoutes(app: any) {
     try {
       const body = request.body as Record<string, unknown> | undefined;
       const content = typeof body?.content === 'string' ? body.content : '';
+      const clientId = request.ip || 'unknown';
       
       if (!content) {
         return reply.status(400).send({ error: 'content is required' });
       }
 
+      // Check quota
+      const tokens = QuotaManager.estimateTokens(content);
+      const estimatedCost = QuotaManager.estimateAPICost(tokens) * 1.5; // Summaries cost more
+      
+      if (!QuotaManager.checkQuota(clientId, estimatedCost)) {
+        return reply.status(429).send({
+          error: 'Daily API quota exceeded',
+          message: 'You have reached your daily API usage limit. Please try again tomorrow.',
+        });
+      }
+
       const summary = await aiService.generateSummary(content);
+      QuotaManager.recordUsage(clientId, estimatedCost);
       return { success: true, summary };
     } catch (error) {
-      console.error('Error in generateSummary endpoint:', error);
+      logger.error('Error in generateSummary endpoint:', error);
       return reply.status(500).send({ 
-        error: error instanceof Error ? error.message : 'Failed to generate summary' 
+        error: 'An error occurred while processing your request. Please try again.' 
       });
     }
   });
@@ -114,17 +154,30 @@ function registerRoutes(app: any) {
     try {
       const body = request.body as Record<string, unknown> | undefined;
       const content = typeof body?.content === 'string' ? body.content : '';
+      const clientId = request.ip || 'unknown';
       
       if (!content) {
         return reply.status(400).send({ error: 'content is required' });
       }
 
+      // Check quota
+      const tokens = QuotaManager.estimateTokens(content);
+      const estimatedCost = QuotaManager.estimateAPICost(tokens);
+      
+      if (!QuotaManager.checkQuota(clientId, estimatedCost)) {
+        return reply.status(429).send({
+          error: 'Daily API quota exceeded',
+          message: 'You have reached your daily API usage limit. Please try again tomorrow.',
+        });
+      }
+
       const category = await aiService.categorizeNote(content);
+      QuotaManager.recordUsage(clientId, estimatedCost);
       return { success: true, category };
     } catch (error) {
-      console.error('Error in categorizeNote endpoint:', error);
+      logger.error('Error in categorizeNote endpoint:', error);
       return reply.status(500).send({ 
-        error: error instanceof Error ? error.message : 'Failed to categorize note' 
+        error: 'An error occurred while processing your request. Please try again.' 
       });
     }
   });
@@ -168,6 +221,18 @@ function registerRoutes(app: any) {
       vectorsCount: Object.keys(serverIndex.vectors).length,
       sentimentsCount: Object.keys(serverIndex.sentiments).length,
     };
+  });
+
+  // Health check endpoint (required by Docker and orchestrators)
+  app.get('/api/health', async (request: any, reply: any) => {
+    const uptime = process.uptime();
+    const status = serverIndex.lunr !== null ? 'healthy' : 'initializing';
+    return reply.code(200).send({
+      status,
+      uptime,
+      timestamp: new Date().toISOString(),
+      notes: serverNotes.length,
+    });
   });
 }
 

@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: [
     './pages/**/*.{js,ts,jsx,tsx}',
     './components/**/*.{js,ts,jsx,tsx}',
@@ -18,13 +19,20 @@ module.exports = {
         },
       },
       colors: {
-        // 自定义调色板
+        // 自定义调色板 - 亮色模式
         'primary-light': '#f6e0e7',
         'primary-medium': '#d8cbcf',
         'primary-dark': '#c8b8c8',
         'accent-pink': '#dc96b4',
         'accent-purple': '#b0a8c0',
         'text-light': '#5c5c5c',  // slightly darker for better contrast
+        // 暗黑模式颜色
+        'dark-bg': '#0f0f0f',
+        'dark-surface': '#1a1a1a',
+        'dark-surface-light': '#2a2a2a',
+        'dark-text': '#e5e5e5',
+        'dark-text-secondary': '#a0a0a0',
+        'dark-border': '#404040',
       },
       fontSize: {
         xs: '0.75rem',

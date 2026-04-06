@@ -251,12 +251,28 @@ export class NoteStorage {
 
   async getWebDAVConfigAsync(): Promise<WebDAVConfig | null> {
     try {
+      let config: WebDAVConfig | null = null;
       if (this.useIndexedDB) {
         const data = await IDB.getItem(this.webdavConfigKey);
-        if (data) return data as WebDAVConfig;
+        if (data) config = data as WebDAVConfig;
       }
-      const raw = localStorage.getItem(this.webdavConfigKey);
-      return raw ? (JSON.parse(raw) as WebDAVConfig) : null;
+      if (!config) {
+        const raw = localStorage.getItem(this.webdavConfigKey);
+        config = raw ? (JSON.parse(raw) as WebDAVConfig) : null;
+      }
+      
+      // Decrypt password if encrypted
+      if (config && config.password) {
+        try {
+          if (config.password.startsWith('encrypted:')) {
+            const encryptedPart = config.password.slice('encrypted:'.length);
+            config.password = await this.decryptText(encryptedPart, 'qcnote-webdav-default');
+          }
+        } catch (e) {
+          console.warn('[NoteStorage] Failed to decrypt WebDAV password', e);
+        }
+      }
+      return config;
     } catch (e) {
       console.error('[NoteStorage] getWebDAVConfigAsync failed', e);
       return null;
@@ -265,15 +281,26 @@ export class NoteStorage {
 
   async setWebDAVConfigAsync(config: WebDAVConfig): Promise<boolean> {
     try {
+      // Encrypt password before storing
+      const configToStore = { ...config };
+      if (configToStore.password && !configToStore.password.startsWith('encrypted:')) {
+        try {
+          const encrypted = await this.encryptText(configToStore.password, 'qcnote-webdav-default');
+          configToStore.password = `encrypted:${encrypted}`;
+        } catch (e) {
+          console.warn('[NoteStorage] Failed to encrypt WebDAV password, storing plaintext', e);
+        }
+      }
+      
       if (this.useIndexedDB) {
-        await IDB.setItem(this.webdavConfigKey, config);
+        await IDB.setItem(this.webdavConfigKey, configToStore);
       } else {
         try {
-          await IDB.setItem(this.webdavConfigKey, config);
+          await IDB.setItem(this.webdavConfigKey, configToStore);
           this.useIndexedDB = true;
           localStorage.removeItem(this.webdavConfigKey);
         } catch {
-          localStorage.setItem(this.webdavConfigKey, JSON.stringify(config));
+          localStorage.setItem(this.webdavConfigKey, JSON.stringify(configToStore));
         }
       }
       return true;

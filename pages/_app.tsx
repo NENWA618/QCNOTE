@@ -15,6 +15,17 @@ export default function App({ Component, pageProps }: AppProps) {
     // 获取或创建全局 storage 实例（单例）
     if (typeof window === 'undefined') return;
 
+    // 初始化暗黑模式
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+
+    if (shouldBeDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
     const storage = initWindowStorage();
 
     // 启用 IndexedDB 并迁移数据；等待结果再展示页面

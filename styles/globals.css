@@ -45,7 +45,7 @@
   }
 
   .note-card::before {
-    @apply absolute inset-0 bg-gradient-to-br from-transparent to-primary-light to-opacity-10 pointer-events-none;
+    @apply absolute inset-0 bg-gradient-to-br from-transparent to-primary-light pointer-events-none opacity-10;
   }
 
   /* Modal components */
@@ -277,6 +277,106 @@
 
   body {
     @apply bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 text-primary-dark;
+  }
+
+  /* Dark mode */
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html.dark body {
+    @apply bg-gradient-to-br from-dark-bg via-dark-surface to-dark-surface-light text-dark-text;
+  }
+
+  html.dark header {
+    @apply bg-dark-surface/75 border-dark-border;
+  }
+
+  html.dark footer {
+    @apply bg-gradient-to-r from-dark-surface-light to-dark-surface;
+  }
+
+  /* Cards in dark mode */
+  html.dark .card {
+    @apply bg-dark-surface bg-opacity-90 border-dark-border text-dark-text;
+  }
+
+  html.dark .note-card {
+    @apply bg-dark-surface text-dark-text border-l-accent-pink shadow-none;
+  }
+
+  html.dark .note-card::before {
+    @apply bg-gradient-to-br from-transparent to-dark-surface-light pointer-events-none opacity-10;
+  }
+
+  /* Buttons in dark mode */
+  html.dark .btn-icon {
+    @apply hover:bg-dark-surface-light;
+  }
+
+  html.dark .btn-secondary {
+    @apply bg-dark-surface text-accent-pink border-2 border-accent-pink;
+  }
+
+  /* Forms in dark mode */
+  html.dark .input,
+  html.dark textarea.input,
+  html.dark .select,
+  html.dark .search-box {
+    @apply bg-dark-surface-light border-dark-border text-dark-text focus:ring-accent-pink/30;
+  }
+
+  /* Modal in dark mode */
+  html.dark .modal-overlay {
+    @apply bg-black/75;
+  }
+
+  html.dark .modal-content {
+    @apply bg-dark-surface border border-dark-border;
+  }
+
+  html.dark .modal-header {
+    @apply border-dark-border text-dark-text;
+  }
+
+  html.dark .modal-body {
+    @apply text-dark-text;
+  }
+
+  /* Stats in dark mode */
+  html.dark .stat-item {
+    @apply bg-dark-surface text-dark-text;
+  }
+
+  /* Category badge in dark mode */
+  html.dark .category-badge {
+    @apply bg-dark-surface-light text-accent-pink;
+  }
+
+  /* Tags in dark mode */
+  html.dark .tag {
+    @apply bg-dark-surface text-accent-pink border border-dark-border;
+  }
+
+  /* Forms input focus in dark mode */
+  html.dark .input:focus,
+  html.dark textarea.input:focus,
+  html.dark .select:focus,
+  html.dark .search-box:focus {
+    @apply bg-dark-surface;
+  }
+
+  /* Scrollbar in dark mode */
+  html.dark .scrollbar-thin {
+    scrollbar-color: rgb(64 64 64) transparent;
+  }
+
+  html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgb(64 64 64);
+  }
+
+  html.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(100 100 100);
   }
 
   header {

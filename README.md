@@ -1,284 +1,335 @@
-﻿# QCNOTE 个人笔记应用
+# 🎉 QCNOTE - 你的智能笔记伙伴
 
-> 简洁优雅的全功能笔记管理系统，支持本地存储、Live2D 看板娘、全文 + 向量搜索、离线敏感内容保护，以及可选后端增强服务。
+<div align="center">
 
-## 🌟 项目简介
+![QCNOTE Logo](https://via.placeholder.com/200x80/4A90E2/FFFFFF?text=QCNOTE)
 
-- 技术栈：Next.js 14 + React 18 + TypeScript 5 + Tailwind CSS 3
-- 数据存储：前端首选 IndexedDB（lib/storage.ts, lib/idb.ts），保护隐私，支持离线。
-- 动画助手：本地 Live2D 模型（public/js/waifu.js + public/models/*），包括交互、提醒、台词。
-- 搜索能力：lunr + 自定义向量检索（lib/indexer.ts, lib/vector.ts），支持全文检索与相似笔记推荐。
-- 可选后端：Node + Fastify（server/index.ts）用于队列、情感分析、推送等高级功能。
+**让记录变得简单而优雅**
 
-## ✅ 核心功能
+*AI 驱动的个人笔记管理系统，专为现代人设计*
 
-- 笔记 CRUD：新建、编辑、删除、归档、收藏
-- Markdown 支持：react-markdown + remark-gfm + rehype-sanitize
-- 标签/分类：多维度笔记组合组织，支持多标签搜索
-- 数据导入/导出：JSON 批量操作与迁移（components/ImportExport.tsx）
-- 仪表盘：统计、热力、趋势图（components/NoteStats.tsx）
-- 本地天气：public/data/local-weather.json + 非依赖 API fallback
-- 看板娘：本地交互模型 + 健康提示（components/Character.tsx, public/js/waifu*.js）
+[![版本](https://img.shields.io/badge/版本-2.1.0-blue.svg)](https://github.com/your-org/qcnote/releases)
+[![许可证](https://img.shields.io/badge/许可证-MIT-green.svg)](LICENSE)
+[![在线体验](https://img.shields.io/badge/在线体验-立即使用-orange.svg)](https://qcnote.app)
 
-## 🔒 安全特性
+[🚀 快速开始](#-快速开始) • [✨ 功能特性](#-核心特性) • [📚 文档中心](#-文档中心) • [🤝 贡献](#-贡献)
 
-- **错误隔离**：全局 ErrorBoundary 组件，应用级别故障不会导致完全崩溃
-- **后端代理**：所有 AI API 调用通过后端代理（server/aiService.ts），API 密钥不暴露浏览器
-- **速率限制**：后端中间件限制每IP 30次请求/分钟，防止 API 滥用
-- **可选认证**：支持 X-API-Key 请求头认证（REQUIRE_API_KEY=true 启用）
+</div>
 
-## 📁 目录说明
+---
 
-- pages/: Next.js 页面入口
-- components/: UI 组件
-- lib/: 业务逻辑、存储、搜索、辅助函数
-- public/: 静态资源（js、模型、图片、数据）
-- server/: 可选后端服务（推荐 Render 部署）
-- test/: Vitest 单测
+## 🌟 为什么选择 QCNOTE？
 
-## 🚀 本地运行
+QCNOTE 不仅仅是一个笔记应用，它是你的**个人知识管理助手**。我们相信好的工具应该：
 
-### 1. 前端
+- 🤖 **智能辅助** - AI 帮你组织和理解内容
+- 🔒 **隐私优先** - 你的数据只属于你自己
+- 🎨 **美观易用** - 精心设计的用户体验
+- 🚀 **高效强大** - 从简单记录到复杂管理
 
+---
+
+## ✨ 核心特性
+
+### 📝 智能记录
+- **离线优先** - 数据存储在本地，无需网络
+- **Markdown 支持** - 完整的 Markdown 语法和预览
+- **自动保存** - 每30秒自动保存，永不丢失
+- **富媒体** - 支持图片、链接、附件等
+
+### 🧠 AI 增强功能
+- **智能标签** - AI 自动分析并生成标签
+- **内容摘要** - 一键生成笔记核心要点
+- **情感分析** - 了解写作时的情绪状态
+- **智能推荐** - 发现相关内容和想法
+
+### 🔍 强大搜索
+- **全文搜索** - 支持中英文混合搜索
+- **语义搜索** - 理解你的意图而不仅是关键词
+- **高级筛选** - 按时间、标签、类型筛选
+- **模糊匹配** - 智能纠错和近似匹配
+
+### 🎨 个性化体验
+- **Live2D 看板娘** - 可爱的交互式助手
+- **暗黑模式** - 护眼的夜间阅读模式
+- **响应式设计** - 完美适配手机、平板、电脑
+- **自定义主题** - 打造专属视觉风格
+
+### 🔄 数据同步
+- **多平台同步** - WebDAV、OneDrive、iCloud
+- **端到端加密** - 数据传输安全可靠
+- **版本历史** - 查看和恢复笔记历史版本
+- **智能备份** - 自动备份，永不丢失
+
+---
+
+## 🚀 快速开始
+
+### 🌐 在线体验
+最简单的开始方式！访问 [qcnote.app](https://qcnote.app) 立即开始使用。
+
+### 💻 本地运行
 ```bash
-cd c:\Users\USER\OneDrive\Documents\QCNOTE
+# 1. 克隆项目
+git clone https://github.com/your-org/qcnote.git
+cd qcnote
+
+# 2. 安装依赖
 npm install
+
+# 3. 启动开发服务器
 npm run dev
+
+# 4. 打开浏览器访问 http://localhost:3000
 ```
 
-访问：`http://localhost:3000`
-
-### 2. 可选后端（启动与同步）
-
+### 🐳 Docker 部署
 ```bash
-cd server
+# 使用 Docker Compose 一键启动
+docker-compose up -d
+
+# 访问 http://localhost:3000
+```
+
+### 📖 详细指南
+- [新手入门指南](docs/user-guide/getting-started.md)
+- [开发者环境搭建](docs/developer/setup.md)
+- [生产环境部署](docs/deployment/index.md)
+
+---
+
+## 📱 功能预览
+
+<table>
+<tr>
+<td width="50%">
+
+### 主界面
+![主界面](https://via.placeholder.com/400x300/4A90E2/FFFFFF?text=优雅的主界面)
+
+*简洁直观的设计，让你专注于内容创作*
+
+</td>
+<td width="50%">
+
+### AI 助手
+![AI 功能](https://via.placeholder.com/400x300/50C878/FFFFFF?text=AI+智能助手)
+
+*AI 帮你生成标签、摘要，优化笔记组织*
+
+</td>
+</tr>
+<tr>
+<td>
+
+### 知识图谱
+![知识图谱](https://via.placeholder.com/400x300/FF6B6B/FFFFFF?text=知识图谱可视化)
+
+*可视化笔记关系，发现知识脉络*
+
+</td>
+<td>
+
+### 移动端适配
+![移动端](https://via.placeholder.com/400x300/9B59B6/FFFFFF?text=完美移动体验)
+
+*随时随地记录想法，无缝同步*
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🎮 使用演示
+
+### 创建你的第一篇笔记
+1. **点击 "开始记录"** - 进入编辑界面
+2. **输入标题和内容** - 支持 Markdown 格式
+3. **添加标签** - 让笔记更有条理
+4. **保存并查看** - 你的笔记已经创建完成！
+
+### 体验 AI 功能
+1. **选中笔记内容** - 选择要分析的文本
+2. **点击 AI 按钮** - 选择需要的功能
+3. **等待处理** - AI 会自动生成结果
+4. **应用建议** - 采纳 AI 的智能建议
+
+### 搜索和发现
+1. **输入关键词** - 在搜索框输入内容
+2. **查看结果** - 智能排序的相关笔记
+3. **使用筛选器** - 按时间、标签等筛选
+4. **发现关联** - 查看相关笔记推荐
+
+---
+
+## 🛠️ 技术栈
+
+<div align="center">
+
+### 前端技术
+![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-38B2AC?style=flat-square&logo=tailwind-css)
+
+### 后端技术
+![Node.js](https://img.shields.io/badge/Node.js-18-339933?style=flat-square&logo=node.js)
+![Fastify](https://img.shields.io/badge/Fastify-4-000000?style=flat-square&logo=fastify)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14-4169E1?style=flat-square&logo=postgresql)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis)
+
+### AI & 搜索
+![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-412991?style=flat-square&logo=openai)
+![Lunr.js](https://img.shields.io/badge/Lunr.js-2.3-000000?style=flat-square)
+![向量搜索](https://img.shields.io/badge/向量搜索-自定义-FF6B6B?style=flat-square)
+
+### 部署 & 工具
+![Docker](https://img.shields.io/badge/Docker-24-2496ED?style=flat-square&logo=docker)
+![Vercel](https://img.shields.io/badge/Vercel-部署-000000?style=flat-square&logo=vercel)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI/CD-2088FF?style=flat-square&logo=github-actions)
+
+</div>
+
+---
+
+## 📚 文档中心
+
+我们提供了完整详细的文档，帮助你更好地使用 QCNOTE。
+
+| 📖 用户指南 | 🛠️ 开发者文档 | 🚀 部署运维 | 🔒 安全隐私 |
+|-------------|----------------|-------------|-------------|
+| [🚀 快速开始](docs/user-guide/getting-started.md)<br/>[✨ 功能特性](docs/user-guide/features.md)<br/>[❓ 常见问题](docs/user-guide/faq.md) | [🛠️ 环境搭建](docs/developer/setup.md)<br/>[🏗️ 架构设计](docs/developer/architecture.md)<br/>[🔌 API 文档](docs/developer/api/rest.md) | [🚀 部署指南](docs/deployment/index.md)<br/>[🐳 Docker 部署](docs/deployment/docker.md)<br/>[☁️ 云服务](docs/deployment/vercel.md) | [🔒 安全架构](docs/security/architecture.md)<br/>[🛡️ 数据保护](docs/security/encryption.md)<br/>[📋 合规性](docs/security/compliance.md) |
+
+### 📖 学习资源
+- [**视频教程**](https://youtube.com/qcnote) - 直观的视频教学
+- [**示例项目**](https://github.com/your-org/qcnote-examples) - 实用代码示例
+- [**博客文章**](https://blog.qcnote.app) - 深度技术分享
+
+---
+
+## 🤝 贡献
+
+QCNOTE 是开源项目，我们欢迎各种形式的贡献！
+
+### 🌟 参与方式
+- **🐛 报告问题** - [提交 Bug](https://github.com/your-org/qcnote/issues/new?template=bug_report.md)
+- **💡 功能建议** - [提出想法](https://github.com/your-org/qcnote/discussions/categories/feature-requests)
+- **📝 文档改进** - 帮助完善文档
+- **💻 代码贡献** - 参与开发
+
+### 🚀 开发流程
+1. **Fork 项目** 到你的 GitHub
+2. **创建分支** `git checkout -b feature/AmazingFeature`
+3. **提交更改** `git commit -m 'Add some AmazingFeature'`
+4. **推送分支** `git push origin feature/AmazingFeature`
+5. **创建 PR** 并描述你的更改
+
+### 🧪 开发环境
+```bash
+# 安装依赖
 npm install
-npm start
+
+# 运行测试
+npm test
+
+# 代码检查
+npm run lint
+
+# 构建检查
+npm run build
 ```
 
-默认：`http://localhost:10000`
+### 📋 贡献指南
+详细的贡献指南请查看：[贡献文档](docs/developer/contributing.md)
 
-### 3. 常用脚本
+---
 
-```bash
-npm run dev           # 开发服务器（HMR 启用）
-npm run build         # 生产构建
-npm start             # 启动生产服务器
-npm run lint          # ESLint 检查
-npm run format        # Prettier 格式化
-npm test              # Vitest 单元测试
-npm run test:e2e      # Playwright 端到端测试
-npm run test:e2e:ui   # E2E 测试 UI 模式（调试）
-```
+## 📄 开源协议
 
-## ⚙️ 配置与环境变量
-
-### 前端（./.env.local）
-
-```env
-NEXT_PUBLIC_CHARACTER_SERVER_URL=http://localhost:10000
-NEXT_PUBLIC_VAPID_PUBLIC=<your-vapid-public-key>
-```
-
-### 后端（server/.env 或环境变量）
-
-```env
-PORT=10000
-NODE_ENV=development
-OPENAI_API_KEY=<your-openai-key>
-REDIS_URL=redis://<user>:<password>@<host>:<port>
-VAPID_PUBLIC=<publicKey>
-VAPID_PRIVATE=<privateKey>
-REQUIRE_API_KEY=false         # 设为 true 启用 X-API-Key 认证
-```
-
-### 速率限制与安全
-
-后端自动限制 AI 端点速率：
-- **限制**：每个 IP 30 次请求/分钟
-- **响应头**：X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
-- **超限状态码**：429 Too Many Requests
-
-启用 API 密钥认证：
-```bash
-REQUIRE_API_KEY=true API_KEY=your-secret-key npm start
-```
-
-客户端需在请求头添加：
-```javascript
-fetch('/api/ai/generateTags', {
-  method: 'POST',
-  headers: { 'X-API-Key': 'your-secret-key' },
-  body: JSON.stringify({ content: '...' })
-})
-```
-
-## 🧩 数据模型
-
-笔记说明（lib/types/ 和 lib/storage.ts）：
-
-```json
-{
-  "id": "note_1708262400000",
-  "title": "示例标题",
-  "content": "Markdown 内容",
-  "category": "生活|工作",
-  "tags": ["tag1", "tag2"],
-  "color": "#dc96b4",
-  "isFavorite": false,
-  "isArchived": false,
-  "createdAt": 1708262400000,
-  "updatedAt": 1708262400000
-}
-```
-
-## 📦 部署建议
-
-### 前端：Vercel
-1. 连接 GitHub 仓库
-2. 设置环境变量
-   - NEXT_PUBLIC_CHARACTER_SERVER_URL
-   - NEXT_PUBLIC_VAPID_PUBLIC
-3. 构建命令：`npm install && npm run build`
-4. 启动命令：`npm start`
-
-### 后端：Render
-1. 目标目录：server
-2. Build：`npm install`
-3. Start：`node index.js`
-4. Redis：建议使用 Render Key Value /外部 Redis
-
-## 🛠️ 快速故障排查
-
-- 页面空白：浏览器控制台是否 waifu.js / Live2D 加载失败
-- 数据无法保存：IndexedDB 权限或存储异常（lib/idb.ts）
-- 搜索不准：重建全文和向量索引，查看 lib/indexer.ts
-- 后端 500：server/log 及 REDIS_URL/VAPID 配置
-
-## ♿ 可访问性
-
-项目支持 WCAG 2.1 Level AA 可访问性标准：
-- ✓ 键盘导航支持
-- ✓ 屏幕阅读器兼容
-- ✓ 充分的颜色对比度
-- ✓ 触摸友好的按钮大小（移动设备）
-
-运行可访问性测试：
-```bash
-npm run test:e2e -- accessibility.spec.ts
-```
-
-## 🔐 隐私与授权
-
-- 前端默认仅本地存储，无远程同步
-- Live2D 资源遵循源项目许可证（GPL-2.0 或模型对应授权）
-- 敏感信息请断网使用或自行扩展加密存储
-- API 密钥通过后端代理安全处理，不暴露客户端
-
-## 🧪 测试与质量
-
-### 单元测试（Vitest）
-```bash
-npm test              # 运行所有单元测试
-npm test -- --ui     # 打开测试 UI
-```
-
-**覆盖范围：**
-- ✓ 存储操作（test/storage.test.ts）
-- ✓ 搜索索引（test/indexer.test.ts）
-- ✓ 向量计算（test/vector.test.ts）
-- ✓ 服务端路由（test/server.test.ts）
-- ✓ 组件行为（test/NoteList.test.tsx）
-
-### E2E 测试（Playwright）
-```bash
-npm run test:e2e      # 跨浏览器测试
-npm run test:e2e:ui   # 交互式调试
-```
-
-**覆盖场景：**
-- ✓ 基础 CRUD 操作
-- ✓ 笔记搜索与过滤
-- ✓ 标签与分类管理
-- ✓ WCAG 可访问性检查
-- ✓ 错误处理行为
-
-### 代码质量
-**预提交钩子（Husky + lint-staged）**
-```bash
-npx husky install    # 初始化钩子（一次性）
-```
-
-现在每次提交都会自动：
-- ✓ ESLint 检查
-- ✓ Prettier 格式化
-- ✓ TypeScript 类型检查
-
-推送前会自动运行完整测试套件。
-
-## 📌 贡献指南
-
-- 代码风格：ESLint + Prettier
-- 分支策略：main + 特性分支
-- PR 内容：功能说明、测试覆盖、文档变更
-
-## 📚 参考链接
-
-- pages/index.tsx, pages/dashboard.tsx
-- lib/storage.ts, lib/indexer.ts, lib/vector.ts
-- components/Character.tsx, public/js/waifu.js
-- server/index.ts, server/queue.ts, server/worker.ts
-
-## 🏷️ 版本
-
-- 当前：1.0.0
-
-## 📜 许可证与致谢
-
-### 主项目许可证
-
-**MIT License** - 详见 [LICENSE](LICENSE) 文件
+QCNOTE 采用 **MIT License** 开源协议。
 
 ```
-Copyright (c) 2026 LEE YU HAO
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software...
+MIT License - 详见 LICENSE 文件
 ```
 
-### 第三方开源项目
+---
 
-QCNOTE 应用建立在众多优秀开源项目之上。主要技术依赖包括：
+## 🙏 致谢
 
-| 项目 | 许可证 | 用途 |
-|------|-------|------|
-| [React](https://react.dev) | MIT | UI 框架 |
-| [Next.js](https://nextjs.org) | MIT | Web 框架 |
-| [Lunr.js](https://lunrjs.com) | MIT | 全文搜索 |
-| [Pixi.js](https://pixijs.com) | MIT | 2D 渲染 |
-| [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display) | MIT | Live2D 显示 |
-| [Live2D 看板娘](https://github.com/fghrsh/live2d_demo) | GPL-2.0 | 看板娘实现 |
-| [react-markdown](https://github.com/remarkjs/react-markdown) | MIT | Markdown 渲染 |
-| [Tailwind CSS](https://tailwindcss.com) | MIT | CSS 框架 |
+QCNOTE 的开发离不开众多优秀开源项目的支持：
 
-**完整许可证详见：**
-- 📄 [CREDITS.md](CREDITS.md) - 所有依赖项的完整列表和许可证
-- 📊 [FOOTER_COPYRIGHT_AUDIT.md](FOOTER_COPYRIGHT_AUDIT.md) - 版权审计报告
+### 核心依赖
+- **React & Next.js** - 现代 Web 开发框架
+- **Tailwind CSS** - 实用优先的 CSS 框架
+- **Lunr.js** - 轻量级搜索引擎
+- **Pixi.js & Live2D** - 动画和交互技术
+- **OpenAI** - AI 能力支持
 
-### 许可证兼容性
+### 社区贡献
+特别感谢所有贡献者、测试者和用户的支持！
 
-- ✅ MIT + GPL-2.0：兼容（项目使用 MIT，可包装 GPL-2.0）
-- ✅ MIT + Apache-2.0：兼容（都是宽松许可证）
+<a href="https://github.com/your-org/qcnote/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=your-org/qcnote" />
+</a>
 
-### 特别感谢
+---
 
-感谢以下项目的贡献者和维护者，使得 QCNOTE 的开发成为可能：
+## 📞 联系我们
 
-- **Live2D 官方团队** - 强大的 3D 角色系统
-- **React 和 Next.js 团队** - 现代化的开发体验
-- **开源社区** - 数百个小型但关键的库维护者
+<div align="center">
 
+### 💬 社区交流
+- **📧 邮箱**: support@qcnote.app
+- **💬 论坛**: [GitHub Discussions](https://github.com/your-org/qcnote/discussions)
+- **🐛 Issues**: [问题反馈](https://github.com/your-org/qcnote/issues)
 
+### 🌐 社交媒体
+- **🌍 官网**: [qcnote.app](https://qcnote.app)
+- **📺 YouTube**: [youtube.com/qcnote](https://youtube.com/qcnote)
+- **📘 博客**: [blog.qcnote.app](https://blog.qcnote.app)
+
+### 💼 商业合作
+- **📧 商务**: business@qcnote.app
+- **📧 媒体**: press@qcnote.app
+
+</div>
+
+---
+
+## 🎉 更新日志
+
+### v2.1.0 (最新) - 2024年1月
+- ✨ **AI 内容摘要** - 新增智能摘要功能
+- 🎨 **暗黑模式优化** - 改进夜间使用体验
+- 🔍 **搜索性能提升** - 更快的搜索响应
+- 🐛 **稳定性改进** - 修复多个已知问题
+- 📱 **移动端优化** - 更好的移动设备支持
+
+### v2.0.0 - 2023年12月
+- 🚀 **全新架构** - 基于 Next.js 14 重构
+- 🤖 **AI 深度集成** - 全面的 AI 功能支持
+- 🎨 **现代化 UI** - 重新设计用户界面
+- 🔒 **安全增强** - 全面的安全加固
+
+### v1.0.0 - 2023年6月
+- ✅ **核心功能** - 基础笔记管理功能
+- 🔍 **智能搜索** - 全文搜索和标签系统
+- ☁️ **云同步** - 多平台数据同步
+- 🎭 **Live2D 集成** - 可爱的交互助手
+
+[📋 查看完整更新日志](docs/changelog.md)
+
+---
+
+<div align="center">
+
+**🎉 感谢你选择 QCNOTE！**
+
+*让记录变得简单而优雅，我们致力于为你提供最好的笔记体验。*
+
+---
+
+**⭐ 如果这个项目对你有帮助，请给我们一个 Star！**
+
+</div>

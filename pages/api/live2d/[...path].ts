@@ -12,11 +12,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const pathArray = Array.isArray(path) ? path : [path];
   const proxyUrl = `${targetOrigin}/api/${pathArray.join('/')}`;
 
+  // Enforce CORS for qcnote.com only
+  const allowedOrigins = ['https://qcnote.com', 'https://www.qcnote.com'];
+  const requestOrigin = req.headers.origin || '';
+  const isAllowedOrigin = allowedOrigins.includes(requestOrigin);
+
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    if (isAllowedOrigin) {
+      res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
     res.status(204).end();
+    return;
+  }
+
+  // Reject cross-origin requests
+  if (!isAllowedOrigin) {
+    res.status(403).json({ error: 'CORS policy violation' });
     return;
   }
 
@@ -48,8 +62,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.setHeader(key, value);
     });
 
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    if (isAllowedOrigin) {
+      res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
 
     res.status(upstream.status).send(Buffer.from(data));
   } catch (error) {
