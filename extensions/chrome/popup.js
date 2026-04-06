@@ -1,4 +1,4 @@
-// NOTE Web Clipper - Chrome Extension
+// QCNOTE Web Clipper - Chrome Extension
 
 document.addEventListener('DOMContentLoaded', function() {
   const clipPageBtn = document.getElementById('clipPage');
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function sendToNote(data) {
-    // Get NOTE app URL from storage or use default
+    // Get QCNOTE app URL from storage or use default
     chrome.storage.sync.get(['noteUrl'], function(result) {
       const noteUrl = result.noteUrl || 'http://localhost:3000';
 
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .catch(error => {
         console.error('Clipping failed:', error);
-        updateStatus('✗ 剪藏失败，请检查 NOTE 应用是否运行', 'error');
+        updateStatus('✗ 剪藏失败，请检查 QCNOTE 应用是否运行', 'error');
       });
     });
   }

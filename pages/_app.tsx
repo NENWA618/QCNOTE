@@ -64,7 +64,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-dark via-primary to-accent-pink">
           <div className="text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-            <div className="text-white text-xl font-semibold mb-2">NOTE</div>
+            <div className="text-white text-xl font-semibold mb-2">QCNOTE</div>
             <div className="text-white/80 text-sm">正在初始化您的个人笔记空间...</div>
             <div className="mt-4 text-white/60 text-xs">加载 IndexedDB 存储系统</div>
           </div>

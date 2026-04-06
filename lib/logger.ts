@@ -15,15 +15,15 @@ function sendRemote(level: string, msg: unknown[]) {
 }
 
 export function info(...args: unknown[]) {
-  if (isDev) console.log('[NOTE]', ...args);
+  if (isDev) console.log('[QCNOTE]', ...args);
   sendRemote('info', args);
 }
 export function warn(...args: unknown[]) {
-  console.warn('[NOTE]', ...args);
+  console.warn('[QCNOTE]', ...args);
   sendRemote('warn', args);
 }
 export function error(...args: unknown[]) {
-  console.error('[NOTE]', ...args);
+  console.error('[QCNOTE]', ...args);
   sendRemote('error', args);
 }
 

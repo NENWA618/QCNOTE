@@ -8,7 +8,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>NOTE - 个人笔记网站</title>
+        <title>QCNOTE - 个人笔记网站</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta charSet="utf-8" />
         <link rel="icon" href="/images/icons/note_icon.png" />
@@ -22,14 +22,14 @@ export default function Home() {
           >
             <Image
               src="/images/icons/note_icon.png"
-              alt="NOTE"
+              alt="QCNOTE"
               width={48}
               height={48}
               quality={75}
               className="rounded-lg shadow-light"
               priority
             />
-            <span>NOTE</span>
+            <span>QCNOTE</span>
           </Link>
           <ul className="flex gap-8 list-none">
             <li>
@@ -60,7 +60,7 @@ export default function Home() {
             </div>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary-dark mb-4 md:mb-6">
-            NOTE
+            QCNOTE
           </h1>
           <p className="text-lg md:text-xl lg:text-2xl text-text-light mb-6 md:mb-8">
             用心记录，思考每一刻
@@ -147,10 +147,10 @@ export default function Home() {
 
         <section id="about" className="mt-12 md:mt-16">
           <div className="card">
-            <h2 className="text-primary-dark mb-6 text-2xl md:text-3xl font-bold">❓ 关于 NOTE</h2>
+            <h2 className="text-primary-dark mb-6 text-2xl md:text-3xl font-bold">❓ 关于 QCNOTE</h2>
             <p className="text-text-light leading-relaxed">
-              NOTE
-              是一个简洁而优雅的个人笔记应用。我们相信，记录是思考的开始，而思考是成长的源动力。无论你是在记录日常的点滴，还是在思考人生的意义，NOTE
+              QCNOTE
+              是一个简洁而优雅的个人笔记应用。我们相信，记录是思考的开始，而思考是成长的源动力。无论你是在记录日常的点滴，还是在思考人生的意义，QCNOTE
               都为你提供一个安静而温暖的空间。
             </p>
             <p className="text-text-light leading-relaxed mt-4">
@@ -198,9 +198,9 @@ export default function Home() {
                 'linear-gradient(135deg, rgba(220, 150, 180, 0.1), rgba(176, 168, 192, 0.1))',
             }}
           >
-            <h2 className="text-primary-dark mb-6 text-3xl font-bold">💝 喜欢 NOTE 吗？</h2>
+            <h2 className="text-primary-dark mb-6 text-3xl font-bold">💝 喜欢 QCNOTE 吗？</h2>
             <p className="text-text-light mb-8 text-lg leading-relaxed">
-              如果 NOTE 帮助了你，欢迎通过支持我们来鼓励我们的创新！
+              如果 QCNOTE 帮助了你，欢迎通过支持我们来鼓励我们的创新！
             </p>
             <Link href="/contact" className="btn btn-primary">
               💰 支持我们

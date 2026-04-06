@@ -55,18 +55,18 @@ describe('Indexer - Search & Caching', () => {
   beforeEach(async () => {
     // Clear cache and storage before each test
     invalidateIndex();
-    await IDB.setItem('NOTE_LUNR_INDEX', null);
-    await IDB.setItem('NOTE_VECTORS', null);
-    await IDB.setItem('NOTE_SENTIMENTS', null);
-    await IDB.setItem('NOTE_HASH', null);
+    await IDB.setItem('QCNOTE_LUNR_INDEX', null);
+    await IDB.setItem('QCNOTE_VECTORS', null);
+    await IDB.setItem('QCNOTE_SENTIMENTS', null);
+    await IDB.setItem('QCNOTE_HASH', null);
   });
 
   afterEach(async () => {
     invalidateIndex();
-    await IDB.setItem('NOTE_LUNR_INDEX', null);
-    await IDB.setItem('NOTE_VECTORS', null);
-    await IDB.setItem('NOTE_SENTIMENTS', null);
-    await IDB.setItem('NOTE_HASH', null);
+    await IDB.setItem('QCNOTE_LUNR_INDEX', null);
+    await IDB.setItem('QCNOTE_VECTORS', null);
+    await IDB.setItem('QCNOTE_SENTIMENTS', null);
+    await IDB.setItem('QCNOTE_HASH', null);
   });
 
   describe('buildIndex', () => {
@@ -83,7 +83,7 @@ describe('Indexer - Search & Caching', () => {
 
     it('should cache vectors for each note', async () => {
       await buildIndex(mockNotes);
-      const vectors = await IDB.getItem('NOTE_VECTORS');
+      const vectors = await IDB.getItem('QCNOTE_VECTORS');
       
       expect(vectors).toBeDefined();
       expect(vectors).toHaveProperty('note_1');
@@ -93,7 +93,7 @@ describe('Indexer - Search & Caching', () => {
 
     it('should cache sentiment analysis results', async () => {
       await buildIndex(mockNotes);
-      const sentiments = await IDB.getItem('NOTE_SENTIMENTS');
+      const sentiments = await IDB.getItem('QCNOTE_SENTIMENTS');
       
       expect(sentiments).toBeDefined();
       expect(sentiments).toHaveProperty('note_1');
@@ -103,7 +103,7 @@ describe('Indexer - Search & Caching', () => {
 
     it('should store hash of notes for dirty detection', async () => {
       await buildIndex(mockNotes);
-      const hash = await IDB.getItem('NOTE_HASH');
+      const hash = await IDB.getItem('QCNOTE_HASH');
       
       expect(hash).toBeDefined();
       expect(typeof hash).toBe('string');

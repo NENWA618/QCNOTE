@@ -30,7 +30,7 @@
 ```bash
 # 克隆项目
 git clone https://github.com/NENWA618/NOTE.git
-cd NOTE
+cd QCNOTE
 
 # 安装依赖
 npm install
@@ -452,7 +452,7 @@ redis-server
 
 ### 用户数据导出
 
-支持在 NOTE 应用中手动导出数据为 JSON 格式。
+支持在 QCNOTE 应用中手动导出数据为 JSON 格式。
 
 ---
 

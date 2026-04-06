@@ -8,7 +8,7 @@ const Contact: React.FC = () => {
   return (
     <>
       <Head>
-        <title>支持我们 - NOTE</title>
+        <title>支持我们 - QCNOTE</title>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
@@ -21,14 +21,14 @@ const Contact: React.FC = () => {
           >
             <Image
               src="/images/icons/note_icon.png"
-              alt="NOTE"
+              alt="QCNOTE"
               width={48}
               height={48}
               quality={75}
               className="rounded-lg shadow-light"
               priority
             />
-            <span>NOTE</span>
+            <span>QCNOTE</span>
           </Link>
           <ul className="flex gap-8 list-none">
             <li>
@@ -53,8 +53,8 @@ const Contact: React.FC = () => {
 
       <div className="container">
         <section className="text-center py-12">
-          <h1 className="text-5xl font-bold text-primary-dark mb-4">💰 支持 NOTE</h1>
-          <p className="text-xl text-text-light">感谢你对 NOTE 的支持和信任</p>
+          <h1 className="text-5xl font-bold text-primary-dark mb-4">💰 支持 QCNOTE</h1>
+          <p className="text-xl text-text-light">感谢你对 QCNOTE 的支持和信任</p>
         </section>
 
         <section className="my-12">
@@ -62,7 +62,7 @@ const Contact: React.FC = () => {
             <div className="card text-center mb-12">
               <h2 className="text-primary-dark mb-8 text-3xl font-bold">🎁 支持我们的方式</h2>
               <p className="text-text-light mb-8 text-lg leading-relaxed">
-                如果 NOTE 对你有帮助，欢迎通过以下方式支持我们！你的支持是我们继续创新的动力。
+                如果 QCNOTE 对你有帮助，欢迎通过以下方式支持我们！你的支持是我们继续创新的动力。
               </p>
 
               <div className="flex flex-col items-center gap-8">
@@ -85,7 +85,7 @@ const Contact: React.FC = () => {
 
             <div className="card">
               <h2 style={{ color: 'var(--primary-dark)', marginBottom: '1.5rem' }}>
-                🎯 为什么支持 NOTE？
+                🎯 为什么支持 QCNOTE？
               </h2>
               <div
                 style={{
@@ -99,7 +99,7 @@ const Contact: React.FC = () => {
                     ✨ 简洁优雅
                   </h4>
                   <p style={{ color: 'var(--text-light)', lineHeight: 1.6 }}>
-                    NOTE 提供简洁而优雅的笔记体验，让记录变成享受。
+                    QCNOTE 提供简洁而优雅的笔记体验，让记录变成享受。
                   </p>
                 </div>
                 <div>

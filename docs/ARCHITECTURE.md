@@ -1,8 +1,8 @@
-# NOTE Application - Architecture Overview
+# QCNOTE Application - Architecture Overview
 
 ## System Architecture
 
-NOTE 是一个**离线优先、隐私第一**的个人笔记管理系统。采用分层架构设计，支持本地存储、云同步和 AI 增强。
+QCNOTE 是一个**离线优先、隐私第一**的个人笔记管理系统。采用分层架构设计，支持本地存储、云同步和 AI 增强。
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐

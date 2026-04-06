@@ -8,7 +8,7 @@ export default function Terms() {
   return (
     <>
       <Head>
-        <title>使用条款 - NOTE</title>
+        <title>使用条款 - QCNOTE</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta charSet="utf-8" />
       </Head>
@@ -20,12 +20,12 @@ export default function Terms() {
 
         <div className="card">
           <p className="text-text-light leading-relaxed mb-4">
-            欢迎使用 NOTE。使用本应用即表示你同意以下使用条款。请在使用前仔细阅读。
+            欢迎使用 QCNOTE。使用本应用即表示你同意以下使用条款。请在使用前仔细阅读。
           </p>
 
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">1. 使用范围</h2>
           <p className="text-text-light mb-4">
-            NOTE 为个人笔记管理工具，提供在本地创建、编辑、导出和导入笔记的功能。你应对自己在应用中创建的内容负责。
+            QCNOTE 为个人笔记管理工具，提供在本地创建、编辑、导出和导入笔记的功能。你应对自己在应用中创建的内容负责。
           </p>
 
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">2. 免责声明</h2>
@@ -35,7 +35,7 @@ export default function Terms() {
 
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">3. 知识产权</h2>
           <p className="text-text-light mb-4">
-            NOTE 的源代码遵循仓库内声明的 MIT 许可证。你可以在遵守许可条款的前提下使用、修改和分发本项目。
+            QCNOTE 的源代码遵循仓库内声明的 MIT 许可证。你可以在遵守许可条款的前提下使用、修改和分发本项目。
             <br />
             （看板娘模型当前使用来自 <code>live2d-widget-model-koharu</code> 的开源资产，
             该模型以 GPL‑2.0 授权，与项目代码的 MIT 许可不同。使用时请自行评估

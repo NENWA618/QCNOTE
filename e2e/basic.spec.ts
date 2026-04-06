@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('NOTE Application', () => {
+test.describe('QCNOTE Application', () => {
   test('should load homepage', async ({ page }) => {
     await page.goto('/');
-    await expect(page).toHaveTitle(/NOTE/);
+    await expect(page).toHaveTitle(/QCNOTE/);
   });
 
   test('should navigate to dashboard', async ({ page }) => {

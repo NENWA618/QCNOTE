@@ -4,10 +4,10 @@ import { NoteItem } from './storage';
 import vector, { Vector } from './vector';
 import sentiment from './sentiment';
 
-const INDEX_KEY = 'NOTE_LUNR_INDEX';
-const VECTOR_KEY = 'NOTE_VECTORS';
-const SENTIMENT_KEY = 'NOTE_SENTIMENTS';
-const NOTES_HASH_KEY = 'NOTE_HASH'; // Track notes hash to detect changes
+const INDEX_KEY = 'QCNOTE_LUNR_INDEX';
+const VECTOR_KEY = 'QCNOTE_VECTORS';
+const SENTIMENT_KEY = 'QCNOTE_SENTIMENTS';
+const NOTES_HASH_KEY = 'QCNOTE_HASH'; // Track notes hash to detect changes
 
 // Cache state for performance
 let cachedIndex: lunr.Index | null = null;

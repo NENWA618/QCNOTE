@@ -197,9 +197,9 @@ const Footer: React.FC<FooterProps> = ({
             {/* 关于部分 */}
             {showAbout && (
               <div>
-                <h4 className="text-white mb-4">📝 关于 NOTE</h4>
+                <h4 className="text-white mb-4">📝 关于 QCNOTE</h4>
                 <p className="text-sm leading-relaxed">
-                  NOTE 是一个简洁而优雅的个人笔记应用。完全本地存储，100% 隐私保护。
+                  QCNOTE 是一个简洁而优雅的个人笔记应用。完全本地存储，100% 隐私保护。
                 </p>
               </div>
             )}

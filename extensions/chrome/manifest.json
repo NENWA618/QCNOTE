@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "NOTE Web Clipper",
+  "name": "QCNOTE Web Clipper",
   "version": "1.0.0",
-  "description": "从网页快速剪藏内容到 NOTE 应用",
+  "description": "从网页快速剪藏内容到 QCNOTE 应用",
   "permissions": [
     "activeTab",
     "storage",
@@ -14,7 +14,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "NOTE 网页剪藏",
+    "default_title": "QCNOTE 网页剪藏",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

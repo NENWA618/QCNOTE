@@ -8,7 +8,7 @@ export default function Privacy() {
   return (
     <>
       <Head>
-        <title>隐私政策 - NOTE</title>
+        <title>隐私政策 - QCNOTE</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta charSet="utf-8" />
       </Head>
@@ -20,12 +20,12 @@ export default function Privacy() {
 
         <div className="card">
           <p className="text-text-light leading-relaxed mb-4">
-            NOTE 非常重视你的隐私。为了让你清楚了解我们如何处理数据，以下是我们对隐私的承诺和说明。
+            QCNOTE 非常重视你的隐私。为了让你清楚了解我们如何处理数据，以下是我们对隐私的承诺和说明。
           </p>
 
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">1. 本地存储为优先</h2>
           <p className="text-text-light mb-4">
-            NOTE 将笔记保存在你的浏览器本地（IndexedDB）。默认情况下我们不会将任何笔记、标签或元数据上报或存储到服务器。
+            QCNOTE 将笔记保存在你的浏览器本地（IndexedDB）。默认情况下我们不会将任何笔记、标签或元数据上报或存储到服务器。
           </p>
 
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">2. 导入与导出</h2>
@@ -35,7 +35,7 @@ export default function Privacy() {
 
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">3. 第三方资源</h2>
           <p className="text-text-light mb-4">
-            NOTE 使用开源前端库（例如 React、Tailwind 等）。在默认配置下，NOTE 不会与第三方服务共享你的笔记内容。
+            QCNOTE 使用开源前端库（例如 React、Tailwind 等）。在默认配置下，QCNOTE 不会与第三方服务共享你的笔记内容。
           </p>
 
           <h2 className="text-lg font-semibold text-primary-dark mt-4 mb-2">4. 本地备份建议</h2>

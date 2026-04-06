@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-03  
 **Status:** ACCEPTED  
-**Context:** NOTE supports both full-text and semantic search. Search can be slow for large note collections without optimization.
+**Context:** QCNOTE supports both full-text and semantic search. Search can be slow for large note collections without optimization.
 
 ## Problem Statement
 

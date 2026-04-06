@@ -1,7 +1,7 @@
-// Background script for NOTE Web Clipper
+// Background script for QCNOTE Web Clipper
 
 chrome.runtime.onInstalled.addListener(function() {
-  // Set default NOTE app URL
+  // Set default QCNOTE app URL
   chrome.storage.sync.set({
     noteUrl: 'http://localhost:3000'
   });

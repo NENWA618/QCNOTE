@@ -1,6 +1,6 @@
 /* eslint-disable no-undef,no-unused-vars */
 /* Lightweight IndexedDB helper - small wrapper for key/value storage */
-const DB_NAME = 'NOTE_DB_V1';
+const DB_NAME = 'QCNOTE_DB_V1';
 const STORE_NAME = 'keyval';
 
 function openDB(): Promise<IDBDatabase> {

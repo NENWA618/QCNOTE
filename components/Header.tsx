@@ -14,14 +14,14 @@ const Header: React.FC = () => {
         >
           <Image
             src="/images/icons/note_icon.png"
-            alt="NOTE"
+            alt="QCNOTE"
             width={48}
             height={48}
             quality={75}
             className="rounded-lg shadow-light"
             priority
           />
-          <span className="hidden sm:inline">NOTE</span>
+          <span className="hidden sm:inline">QCNOTE</span>
         </Link>
 
         {/* Mobile menu button */}

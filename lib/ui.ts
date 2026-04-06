@@ -44,7 +44,7 @@ export class NoteUI {
     if (sortSelect) {
       sortSelect.addEventListener('change', (e: Event) => {
         const target = e.target as HTMLSelectElement;
-        localStorage.setItem('NOTE_SORT', target.value);
+        localStorage.setItem('QCNOTE_SORT', target.value);
         this.renderNotesListAsync();
       });
     }
@@ -83,7 +83,7 @@ export class NoteUI {
       notes = notes.filter((n) => n.category === this.selectedCategory);
     }
 
-    const sortBy = localStorage.getItem('NOTE_SORT') || 'date';
+    const sortBy = localStorage.getItem('QCNOTE_SORT') || 'date';
     notes = Utils.sortNotes(notes, sortBy);
 
     container.innerHTML = '';
@@ -183,7 +183,7 @@ export class NoteUI {
     // create note using storage type guarantees
     const settings = await this.storage?.getSettingsAsync?.() as UserSettings | undefined;
     const defaultCat = settings?.defaultCategory ||
-      localStorage.getItem('NOTE_DEFAULT_CATEGORY') ||
+      localStorage.getItem('QCNOTE_DEFAULT_CATEGORY') ||
       '生活';
     const note = await this.storage?.addNoteAsync({
       title: '新笔记',

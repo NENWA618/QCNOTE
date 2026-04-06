@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: NOTE-server
+    name: QCNOTE-server
     runtime: node
     plan: free
     rootDirectory: server

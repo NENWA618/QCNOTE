@@ -1,6 +1,6 @@
 # 开源许可证与致谢
 
-NOTE 应用是建立在众多优秀开源项目之上的。本文档列出了所有主要依赖项及其许可证。
+QCNOTE 应用是建立在众多优秀开源项目之上的。本文档列出了所有主要依赖项及其许可证。
 
 ## 📜 许可证速览
 
@@ -83,12 +83,12 @@ NOTE 应用是建立在众多优秀开源项目之上的。本文档列出了所
 
 | 项目 | 用途 | 说明 | 链接 |
 |------|------|------|------|
-| **Live2D 看板娘** | 动画看板娘 | GPL-2.0 强 Copyleft。NOTE 应用作为派生作品，需保持开源 | https://github.com/fghrsh/live2d_demo |
+| **Live2D 看板娘** | 动画看板娘 | GPL-2.0 强 Copyleft。QCNOTE 应用作为派生作品，需保持开源 | https://github.com/fghrsh/live2d_demo |
 
 **重要说明：** 
 - Live2D 看板娘 使用 GPL-2.0 许可证
-- 这意味着 NOTE 应用中使用 Live2D 的任何派生代码必须以兼容的开源许可证发布
-- NOTE 已选择 MIT 许可证，与 GPL-2.0 兼容（MIT 更宽松）
+- 这意味着 QCNOTE 应用中使用 Live2D 的任何派生代码必须以兼容的开源许可证发布
+- QCNOTE 已选择 MIT 许可证，与 GPL-2.0 兼容（MIT 更宽松）
 
 ---
 
@@ -138,13 +138,13 @@ NOTE 应用是建立在众多优秀开源项目之上的。本文档列出了所
 ### MIT ↔️ GPL-2.0
 
 - ✅ **兼容性：** 是
-- 说明：NOTE (MIT) + Live2D (GPL-2.0) = 兼容
+- 说明：QCNOTE (MIT) + Live2D (GPL-2.0) = 兼容
 - 原因：MIT 比 GPL-2.0 更宽松，可以被 GPL-2.0 包装
 
 ### MIT ↔️ Apache-2.0
 
 - ✅ **兼容性：** 是
-- 说明：NOTE (MIT) + OpenAI (Apache-2.0) = 兼容
+- 说明：QCNOTE (MIT) + OpenAI (Apache-2.0) = 兼容
 - 原因：都是宽松许可证，可共存
 
 ### Apache-2.0 ↔️ GPL-2.0
@@ -198,5 +198,5 @@ NOTE 应用是建立在众多优秀开源项目之上的。本文档列出了所
 
 **最后更新：** 2026-04-03  
 **下次审计：** 2026-07-03（季度审计）  
-**维护者：** NOTE Contributors
+**维护者：** QCNOTE Contributors
 

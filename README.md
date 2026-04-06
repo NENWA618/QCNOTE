@@ -1,4 +1,4 @@
-﻿# NOTE 个人笔记应用
+﻿# QCNOTE 个人笔记应用
 
 > 简洁优雅的全功能笔记管理系统，支持本地存储、Live2D 看板娘、全文 + 向量搜索、离线敏感内容保护，以及可选后端增强服务。
 
@@ -41,7 +41,7 @@
 ### 1. 前端
 
 ```bash
-cd c:\Users\USER\OneDrive\Documents\NOTE
+cd c:\Users\USER\OneDrive\Documents\QCNOTE
 npm install
 npm run dev
 ```
@@ -251,7 +251,7 @@ copies of the Software...
 
 ### 第三方开源项目
 
-NOTE 应用建立在众多优秀开源项目之上。主要技术依赖包括：
+QCNOTE 应用建立在众多优秀开源项目之上。主要技术依赖包括：
 
 | 项目 | 许可证 | 用途 |
 |------|-------|------|
@@ -275,7 +275,7 @@ NOTE 应用建立在众多优秀开源项目之上。主要技术依赖包括：
 
 ### 特别感谢
 
-感谢以下项目的贡献者和维护者，使得 NOTE 的开发成为可能：
+感谢以下项目的贡献者和维护者，使得 QCNOTE 的开发成为可能：
 
 - **Live2D 官方团队** - 强大的 3D 角色系统
 - **React 和 Next.js 团队** - 现代化的开发体验

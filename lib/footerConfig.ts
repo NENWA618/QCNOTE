@@ -5,7 +5,7 @@
 
 export const FOOTER_CONFIG = {
   // 主版权
-  copyright: '© 2026 NOTE. 用心记录每一刻。',
+  copyright: '© 2026 QCNOTE. 用心记录每一刻。',
   
   // 核心库声明（与 Footer.tsx 保持同步）
   techStack: [

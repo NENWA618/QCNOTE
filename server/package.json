@@ -1,7 +1,7 @@
 {
   "name": "note-server",
   "version": "1.0.3",
-  "description": "Backend server for NOTE application",
+  "description": "Backend server for QCNOTE application",
   "main": "index.js",
   "scripts": {
     "start": "tsx index.ts",

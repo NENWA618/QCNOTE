@@ -446,7 +446,7 @@ const Dashboard: React.FC = () => {
   return (
     <>
       <Head>
-        <title>笔记管理 - NOTE</title>
+        <title>笔记管理 - QCNOTE</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta charSet="utf-8" />
       </Head>

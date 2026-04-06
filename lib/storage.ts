@@ -80,10 +80,10 @@ export class NoteStorage {
   useIndexedDB: boolean;
 
   constructor() {
-    this.storageKey = 'NOTE_STORAGE';
-    this.settingsKey = 'NOTE_SETTINGS';
-    this.webdavConfigKey = 'NOTE_WEBDAV_CONFIG';
-    this.conflictsKey = 'NOTE_CONFLICTS';
+    this.storageKey = 'QCNOTE_STORAGE';
+    this.settingsKey = 'QCNOTE_SETTINGS';
+    this.webdavConfigKey = 'QCNOTE_WEBDAV_CONFIG';
+    this.conflictsKey = 'QCNOTE_CONFLICTS';
     this.useIndexedDB = false;
     this.init();
     // 自动检查 IndexedDB 是否可用
@@ -846,7 +846,7 @@ export class NoteStorage {
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `NOTE_backup_${Date.now()}.json`;
+    link.download = `QCNOTE_backup_${Date.now()}.json`;
     link.click();
     URL.revokeObjectURL(url);
   }

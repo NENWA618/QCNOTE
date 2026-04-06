@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-03  
 **Status:** ACCEPTED  
-**Context:** NOTE needs to work without internet connection while maintaining data persistence
+**Context:** QCNOTE needs to work without internet connection while maintaining data persistence
 
 ## Problem Statement
 
