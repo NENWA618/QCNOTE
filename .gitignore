@@ -32,6 +32,12 @@ yarn-error.log
 coverage/
 .nyc_output/
 
+# Compiled outputs (should not be committed)
+lib/**/*.js
+test/**/*.js
+!server/**/*.js
+*.d.ts
+
 # Optional npm cache directory
 .npm
 
