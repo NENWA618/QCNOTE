@@ -1,27 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://qcnote.example.com/</loc>
+    <loc>https://qcnote.com/</loc>
     <lastmod>2026-04-07</lastmod>
-    <changefreq>weekly</changefreq>
+    <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://qcnote.example.com/contact</loc>
+    <loc>https://qcnote.com/dashboard</loc>
     <lastmod>2026-04-07</lastmod>
-    <changefreq>monthly</changefreq>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://qcnote.example.com/privacy</loc>
+    <loc>https://qcnote.com/contact</loc>
     <lastmod>2026-04-07</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.5</priority>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://qcnote.example.com/terms</loc>
+    <loc>https://qcnote.com/privacy</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>yearly</changefreq>
-    <priority>0.5</priority>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://qcnote.com/terms</loc>
+    <lastmod>2026-04-07</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
   </url>
 </urlset>
