@@ -3,14 +3,34 @@
  * Dependency Security Audit
  * Checks for known vulnerable or outdated packages
  * 
- * Usage: node scripts/audit-dependencies.js
+ * Usage: npx ts-node scripts/audit-dependencies.ts
  */
 
-const fs = require('fs');
-const path = require('path');
+import * as fs from 'fs';
+import * as path from 'path';
+
+interface ProblematicPackage {
+  name: string;
+  minVersion: string;
+  reason: string;
+  suggestions: string;
+}
+
+interface VersionParts {
+  major: number;
+  minor: number;
+  patch: number;
+  original: string;
+}
+
+interface AuditResults {
+  outdated: string[];
+  problematic: string[];
+  secure: string[];
+}
 
 // Known problematic packages that should be avoided or updated
-const PROBLEMATIC_PACKAGES = [
+const PROBLEMATIC_PACKAGES: ProblematicPackage[] = [
   {
     name: 'pixi-live2d-display',
     minVersion: '0.2.2',
@@ -20,25 +40,25 @@ const PROBLEMATIC_PACKAGES = [
 ];
 
 // Packages that should have specific minimum versions for security
-const MINIMUM_VERSIONS = {
+const MINIMUM_VERSIONS: Record<string, string> = {
   'next': '14.0.0',
   'react': '18.2.0',
   'typescript': '5.2.0',
 };
 
-function parseVersion(versionString) {
+function parseVersion(versionString: string): VersionParts {
   // Remove ^ or ~ prefix
   const cleaned = versionString.replace(/^[\^~]/, '');
   const parts = cleaned.split('.');
   return {
-    major: parseInt(parts[0], 10),
-    minor: parseInt(parts[1], 10) || 0,
-    patch: parseInt(parts[2], 10) || 0,
+    major: parseInt(parts[0] || '0', 10),
+    minor: parseInt(parts[1] || '0', 10),
+    patch: parseInt(parts[2] || '0', 10),
     original: cleaned,
   };
 }
 
-function compareVersions(actual, required) {
+function compareVersions(actual: VersionParts, required: VersionParts): number {
   if (actual.major > required.major) return 1;
   if (actual.major < required.major) return -1;
   if (actual.minor > required.minor) return 1;
@@ -48,20 +68,24 @@ function compareVersions(actual, required) {
   return 0;
 }
 
-async function auditDependencies() {
+async function auditDependencies(): Promise<void> {
   console.log('[Dependency Audit] Starting security check...\n');
 
   try {
     const packageJsonPath = path.join(__dirname, '..', 'package.json');
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    const packageJsonContent = fs.readFileSync(packageJsonPath, 'utf-8');
+    const packageJson = JSON.parse(packageJsonContent) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
 
-    const allDeps = {
+    const allDeps: Record<string, string> = {
       ...packageJson.dependencies,
       ...packageJson.devDependencies,
     };
 
     let issues = 0;
-    const results = {
+    const results: AuditResults = {
       outdated: [],
       problematic: [],
       secure: [],
@@ -73,46 +97,46 @@ async function auditDependencies() {
       const actualVersion = parseVersion(version);
 
       // Check for known problematic packages
-      const problematic = PROBLEMATIC_PACKAGES.find(p => p.name === pkg);
+      const problematic = PROBLEMATIC_PACKAGES.find((p) => p.name === pkg);
       if (problematic) {
         const requiredVersion = parseVersion(problematic.minVersion);
         if (compareVersions(actualVersion, requiredVersion) < 0) {
           console.log(`⚠️  ${pkg}: ${version} (requires >= ${problematic.minVersion})`);
-          console.log(`    Reason: ${problematic.reason}`);
-          console.log(`    Action: ${problematic.suggestions}\n`);
+          console.log(`   Reason: ${problematic.reason}`);
+          console.log(`   Suggestion: ${problematic.suggestions}\n`);
           results.problematic.push(pkg);
           issues++;
         }
       }
 
-      // Check minimum versions for security-critical packages
-      if (MINIMUM_VERSIONS[pkg]) {
-        const requiredVersion = parseVersion(MINIMUM_VERSIONS[pkg]);
+      // Check minimum versions
+      const minVersion = MINIMUM_VERSIONS[pkg];
+      if (minVersion) {
+        const requiredVersion = parseVersion(minVersion);
         if (compareVersions(actualVersion, requiredVersion) < 0) {
-          console.log(`⚠️  ${pkg}: ${version} (requires >= ${MINIMUM_VERSIONS[pkg]})`);
+          console.log(`⚠️  ${pkg}: ${version} (requires >= ${minVersion})`);
           results.outdated.push(pkg);
           issues++;
         } else {
-          console.log(`✅ ${pkg}: ${version}`);
           results.secure.push(pkg);
         }
       }
     }
 
-    console.log(`\nDependency Audit Summary:`);
-    console.log(`  Secure packages: ${results.secure.length}`);
-    console.log(`  Outdated: ${results.outdated.length}`);
-    console.log(`  Problematic: ${results.problematic.length}`);
+    console.log('\n=== Audit Summary ===');
+    console.log(`✓ Secure packages: ${results.secure.length}`);
+    if (results.outdated.length > 0) {
+      console.log(`⚠️  Outdated packages: ${results.outdated.length}`);
+    }
+    if (results.problematic.length > 0) {
+      console.log(`⚠️  Problematic packages: ${results.problematic.length}`);
+    }
 
     if (issues > 0) {
-      console.log(`\n⚠️  Found ${issues} dependency issue(s).`);
-      console.log('Recommendations:');
-      console.log('  1. Run: npm update <package-name>');
-      console.log('  2. Review changelogs for breaking changes');
-      console.log('  3. Run tests after updating: npm test');
+      console.log(`\n❌ Found ${issues} issue(s). Please update your dependencies.`);
       process.exit(1);
     } else {
-      console.log('\n✅ All dependencies are up to security standards!');
+      console.log('\n✅ All dependencies are secure!');
       process.exit(0);
     }
   } catch (error) {
