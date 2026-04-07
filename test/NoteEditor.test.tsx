@@ -1,5 +1,7 @@
+import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import NoteEditor from '../components/NoteEditor';
 import { NoteItem } from '../lib/storage';
@@ -111,7 +113,8 @@ describe('NoteEditor Component', () => {
     
     if (previewButtons.length > 0) {
       await user.click(previewButtons[previewButtons.length - 1]);
-      expect(mockProps.onTogglePreview).toHaveBeenCalledOrNot();
+      // Check if onTogglePreview was called or component behavior changed
+      expect(mockProps.onTogglePreview).toHaveBeenCalled();
     }
   });
 

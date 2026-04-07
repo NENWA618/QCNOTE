@@ -39,6 +39,111 @@
 
 ## ⚡ 快速部署
 
+### Vercel + Render (推荐组合)
+
+#### 部署架构
+
+推荐架构：**Vercel（前端）+ Render（后端）**
+
+```
+┌─────────────────────────────────────────────────┐
+│ 用户浏览器                                       │
+└────────────────┬────────────────────────────────┘
+                 │
+          ┌──────▼──────┬───────────────┐
+          │             │               │
+     [Vercel]      [CDN]           [其他]
+      (前端)       (缓存)          (可选)
+          │             │
+          └──────┬──────┘
+                 │
+          ┌──────▼──────┐
+          │ Render      │
+          │ (后端 API)  │
+          └──────┬──────┘
+                 │
+          ┌──────▼──────┐
+          │ Redis       │
+          │ (缓存/队列) │
+          └─────────────┘
+```
+
+#### 部署清单
+
+在部署前检查以下项：
+
+- [ ] **代码审查** - 所有 PR 已 approved
+- [ ] **安全检查** - 无硬编码密钥或凭证
+- [ ] **测试通过** - `npm test` 100% 通过
+- [ ] **性能基准** - Lighthouse 分数 > 85
+- [ ] **环境变量** - 所有必需变量已准备
+- [ ] **数据备份** - 已备份旧数据（如升级）
+- [ ] **监控配置** - 日志和告警已设置
+- [ ] **降级计划** - 故障回退方案已准备
+
+#### 前端部署（Vercel）
+
+1. 访问 [Vercel Dashboard](https://vercel.com/dashboard)
+2. 点击 "Add New..." → "Project"
+3. 导入 GitHub 仓库 `NENWA618/NOTE`
+4. 选择 Framework: **Next.js**
+5. 点击 "Import"
+
+**环境变量配置：**
+
+在 **Project Settings → Environment Variables** 中添加：
+
+| 变量 | 值 | 说明 |
+|------|---|----|
+| `NEXT_PUBLIC_CHARACTER_SERVER_URL` | `https://your-backend.onrender.com` | 后端 API 地址 |
+| `NEXT_PUBLIC_VAPID_PUBLIC` | `BMxxxx...` | Web Push 公钥 |
+
+**构建设置：**
+
+在 **Settings → Build & Development** 中：
+- Build Command: `npm ci && npm run build`
+- Output Directory: `.next`
+- Install Command: `npm ci`
+
+#### 后端部署（Render）
+
+1. 访问 [Render Dashboard](https://dashboard.render.com)
+2. 点击 "+ New" → **Web Service**
+3. 连接 GitHub 仓库
+4. 配置：
+   - **Name:** `note-api` 或自定义
+   - **Root Directory:** `server`
+   - **Environment:** `Node`
+   - **Build Command:** `npm ci`
+   - **Start Command:** `npm start`
+   - **Instance Type:** 选择合适规格
+
+**创建 Redis：**
+
+1. 点击 "+ New" → **Key Value (Redis)**
+2. **Name:** `note-redis` 或自定义
+3. **Advanced Option:** 选择 **Persistent** （推荐）
+4. 创建后复制 **Internal Connection URL**
+
+**后端环境变量：**
+
+| 变量 | 值 | 说明 |
+|------|---|-----|
+| `REDIS_URL` | `redis://<internal-url>` | Redis 连接 URL |
+| `VAPID_PUBLIC` | `BMxxxx...` | Web Push 公钥 |
+| `VAPID_PRIVATE` | `Kpyyy...` | Web Push 私钥 |
+| `NODE_ENV` | `production` | 环境标志 |
+| `LOG_LEVEL` | `info` | 日志级别 |
+
+#### 验证部署
+
+```bash
+# 测试后端可用性
+curl https://note-api.onrender.com/health
+
+# 应返回 200 OK
+```
+
 ### Vercel (推荐新手)
 
 #### 自动部署
@@ -309,6 +414,25 @@ server {
 
 ### 环境变量
 
+#### 前端环境变量
+
+| 变量 | 必需 | 描述 | 示例 |
+|------|------|------|------|
+| `NEXT_PUBLIC_CHARACTER_SERVER_URL` | ❌ 可选 | 后端 API 地址 | `https://api.example.com` |
+| `NEXT_PUBLIC_VAPID_PUBLIC` | ✅ 是 | Web Push 公钥 | `BMxxxx...` |
+
+#### 后端环境变量
+
+| 变量 | 必需 | 描述 | 默认值 |
+|------|------|------|--------|
+| `PORT` | ❌ 可选 | 服务器端口 | `10000` |
+| `REDIS_URL` | ✅ 是 | Redis 连接字符串 | 无 |
+| `VAPID_PUBLIC` | ✅ 是 | Web Push 公钥 | 无 |
+| `VAPID_PRIVATE` | ✅ 是 | Web Push 私钥 | 无 |
+| `NODE_ENV` | ❌ 可选 | 运行环境 | `production` |
+| `LOG_LEVEL` | ❌ 可选 | 日志级别 | `info` |
+| `CORS_ORIGIN` | ❌ 可选 | CORS 允许的源 | `*` |
+
 #### 必需变量
 ```env
 # 数据库
@@ -393,6 +517,32 @@ docker logs -f container_name
 
 ### 性能监控
 
+#### Lighthouse 优化目标
+
+| 指标 | 目标 | 优化方案 |
+|-----|------|---------|
+| Performance | > 85 | 图片优化、代码分割、缓存 |
+| Accessibility | > 90 | 完善 ARIA 标签 |
+| Best Practices | > 90 | 移除过期脚本、更新依赖 |
+| SEO | > 85 | 添加 meta 标签、sitemap |
+
+#### 实施优化
+
+```bash
+# 1. 分析包体积
+npm run build:analyze
+
+# 2. 启用 SWC 编译（更快）
+# next.config.js
+module.exports = { swcMinify: true }
+
+# 3. 图片优化
+# 使用 next/image 组件
+
+# 4. 启用 Gzip
+# Vercel 和 Render 自动启用
+```
+
 #### 使用 Lighthouse
 ```bash
 # 安装 Lighthouse
@@ -411,6 +561,27 @@ export { reportWebVitals }
 ```
 
 ### 日志管理
+
+#### 关键指标
+
+监控以下指标：
+- **响应时间** < 200ms
+- **错误率** < 0.1%
+- **可用性** > 99.9%
+- **CPU 使用率** < 70%
+- **内存使用率** < 80%
+
+#### 结构化日志配置
+
+```javascript
+// 在应用中添加结构化日志
+console.log(JSON.stringify({
+  timestamp: new Date().toISOString(),
+  level: "INFO",
+  message: "Event occurred",
+  data: { userId: "123" }
+}));
+```
 
 #### 结构化日志
 ```javascript
@@ -493,6 +664,54 @@ app.use(helmet({
 
 ## 🚨 故障排除
 
+### 快速检查清单
+
+- [ ] 访问应用首页（检查基本连接）
+- [ ] 打开浏览器开发者工具（F12）检查控制台错误
+- [ ] 查看网络请求（Network 标签）
+- [ ] 检查所有环境变量是否正确设置
+- [ ] 确认后端服务运行中
+- [ ] 验证 Redis 连接状态
+
+### 常见错误和解决
+
+#### 1. "ENOENT: no such file or directory"
+```
+原因：构建文件丢失或 node_modules 损坏
+解决：
+  rm -rf node_modules package-lock.json
+  npm ci
+  npm run build
+```
+
+#### 2. "Cannot find module"
+```
+原因：依赖安装不完整
+解决：
+  npm ci        # 使用精确版本重新安装
+  npm run build  # 重新构建
+```
+
+#### 3. "Redis connection refused"
+```
+原因：Redis 未运行或 URL 错误
+解决：
+  # 启动 Redis
+  docker run -p 6379:6379 -d redis
+  
+  # 验证
+  redis-cli ping
+```
+
+#### 4. "看板娘未显示"
+```
+原因：脚本加载失败或权限问题
+解决：
+  # 检查浏览器控制台是否有错误
+  # 确保 public/js/waifu.js 存在
+  # 尝试无痕窗口
+```
+
 ### 常见问题
 
 #### 部署失败
@@ -530,6 +749,27 @@ psql "postgresql://user:pass@host:5432/db" -c "SELECT 1"
 ```
 
 ### 回滚策略
+
+#### 数据备份和恢复
+
+##### 备份策略
+
+```bash
+# 每日备份
+redis-cli BGSAVE
+
+# 验证备份
+ls -la dump.rdb
+
+# 恢复备份
+redis-cli SHUTDOWN NOSAVE
+# 替换 dump.rdb 文件
+redis-server
+```
+
+##### 用户数据导出
+
+支持在 QCNOTE 应用中手动导出数据为 JSON 格式。
 
 #### 快速回滚
 ```bash
@@ -626,6 +866,19 @@ app.use((req, res, next) => {
 - **状态页面**: [status.qcnote.com](https://status.qcnote.com)
 - **SLA**: 99.9% 可用性保证
 - **支持时间**: 24/7 技术支持
+
+---
+
+## ❓ 常见问题 (FAQ)
+
+**Q: 部署后无法访问后端？**
+A: 检查环境变量是否正确，尤其是 `REDIS_URL`。Render 自动部署后需要等待服务启动。
+
+**Q: 生产环境看板娘有延迟？**
+A: 属于正常现象。优化方案：启用 CDN、压缩脚本、使用 WebP 格式图片。
+
+**Q: 如何零停机更新？**
+A: 使用蓝绿部署。先部署到新实例验证，再切换流量。
 
 ---
 

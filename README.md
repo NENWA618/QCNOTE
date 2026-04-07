@@ -193,18 +193,61 @@ docker-compose up -d
 
 ---
 
-## 📚 文档中心
+## 📚 完整的文档结构
 
-我们提供了完整详细的文档，帮助你更好地使用 QCNOTE。
+QCNOTE 提供了详细的文档，涵盖所有方面的内容。以下是完整的文档导航：
 
-| 📖 用户指南 | 🛠️ 开发者文档 | 🚀 部署运维 | 🔒 安全隐私 |
-|-------------|----------------|-------------|-------------|
-| [🚀 快速开始](docs/user-guide/getting-started.md)<br/>[✨ 功能特性](docs/user-guide/features.md)<br/>[❓ 常见问题](docs/user-guide/faq.md) | [🛠️ 环境搭建](docs/developer/setup.md)<br/>[🏗️ 架构设计](docs/developer/architecture.md)<br/>[🔌 API 文档](docs/developer/api/rest.md) | [🚀 部署指南](docs/deployment/index.md)<br/>[🐳 Docker 部署](docs/deployment/docker.md)<br/>[☁️ 云服务](docs/deployment/vercel.md) | [🔒 安全架构](docs/security/architecture.md)<br/>[🛡️ 数据保护](docs/security/encryption.md)<br/>[📋 合规性](docs/security/compliance.md) |
+### 📚 📖 用户指南 - [`docs/user-guide/`](docs/user-guide/index.md)
+从入门到精通的完整用户指南
 
-### 📖 学习资源
-- [**视频教程**](https://youtube.com/qcnote) - 直观的视频教学
-- [**示例项目**](https://github.com/your-org/qcnote-examples) - 实用代码示例
-- [**博客文章**](https://blog.qcnote.app) - 深度技术分享
+- [用户指南首页](docs/user-guide/index.md) - 导航和概览
+- [新手入门](docs/user-guide/getting-started.md) - 5分钟快速开始
+- [功能特性](docs/user-guide/features.md) - 完整功能说明
+- [常见问题](docs/user-guide/faq.md) - FAQ 和故障排查
+
+### 🛠️ 开发者文档 - [`docs/developer/`](docs/developer/index.md)
+为开发者和贡献者准备的技术文档
+
+- [开发者文档首页](docs/developer/index.md) - 导航和概览
+- [环境搭建](docs/developer/setup.md) - 配置开发环境
+- [项目结构](docs/developer/architecture.md) - 了解代码组织
+
+### 🚀 部署指南 - [`docs/deployment/`](docs/deployment/index.md)
+从开发到生产的完整部署解决方案
+
+- [部署指南首页](docs/deployment/index.md) - 多种部署方式和对比
+- 包含：Vercel、Netlify、Docker、AWS、Google Cloud、Azure、自建服务器等完整部署方案
+
+### 🔒 安全与隐私 - [`docs/security/`](docs/security/index.md)
+安全架构、隐私保护和合规信息
+
+- [安全指南首页](docs/security/index.md) - 安全架构和最佳实践
+- [安全审计报告](docs/security/SECURITY.md) - 安全审计结果和修复清单
+
+### 📋 其他重要文档
+- [系统架构](docs/ARCHITECTURE.md) - QCNOTE 的整体架构设计
+- [架构决策](docs/ADR-INDEX.md) - 架构决策记录索引（ADR-001 至 ADR-004）
+- [品牌指南](docs/BRANDING.md) - QCNOTE vs NOTE 的命名说明
+- [文档中心](docs/README.md) - 文档索引和搜索指南
+
+### 🔧 扩展程序文档 - [`extensions/`](extensions/README.md)
+浏览器扩展的安装和使用指南
+
+- [浏览器扩展](extensions/README.md) - Web Clipper 扩展文档（Chrome/Firefox）
+
+---
+
+## 🚀 快速查找
+
+| 我想... | 查看这里 |
+|--------|--------|
+| 💡 快速开始使用 QCNOTE | [用户指南首页](docs/user-guide/index.md) |
+| 🛠️ 在本地运行和开发 | [环境搭建](docs/developer/setup.md) |
+| ☁️ 部署到生产环境 | [部署指南](docs/deployment/index.md) |
+| 🔒 了解安全和隐私 | [安全指南](docs/security/index.md) |
+| 🌐 使用浏览器扩展剪藏网页 | [浏览器扩展](extensions/README.md) |
+| 🏗️ 了解系统架构 | [系统架构](docs/ARCHITECTURE.md) |
+| ❓ 找不到答案 | [FAQ](docs/user-guide/faq.md) 或 [Issues](https://github.com/NENWA618/NOTE/issues)
 
 ---
 
