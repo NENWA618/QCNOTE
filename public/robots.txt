@@ -22,4 +22,4 @@ User-agent: *
 Crawl-delay: 1
 
 # Sitemap location
-Sitemap: https://qcnote.example.com/sitemap.xml
+Sitemap: https://qcnote.com/sitemap.xml
