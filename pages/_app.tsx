@@ -1,5 +1,6 @@
 import type { AppProps } from 'next/app';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import Script from 'next/script';
 import '../styles/globals.css';
 import { Inter } from 'next/font/google';
@@ -7,9 +8,11 @@ import { initWindowStorage } from '../lib/storage';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
+const GA_MEASUREMENT_ID = 'G-QVMDWL1WC1';
 
 export default function App({ Component, pageProps }: AppProps) {
   const [ready, setReady] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     // 获取或创建全局 storage 实例（单例）
@@ -40,6 +43,22 @@ export default function App({ Component, pageProps }: AppProps) {
     })();
   }, []);
 
+  useEffect(() => {
+    const handleRouteChange = (url: string) => {
+      const gtag = (window as any).gtag;
+      if (typeof gtag === 'function') {
+        gtag('config', GA_MEASUREMENT_ID, {
+          page_path: url,
+        });
+      }
+    };
+
+    router.events.on('routeChangeComplete', handleRouteChange);
+    return () => {
+      router.events.off('routeChangeComplete', handleRouteChange);
+    };
+  }, [router.events]);
+
   return (
     <>
       {/* Load Cubism 2 runtime for koharu Live2D model.
@@ -65,6 +84,20 @@ export default function App({ Component, pageProps }: AppProps) {
         src={ "/js/waifu-tips.min.js" }
         strategy="lazyOnload"
         onError={(e) => console.error('waifu-tips 加载失败', e)}
+      />
+      <Script
+        src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+        strategy="afterInteractive"
+      />
+      <Script
+        id="ga-init"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '${GA_MEASUREMENT_ID}', { page_path: window.location.pathname });`,
+        }}
       />
       <Script
         src={ "/js/waifu.js" }
