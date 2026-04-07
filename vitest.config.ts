@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node', // default env with fake-indexeddb polyfill
     // polyfill IndexedDB
-    setupFiles: ['./test/setup.ts'],
+    setupFiles: ['./test/setup.ts', './test/setup-dom.ts'],
     // increase timeout if needed for async IndexedDB operations
     testTimeout: 10000,
     // exclude e2e tests which are run by Playwright separately
@@ -13,7 +13,7 @@ export default defineConfig({
     exclude: ['node_modules', 'dist', 'e2e/**/*.spec.ts', 'test/server.test.ts'],
     // Configure environment per file pattern
     environmentMatchGlobs: [
-      ['test/**/*.tsx', 'jsdom', './test/setup-dom.ts'],
+      ['test/**/*.tsx', 'jsdom'],
     ],
   },
 });
