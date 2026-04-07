@@ -6,10 +6,26 @@ class AIService {
   private useBackend: boolean = true; // Always use backend by default
 
   constructor(apiKey?: string, backendUrl?: string) {
-    this.backendUrl = backendUrl || (typeof window !== 'undefined' 
-      ? `${window.location.origin}/api/ai` 
-      : '/api/ai');
-    
+    const envBackend = typeof process !== 'undefined'
+      ? process.env.NEXT_PUBLIC_CHARACTER_SERVER_URL || process.env.BACKEND_URL
+      : undefined;
+
+    const normalizedEnvBackend = envBackend
+      ? envBackend.replace(/\/$/, '')
+      : undefined;
+
+    const browserBackend = typeof window !== 'undefined'
+      ? (process.env.NEXT_PUBLIC_CHARACTER_SERVER_URL
+          ? `${process.env.NEXT_PUBLIC_CHARACTER_SERVER_URL.replace(/\/$/, '')}/api/ai`
+          : `${window.location.origin}/api/ai`)
+      : undefined;
+
+    const serverBackend = normalizedEnvBackend
+      ? `${normalizedEnvBackend}/api/ai`
+      : 'http://localhost:10000/api/ai';
+
+    this.backendUrl = backendUrl || browserBackend || serverBackend;
+
     // Keep client for fallback only (if backend is down)
     if (apiKey && !this.useBackend) {
       this.client = new OpenAI({

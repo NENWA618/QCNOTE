@@ -95,7 +95,8 @@
 
 | 变量 | 值 | 说明 |
 |------|---|----|
-| `NEXT_PUBLIC_CHARACTER_SERVER_URL` | `https://your-backend.onrender.com` | 后端 API 地址 |
+| `BACKEND_URL` | `https://your-backend.onrender.com` | 后端服务地址，前端将通过本地 `/api/ai/*` 代理到此地址 |
+| `NEXT_PUBLIC_CHARACTER_SERVER_URL` | `https://your-backend.onrender.com` | 可选：客户端直接访问后端的备用地址 |
 | `NEXT_PUBLIC_VAPID_PUBLIC` | `BMxxxx...` | Web Push 公钥 |
 
 **构建设置：**
@@ -132,6 +133,7 @@
 | `REDIS_URL` | `redis://<internal-url>` | Redis 连接 URL |
 | `VAPID_PUBLIC` | `BMxxxx...` | Web Push 公钥 |
 | `VAPID_PRIVATE` | `Kpyyy...` | Web Push 私钥 |
+| `OPENAI_API_KEY` | `sk-...` | OpenAI API 密钥 |
 | `NODE_ENV` | `production` | 环境标志 |
 | `LOG_LEVEL` | `info` | 日志级别 |
 
@@ -197,6 +199,22 @@ netlify deploy --prod
 ## 🐳 Docker 部署
 
 ### 使用 Docker Compose
+
+本项目的 `docker-compose.yml` 现在包含三个服务：
+- `app`：Next.js 前端应用
+- `server`：独立后端 API 服务
+- `redis`：缓存服务
+
+前端通过 `BACKEND_URL=http://server:10000` 转发 AI 请求到后端。
+
+#### 完整栈部署
+
+本项目的 `docker-compose.yml` 现在包含三个服务：
+- `app`：Next.js 前端应用
+- `server`：独立后端 API 服务
+- `redis`：缓存服务
+
+前端通过 `BACKEND_URL=http://server:10000` 转发 AI 请求到后端。
 
 #### 完整栈部署
 ```yaml
@@ -418,6 +436,7 @@ server {
 
 | 变量 | 必需 | 描述 | 示例 |
 |------|------|------|------|
+| `BACKEND_URL` | ✅ 是 | 后端服务地址，用于前端代理 `/api/ai/*` | `https://api.example.com` |
 | `NEXT_PUBLIC_CHARACTER_SERVER_URL` | ❌ 可选 | 后端 API 地址 | `https://api.example.com` |
 | `NEXT_PUBLIC_VAPID_PUBLIC` | ✅ 是 | Web Push 公钥 | `BMxxxx...` |
 
