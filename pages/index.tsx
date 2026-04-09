@@ -16,6 +16,8 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta charSet="utf-8" />
         <meta name="theme-color" content="#c8b8c8" />
+        <meta name="gridinsoft-key" content="u96d6ujbp6vlwimrk5etqc6zudk6dnhfnvpp18nrqgf21dc76n2eh8nhum348dk3" />
+        <meta name="360-site-verification" content="dce2998aeb65ee729d8ee59905965822" />
         <link rel="icon" href="/images/icons/note_icon.png" />
 
         {/* Open Graph Meta Tags */}
