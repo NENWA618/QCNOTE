@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { NoteItem } from '../lib/storage';
-import { LODManager, SimplifiedSimulation } from '../lib/graphOptimization';
+import { LODManager, SimplifiedSimulation, OptimizedGraphLink } from '../lib/graphOptimization';
 
 interface GraphNode {
   id: string;
@@ -85,6 +85,10 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     const filteredNodeArray = lod.filterNodesByDetailLevel(nodeArray);
     const visibleNodeIds = new Set(filteredNodeArray.map((node) => node.id));
     const filteredLinks = links.filter((link) => visibleNodeIds.has(link.source) && visibleNodeIds.has(link.target));
+    const optimizedLinks: OptimizedGraphLink[] = filteredLinks.map(link => ({
+      ...link,
+      weight: 1,
+    }));
 
     const nodePositions: Map<string, { x: number; y: number }> = new Map();
     const nodeVelocities: Map<string, { vx: number; vy: number }> = new Map();
@@ -100,7 +104,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     const simulate = () => {
       SimplifiedSimulation.simulate(
         filteredNodeArray,
-        filteredLinks,
+        optimizedLinks,
         nodePositions,
         nodeVelocities,
         Math.min(20, Math.max(6, Math.floor(filteredNodeArray.length / 50))),

@@ -72,30 +72,6 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <>
-      {/* Load Cubism 2 runtime for koharu Live2D model.
-          add a version query parameter to bust client cache after
-          each deployment; the value can be explicit via
-          NEXT_PUBLIC_LIVE2D_VERSION or defaults to build timestamp. */}
-      <Script
-        src={ "/js/jquery.min.js" }
-        strategy="beforeInteractive"
-        onError={(e) => console.error('jquery 加载失败', e)}
-      />
-      <Script
-        src={ "/js/jquery-ui.min.js" }
-        strategy="beforeInteractive"
-        onError={(e) => console.error('jquery-ui 加载失败', e)}
-      />
-      <Script
-        src={ "/js/live2d.min.js" }
-        strategy="afterInteractive"
-        onError={(e) => console.error('live2d 加载失败', e)}
-      />
-      <Script
-        src={ "/js/waifu-tips.min.js" }
-        strategy="afterInteractive"
-        onError={(e) => console.error('waifu-tips 加载失败', e)}
-      />
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
         strategy="afterInteractive"
