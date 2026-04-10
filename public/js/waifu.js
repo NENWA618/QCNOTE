@@ -181,12 +181,6 @@ function GM_xmlhttpRequest(opt) {
     // 已移除左下角菜单按钮，改为仅保留右下角看板娘工具栏中的设置入口
     // GM_registerMenuCommand('⚙ 看板娘设置', showConfigPanel);
 
-    // ========== 引入 Element UI 样式 ==========
-    const elementUILink = document.createElement('link');
-    elementUILink.rel = 'stylesheet';
-    elementUILink.href = 'https://unpkg.com/element-ui/lib/theme-chalk/index.css';
-    document.head.appendChild(elementUILink);
-
     // ========== 样式 ==========
     GM_addStyle(`
         /* 看板娘基础样式 */
@@ -326,9 +320,43 @@ function GM_xmlhttpRequest(opt) {
             0%, 100% { transform: translate(0, 0) rotate(0); }
         }
 
-        /* Element UI 图标样式调整 */
-        .waifu-tool [class^="el-icon-"] {
+        /* 本地图标样式 */
+        .waifu-tool span[class^="el-icon-"] {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            margin: 5px 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            color: #5b6c7d;
+            transition: 0.2s ease, background 0.2s ease;
             font-size: 16px;
+        }
+        .waifu-tool span[class^="el-icon-"]::before {
+            font-style: normal;
+            line-height: 1;
+        }
+        .el-icon-house::before { content: "🏠"; }
+        .el-icon-chat-dot-round::before { content: "💬"; }
+        .el-icon-sunny::before { content: "☀"; }
+        .el-icon-user::before { content: "👤"; }
+        .el-icon-magic-stick::before { content: "🪄"; }
+        .el-icon-camera::before { content: "📷"; }
+        .el-icon-document-checked::before { content: "✅"; }
+        .el-icon-setting::before { content: "⚙"; }
+        .el-icon-coffee-cup::before { content: "☕"; }
+        .el-icon-switch-button::before { content: "⏻"; }
+        .el-icon-warning-outline::before { content: "⚠️"; }
+        .el-icon-plus::before { content: "➕"; }
+        .el-icon-alarm-clock::before { content: "⏰"; }
+        .el-icon-refresh::before { content: "🔄"; }
+        .el-icon-document::before { content: "📄"; }
+
+        .waifu-tool span:hover {
+            color: #34495e;
+            background: rgba(255, 255, 255, 0.22);
         }
 
         /* 待办面板样式 */
@@ -2326,16 +2354,16 @@ function GM_xmlhttpRequest(opt) {
                 <div class="waifu-tips"></div>
                 <canvas id="live2d" class="live2d" width="280" height="250"></canvas>
                 <div class="waifu-tool">
-                    <span class="el-icon-house"></span>
-                    <span class="el-icon-chat-dot-round"></span>
-                    <span class="el-icon-sunny"></span>
-                    <span class="el-icon-user"></span>
-                    <span class="el-icon-magic-stick"></span>
-                    <span class="el-icon-camera"></span>
-                    <span class="el-icon-document-checked"></span>
-                    <span class="el-icon-setting"></span>
-                    <span class="el-icon-coffee-cup"></span>
-                    <span class="el-icon-switch-button"></span>
+                    <span class="el-icon-house" title="首页"></span>
+                    <span class="el-icon-chat-dot-round" title="一言"></span>
+                    <span class="el-icon-sunny" title="天气"></span>
+                    <span class="el-icon-user" title="切换看板娘"></span>
+                    <span class="el-icon-magic-stick" title="换装"></span>
+                    <span class="el-icon-camera" title="拍照"></span>
+                    <span class="el-icon-document-checked" title="待办"></span>
+                    <span class="el-icon-setting" title="设置"></span>
+                    <span class="el-icon-coffee-cup" title="赞赏"></span>
+                    <span class="el-icon-switch-button" title="关闭"></span>
                 </div>
             </div>
         `;
