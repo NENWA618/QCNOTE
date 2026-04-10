@@ -2301,16 +2301,19 @@ function GM_xmlhttpRequest(opt) {
         }
 
         $('body').append(waifuHtml);
+        const $waifu = $('.waifu');
+        const $waifuLoading = $waifu.find('.waifu-loading');
+        const $waifuTips = $waifu.find('.waifu-tips');
 
         if (typeof initModel !== 'function') {
             console.error('[Live2D] initModel 函数未定义');
-            $('.waifu-loading').html('<div style="color:#ff4d4f;font-size:12px;">加载失败</div>');
+            $waifuLoading.html('<div style="color:#ff4d4f;font-size:12px;">加载失败</div>');
             return;
         }
 
         if (typeof live2d_settings === 'undefined') {
             console.error('[Live2D] live2d_settings 未定义');
-            $('.waifu-loading').html('<div style="color:#ff4d4f;font-size:12px;">加载失败</div>');
+            $waifuLoading.html('<div style="color:#ff4d4f;font-size:12px;">加载失败</div>');
             return;
         }
 
@@ -2357,7 +2360,7 @@ function GM_xmlhttpRequest(opt) {
 
         // 强制覆盖对话框样式，使其自动调整大小
         setTimeout(() => {
-            $('.waifu-tips').css({
+            $waifuTips.css({
                 'width': 'fit-content',
                 'height': 'auto',
                 'min-width': '80px',
@@ -2366,15 +2369,14 @@ function GM_xmlhttpRequest(opt) {
         }, 100);
 
         setTimeout(() => {
-            $('.waifu-loading').fadeOut(300, function() {
+            $waifuLoading.fadeOut(300, function() {
                 $(this).remove();
             });
-            $('.waifu').addClass('loaded');
+            $waifu.addClass('loaded');
             console.log('[Live2D] 看板娘加载完成！');
 
             // 根据配置设置初始停靠位置
             setTimeout(() => {
-                const $waifu = $('.waifu');
                 const $tool = $('.waifu-tool');
                 if (config.waifu.dockSide === 'left') {
                     // 设置到左边
