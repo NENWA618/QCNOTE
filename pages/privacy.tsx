@@ -9,8 +9,6 @@ export default function Privacy() {
     <>
       <Head>
         <title>隐私政策 - QCNOTE</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta charSet="utf-8" />
       </Head>
 
       <Header />

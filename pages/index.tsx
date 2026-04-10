@@ -13,12 +13,8 @@ export default function Home() {
         <meta name="title" content="QCNOTE - AI驱动的个人笔记管理平台" />
         <meta name="description" content="跨设备同步、智能分类、离线优先的全功能笔记应用。使用AI助手快速整理和分析你的笔记。安全的个人知识库管理系统。" />
         <meta name="keywords" content="笔记应用,知识管理,AI助手,个人日记,笔记管理,跨平台,离线优先" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta charSet="utf-8" />
-        <meta name="theme-color" content="#c8b8c8" />
         <meta name="gridinsoft-key" content="u96d6ujbp6vlwimrk5etqc6zudk6dnhfnvpp18nrqgf21dc76n2eh8nhum348dk3" />
         <meta name="360-site-verification" content="dce2998aeb65ee729d8ee59905965822" />
-        <link rel="icon" href="/images/icons/note_icon.png" />
 
         {/* Open Graph Meta Tags */}
         <meta property="og:type" content="website" />
@@ -94,7 +90,7 @@ export default function Home() {
           >
             <Image
               src="/images/icons/note_icon.png"
-              alt="QCNOTE"
+              alt="QCNOTE logo"
               width={48}
               height={48}
               quality={75}

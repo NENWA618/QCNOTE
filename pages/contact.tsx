@@ -9,8 +9,6 @@ const Contact: React.FC = () => {
     <>
       <Head>
         <title>支持我们 - QCNOTE</title>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
 
       <header>
@@ -21,7 +19,7 @@ const Contact: React.FC = () => {
           >
             <Image
               src="/images/icons/note_icon.png"
-              alt="QCNOTE"
+              alt="QCNOTE logo"
               width={48}
               height={48}
               quality={75}

@@ -15,7 +15,7 @@ const Header: React.FC = () => {
         >
           <Image
             src="/images/icons/note_icon.png"
-            alt="QCNOTE"
+            alt="QCNOTE logo"
             width={48}
             height={48}
             quality={75}
