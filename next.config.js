@@ -39,6 +39,7 @@ const nextConfig = {
               "img-src 'self' data: https:",
               "font-src 'self' data:",
               "connect-src 'self' https://api.openai.com https://live2d.fghrsh.net https://www.googletagmanager.com https://www.google-analytics.com https://lwl12.com https://jinrishici.com https://hitokoto.cn",
+              "frame-src 'self' https://vercel.live",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

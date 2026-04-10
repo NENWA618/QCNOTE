@@ -30,9 +30,14 @@ class MyDocument extends Document {
             onError={(e) => console.error('live2d 加载失败', e)}
           />
           <Script
-            src="/js/waifu-tips.js"
+            src="/js/waifu-tips.min.js"
             strategy="beforeInteractive"
             onError={(e) => console.error('waifu-tips 加载失败', e)}
+          />
+          <Script
+            src="/js/waifu.js"
+            strategy="beforeInteractive"
+            onError={(e) => console.error('waifu 脚本加载失败', e)}
           />
         </Head>
         <body>

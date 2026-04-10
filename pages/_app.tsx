@@ -86,11 +86,6 @@ export default function App({ Component, pageProps }: AppProps) {
           gtag('config', '${GA_MEASUREMENT_ID}', { page_path: window.location.pathname });`,
         }}
       />
-      <Script
-        src={ "/js/waifu.js" }
-        strategy="afterInteractive"
-        onError={(e) => console.error('waifu 脚本加载失败', e)}
-      />
       {!ready ? (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-dark via-primary to-accent-pink">
           <div className="text-center">
