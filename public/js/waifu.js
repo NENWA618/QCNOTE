@@ -242,31 +242,6 @@ function GM_xmlhttpRequest(opt) {
             transform: translateY(-5px);
         }
 
-        .waifu-tool {
-            display: none;
-            color: #aaa;
-            top: 5px;
-            right: 10px;
-            position: absolute;
-            font-size: 14px;
-        }
-        .waifu:hover .waifu-tool { display: block; }
-        .waifu-tool span {
-            display: block;
-            cursor: pointer;
-            color: #5b6c7d;
-            transition: 0.2s;
-            margin: 5px 0;
-            line-height: 20px;
-        }
-        .waifu-tool span:hover { color: #34495e; }
-
-        /* 左侧工具栏样式 */
-        .waifu-tool.left-side {
-            left: 10px;
-            right: auto;
-        }
-
         .waifu #live2d { position: relative; }
 
         /* 加载动画 */
@@ -321,43 +296,6 @@ function GM_xmlhttpRequest(opt) {
         }
 
         /* 本地图标样式 */
-        .waifu-tool span[class^="el-icon-"] {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            margin: 5px 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.12);
-            color: #5b6c7d;
-            transition: 0.2s ease, background 0.2s ease;
-            font-size: 16px;
-        }
-        .waifu-tool span[class^="el-icon-"]::before {
-            font-style: normal;
-            line-height: 1;
-        }
-        .el-icon-house::before { content: "🏠"; }
-        .el-icon-chat-dot-round::before { content: "💬"; }
-        .el-icon-sunny::before { content: "☀"; }
-        .el-icon-user::before { content: "👤"; }
-        .el-icon-magic-stick::before { content: "🪄"; }
-        .el-icon-camera::before { content: "📷"; }
-        .el-icon-document-checked::before { content: "✅"; }
-        .el-icon-setting::before { content: "⚙"; }
-        .el-icon-coffee-cup::before { content: "☕"; }
-        .el-icon-switch-button::before { content: "⏻"; }
-        .el-icon-warning-outline::before { content: "⚠️"; }
-        .el-icon-plus::before { content: "➕"; }
-        .el-icon-alarm-clock::before { content: "⏰"; }
-        .el-icon-refresh::before { content: "🔄"; }
-        .el-icon-document::before { content: "📄"; }
-
-        .waifu-tool span:hover {
-            color: #34495e;
-            background: rgba(255, 255, 255, 0.22);
-        }
 
         /* 待办面板样式 */
         .todo-panel {
@@ -2353,18 +2291,6 @@ function GM_xmlhttpRequest(opt) {
                 ${loadingSvg}
                 <div class="waifu-tips"></div>
                 <canvas id="live2d" class="live2d" width="280" height="250"></canvas>
-                <div class="waifu-tool">
-                    <span class="el-icon-house" title="首页"></span>
-                    <span class="el-icon-chat-dot-round" title="一言"></span>
-                    <span class="el-icon-sunny" title="天气"></span>
-                    <span class="el-icon-user" title="切换看板娘"></span>
-                    <span class="el-icon-magic-stick" title="换装"></span>
-                    <span class="el-icon-camera" title="拍照"></span>
-                    <span class="el-icon-document-checked" title="待办"></span>
-                    <span class="el-icon-setting" title="设置"></span>
-                    <span class="el-icon-coffee-cup" title="赞赏"></span>
-                    <span class="el-icon-switch-button" title="关闭"></span>
-                </div>
             </div>
         `;
 
@@ -2406,7 +2332,7 @@ function GM_xmlhttpRequest(opt) {
         live2d_settings['showWelcomeMessage'] = false;
         live2d_settings['showHitokoto'] = false;
         live2d_settings['showCopyMessage'] = false;
-        live2d_settings['showToolMenu'] = true;
+        live2d_settings['showToolMenu'] = false;
         live2d_settings['waifuMinWidth'] = '400px'; // 降低最小宽度阈值，支持移动设备显示
 
         console.log('[Live2D] 调用本地 initModel...');
@@ -2467,131 +2393,6 @@ function GM_xmlhttpRequest(opt) {
 
             showCustomWelcome();
             setupCustomMessages();
-
-            // ========== 工具栏按钮事件绑定 ==========
-
-            // 主页面按钮
-            $('.waifu-tool .el-icon-house').hover(function() {
-                const nickname = config.nickname || '宝宝';
-                messageSystem.showNormal(`点击前往首页，${nickname}想回到上一页可以使用浏览器的后退功能哦`, 3000);
-            });
-            $('.waifu-tool .el-icon-house').click(function() {
-                window.location.href = window.location.origin;
-            });
-
-            // 一言按钮
-            $('.waifu-tool .el-icon-chat-dot-round').hover(function() {
-                messageSystem.showNormal('一言一语，一颦一笑。一字一句，一颗赛艇。', 3000);
-            });
-            $('.waifu-tool .el-icon-chat-dot-round').click(function() {
-                messageSystem.showImportant('正在获取一言...', 2000);
-
-                $.ajax({
-                    url: 'https://v.api.aa1.cn/api/yiyan/index.php',
-                    type: 'GET',
-                    dataType: 'text',
-                    timeout: 5000,
-                    success: function(data) {
-                        if (data) {
-                            messageSystem.showImportant(data, 8000);
-                        }
-                    },
-                    error: function() {
-                        messageSystem.showImportant('获取一言失败了...', 3000);
-                    }
-                });
-            });
-
-            // 天气按钮
-            $('.waifu-tool .el-icon-sunny').hover(function() {
-                const nickname = config.nickname || '宝宝';
-                messageSystem.showNormal(`要看看今天天气怎么样吗？${nickname}`, 3000);
-            });
-            $('.waifu-tool .el-icon-sunny').click(function() {
-                getWeather();
-            });
-
-            // 切换看板娘按钮（切换模型）
-            $('.waifu-tool .el-icon-user').hover(function() {
-                const nickname = config.nickname || '宝宝';
-                messageSystem.showNormal(`嗯··· ${nickname}要切换看板娘吗？`, 3000);
-            });
-            $('.waifu-tool .el-icon-user').click(function() {
-                loadOtherModel();
-            });
-
-            // 换装按钮（切换材质）
-            $('.waifu-tool .el-icon-magic-stick').hover(function() {
-                const nickname = config.nickname || '宝宝';
-                messageSystem.showNormal(`${nickname}喜欢换装 Play 吗？`, 3000);
-            });
-            $('.waifu-tool .el-icon-magic-stick').click(function() {
-                loadRandTextures();
-            });
-
-            // 拍照按钮
-            $('.waifu-tool .el-icon-camera').hover(function() {
-                const nickname = config.nickname || '宝宝';
-                messageSystem.showNormal(`${nickname}要拍张纪念照片吗？`, 3000);
-            });
-            $('.waifu-tool .el-icon-camera').click(function() {
-                if (typeof showMessage === 'function') {
-                    showMessage('照好了嘛，是不是很可爱呢？', 5000, true);
-                }
-                if (typeof window.Live2D !== 'undefined') {
-                    window.Live2D.captureName = 'live2d.png';
-                    window.Live2D.captureFrame = true;
-                }
-            });
-
-            // 待办按钮
-            $('.waifu-tool .el-icon-document-checked').hover(function() {
-                const nickname = config.nickname || '宝宝';
-                messageSystem.showNormal(`${nickname}来查看待办事项吧~`, 3000);
-            });
-            $('.waifu-tool .el-icon-document-checked').click(function() {
-                // 打开设置面板并切换到待办标签页
-                showConfigPanel();
-                setTimeout(() => {
-                    $('#tab-todo').prop('checked', true).trigger('change');
-                }, 100);
-            });
-
-            // 设置按钮
-            $('.waifu-tool .el-icon-setting').hover(function() {
-                const nickname = config.nickname || '宝宝';
-                messageSystem.showNormal(`请尽情吩咐小娘子，${nickname}`, 3000);
-            });
-            $('.waifu-tool .el-icon-setting').click(function() {
-                showConfigPanel();
-            });
-
-            // 赞赏按钮
-            $('.waifu-tool .el-icon-coffee-cup').hover(function() {
-                const nickname = config.nickname || '宝宝';
-                messageSystem.showNormal(`${nickname}请我喝杯咖啡吧~`, 3000);
-            });
-            $('.waifu-tool .el-icon-coffee-cup').click(function() {
-                // 打开设置面板并切换到赞赏标签页
-                showConfigPanel();
-                setTimeout(() => {
-                    $('#tab-donate').prop('checked', true).trigger('change');
-                }, 100);
-            });
-
-            // 关闭按钮
-            $('.waifu-tool .el-icon-switch-button').hover(function() {
-                const nickname = config.nickname || '宝宝';
-                messageSystem.showNormal(`${nickname}不喜欢我了吗...`, 3000);
-            });
-            $('.waifu-tool .el-icon-switch-button').click(function() {
-                if (typeof showMessage === 'function') {
-                    showMessage('我们还能再见面的吧…', 3000, true);
-                }
-                setTimeout(function() {
-                    $('.waifu').fadeOut(500);
-                }, 3000);
-            });
 
             reminderSystem = new HealthReminderSystem();
             reminderSystem.init();
