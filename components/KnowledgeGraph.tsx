@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { NoteItem } from '../lib/storage';
+import { LODManager, SimplifiedSimulation } from '../lib/graphOptimization';
 
 interface GraphNode {
   id: string;
   label: string;
   size: number;
   color: string;
+  importance: number;
 }
 
 interface GraphLink {
@@ -35,23 +37,24 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
 
-    // Build nodes and links
     const nodes: Map<string, GraphNode> = new Map();
     const links: GraphLink[] = [];
+    const titleToId = new Map(activeNotes.map((note) => [note.title, note.id]));
 
     activeNotes.forEach((note) => {
       const linkCount = (note.links?.length || 0) + (note.backlinks?.length || 0);
       const size = Math.max(15, Math.min(40, 15 + linkCount * 3));
-      
+      const importance = linkCount + 1;
+
       nodes.set(note.id, {
         id: note.id,
         label: note.title || '无标题',
         size,
         color: note.color || '#4ecdc4',
+        importance,
       });
 
       (note.backlinks || []).forEach((backlink) => {
@@ -63,24 +66,30 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       });
 
       (note.links || []).forEach((title) => {
-        const target = activeNotes.find((n) => n.title === title);
-        if (target) {
+        const targetId = titleToId.get(title);
+        if (targetId) {
           links.push({
             source: note.id,
-            target: target.id,
+            target: targetId,
             type: 'forward',
           });
         }
       });
     });
 
-    // Force-directed layout simulation
     const nodeArray = Array.from(nodes.values());
+    const lod = new LODManager();
+    const autoZoom = Math.max(0.2, Math.min(1, 1 - Math.max(0, nodeArray.length - 200) / 1200));
+    lod.setZoom(autoZoom);
+
+    const filteredNodeArray = lod.filterNodesByDetailLevel(nodeArray);
+    const visibleNodeIds = new Set(filteredNodeArray.map((node) => node.id));
+    const filteredLinks = links.filter((link) => visibleNodeIds.has(link.source) && visibleNodeIds.has(link.target));
+
     const nodePositions: Map<string, { x: number; y: number }> = new Map();
     const nodeVelocities: Map<string, { vx: number; vy: number }> = new Map();
 
-    // Initialize positions randomly
-    nodeArray.forEach((node) => {
+    filteredNodeArray.forEach((node) => {
       nodePositions.set(node.id, {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
@@ -88,85 +97,16 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       nodeVelocities.set(node.id, { vx: 0, vy: 0 });
     });
 
-    // Run simulation
     const simulate = () => {
-      // Reset forces
-      nodeArray.forEach((node) => {
-        const vel = nodeVelocities.get(node.id);
-        if (vel) {
-          vel.vx *= 0.95;
-          vel.vy *= 0.95;
-        }
-      });
-
-      // Apply repulsive forces
-      for (let i = 0; i < nodeArray.length; i++) {
-        for (let j = i + 1; j < nodeArray.length; j++) {
-          const n1 = nodeArray[i];
-          const n2 = nodeArray[j];
-          const p1 = nodePositions.get(n1.id)!;
-          const p2 = nodePositions.get(n2.id)!;
-
-          const dx = p2.x - p1.x;
-          const dy = p2.y - p1.y;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const repulsion = (150 * 150) / (dist * dist);
-
-          const v1 = nodeVelocities.get(n1.id)!;
-          const v2 = nodeVelocities.get(n2.id)!;
-
-          v1.vx -= (repulsion * dx) / dist / 100;
-          v1.vy -= (repulsion * dy) / dist / 100;
-          v2.vx += (repulsion * dx) / dist / 100;
-          v2.vy += (repulsion * dy) / dist / 100;
-        }
-      }
-
-      // Apply attractive forces to connected nodes
-      links.forEach((link) => {
-        const p1 = nodePositions.get(link.source)!;
-        const p2 = nodePositions.get(link.target)!;
-        const v1 = nodeVelocities.get(link.source)!;
-        const v2 = nodeVelocities.get(link.target)!;
-
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const attraction = (dist - 100) * 0.1;
-
-        v1.vx += (attraction * dx) / dist / 2;
-        v1.vy += (attraction * dy) / dist / 2;
-        v2.vx -= (attraction * dx) / dist / 2;
-        v2.vy -= (attraction * dy) / dist / 2;
-      });
-
-      // Update positions
-      nodeArray.forEach((node) => {
-        const pos = nodePositions.get(node.id)!;
-        const vel = nodeVelocities.get(node.id)!;
-
-        pos.x += vel.vx;
-        pos.y += vel.vy;
-
-        // Boundary conditions
-        const padding = 50;
-        if (pos.x < padding) {
-          pos.x = padding;
-          vel.vx *= -0.5;
-        }
-        if (pos.x > canvas.width - padding) {
-          pos.x = canvas.width - padding;
-          vel.vx *= -0.5;
-        }
-        if (pos.y < padding) {
-          pos.y = padding;
-          vel.vy *= -0.5;
-        }
-        if (pos.y > canvas.height - padding) {
-          pos.y = canvas.height - padding;
-          vel.vy *= -0.5;
-        }
-      });
+      SimplifiedSimulation.simulate(
+        filteredNodeArray,
+        filteredLinks,
+        nodePositions,
+        nodeVelocities,
+        Math.min(20, Math.max(6, Math.floor(filteredNodeArray.length / 50))),
+        canvas.width,
+        canvas.height,
+      );
     };
 
     // Simulation loop
@@ -180,7 +120,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Draw links
-      links.forEach((link) => {
+      filteredLinks.forEach((link) => {
         const p1 = nodePositions.get(link.source)!;
         const p2 = nodePositions.get(link.target)!;
 
@@ -219,7 +159,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       });
 
       // Draw nodes
-      nodeArray.forEach((node) => {
+      filteredNodeArray.forEach((node) => {
         const pos = nodePositions.get(node.id)!;
         const isSelected = selectedNodeId === node.id;
         const isHovered = hoveredNodeId === node.id;
@@ -257,7 +197,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       const y = e.clientY - rect.top;
 
       let found = false;
-      for (const node of nodeArray) {
+      for (const node of filteredNodeArray) {
         const pos = nodePositions.get(node.id)!;
         const dist = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
         if (dist < node.size * 2) {
@@ -274,7 +214,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      for (const node of nodeArray) {
+      for (const node of filteredNodeArray) {
         const pos = nodePositions.get(node.id)!;
         const dist = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
         if (dist < node.size * 2) {

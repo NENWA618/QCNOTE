@@ -182,6 +182,26 @@ function registerRoutes(app: any) {
     }
   });
 
+  app.get('/api/ai/quotaStatus', async (request: any, reply: any) => {
+    try {
+      const clientId = request.ip || 'unknown';
+      const status = QuotaManager.getQuotaStatus
+        ? QuotaManager.getQuotaStatus(clientId)
+        : {
+            remaining: 10,
+            used: 0,
+            resetTime: Date.now() + 24 * 60 * 60 * 1000,
+            requestCount: 0,
+          };
+      return { success: true, quota: status };
+    } catch (error) {
+      logger.error('Error in quotaStatus endpoint:', error);
+      return reply.status(500).send({
+        error: 'Unable to retrieve AI quota status',
+      });
+    }
+  });
+
   app.post('/reply', async (request: any, reply: any) => {
     const body = request.body as Record<string, unknown> | undefined;
     const memory = body?.memory ?? {};

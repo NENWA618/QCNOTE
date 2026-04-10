@@ -5,6 +5,7 @@ import Script from 'next/script';
 import '../styles/globals.css';
 import { Inter } from 'next/font/google';
 import { initWindowStorage } from '../lib/storage';
+import { showNotification } from '../lib/ui';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
@@ -53,9 +54,19 @@ export default function App({ Component, pageProps }: AppProps) {
       }
     };
 
+    const handleStorageFallback = (event: Event) => {
+      const detail = (event as CustomEvent<{ message: string }>).detail;
+      if (detail?.message) {
+        showNotification(detail.message, 5000);
+      }
+    };
+
     router.events.on('routeChangeComplete', handleRouteChange);
+    window.addEventListener('qcnote:storage-fallback', handleStorageFallback);
+
     return () => {
       router.events.off('routeChangeComplete', handleRouteChange);
+      window.removeEventListener('qcnote:storage-fallback', handleStorageFallback);
     };
   }, [router.events]);
 
@@ -67,22 +78,22 @@ export default function App({ Component, pageProps }: AppProps) {
           NEXT_PUBLIC_LIVE2D_VERSION or defaults to build timestamp. */}
       <Script
         src={ "/js/jquery.min.js" }
-        strategy="afterInteractive"
+        strategy="beforeInteractive"
         onError={(e) => console.error('jquery 加载失败', e)}
       />
       <Script
         src={ "/js/jquery-ui.min.js" }
-        strategy="afterInteractive"
+        strategy="beforeInteractive"
         onError={(e) => console.error('jquery-ui 加载失败', e)}
       />
       <Script
         src={ "/js/live2d.min.js" }
-        strategy="lazyOnload"
+        strategy="afterInteractive"
         onError={(e) => console.error('live2d 加载失败', e)}
       />
       <Script
         src={ "/js/waifu-tips.min.js" }
-        strategy="lazyOnload"
+        strategy="afterInteractive"
         onError={(e) => console.error('waifu-tips 加载失败', e)}
       />
       <Script
@@ -101,7 +112,7 @@ export default function App({ Component, pageProps }: AppProps) {
       />
       <Script
         src={ "/js/waifu.js" }
-        strategy="lazyOnload"
+        strategy="afterInteractive"
         onError={(e) => console.error('waifu 脚本加载失败', e)}
       />
       {!ready ? (

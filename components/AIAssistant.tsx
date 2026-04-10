@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NoteItem } from '../lib/storage';
 import AIService from '../lib/aiService';
 
@@ -18,11 +18,23 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
   // Use backend service proxy (secure - no client-side API key)
   const [aiService] = useState(() => new AIService());
   const [isProcessing, setIsProcessing] = useState(false);
+  const [quota, setQuota] = useState<{ remaining: number; used: number; resetTime: number; requestCount: number } | null>(null);
+
+  useEffect(() => {
+    const loadQuota = async () => {
+      const status = await aiService.getQuotaStatus();
+      setQuota(status);
+    };
+    void loadQuota();
+  }, [aiService]);
+
+  const hasQuota = (quota?.remaining ?? 1) > 0;
 
   const handleGenerateTags = async () => {
     setIsProcessing(true);
     try {
       const newTags = await aiService.generateTags(note.content);
+      void aiService.getQuotaStatus().then(setQuota);
       const existingTags = note.tags || [];
       const combinedTags = [...new Set([...existingTags, ...newTags])];
       onUpdateNote({ tags: combinedTags });
@@ -36,6 +48,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
     setIsProcessing(true);
     try {
       const summary = await aiService.generateSummary(note.content);
+      void aiService.getQuotaStatus().then(setQuota);
       const updatedContent = `${note.content}\n\n---\n**AI 摘要：** ${summary}`;
       onUpdateNote({ content: updatedContent });
     } catch (error) {
@@ -48,6 +61,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
     setIsProcessing(true);
     try {
       const category = await aiService.categorizeNote(note.title, note.content);
+      void aiService.getQuotaStatus().then(setQuota);
       onUpdateNote({ category });
     } catch (error) {
       alert('自动分类失败：' + (error instanceof Error ? error.message : String(error)));
@@ -61,6 +75,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
       const otherNotes = allNotes
         .filter(n => n.id !== note.id)
         .map(n => ({ title: n.title, content: n.content }));
+      void aiService.getQuotaStatus().then(setQuota);
 
       const suggestions = await aiService.suggestRelatedNotes(note.content, otherNotes);
 
@@ -93,7 +108,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
         <div className="space-y-3">
           <button
             onClick={handleGenerateTags}
-            disabled={isProcessing}
+            disabled={isProcessing || !hasQuota}
             className="w-full btn-secondary disabled:opacity-50 flex items-center justify-center gap-2"
           >
             🏷️ 生成智能标签
@@ -101,7 +116,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
 
           <button
             onClick={handleGenerateSummary}
-            disabled={isProcessing}
+            disabled={isProcessing || !hasQuota}
             className="w-full btn-secondary disabled:opacity-50 flex items-center justify-center gap-2"
           >
             📝 生成内容摘要
@@ -109,7 +124,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
 
           <button
             onClick={handleAutoCategorize}
-            disabled={isProcessing}
+            disabled={isProcessing || !hasQuota}
             className="w-full btn-secondary disabled:opacity-50 flex items-center justify-center gap-2"
           >
             📁 自动分类
@@ -117,7 +132,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
 
           <button
             onClick={handleSuggestRelated}
-            disabled={isProcessing}
+            disabled={isProcessing || !hasQuota}
             className="w-full btn-secondary disabled:opacity-50 flex items-center justify-center gap-2"
           >
             🔗 查找相关笔记
@@ -135,6 +150,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
           <p>• 生成摘要：创建笔记的简洁摘要</p>
           <p>• 自动分类：智能判断笔记分类</p>
           <p>• 相关笔记：查找内容相似的笔记</p>
+          {quota && (
+            <p className="mt-2 text-gray-600">
+              AI 剩余预算: ${quota.remaining.toFixed(2)}，已用: ${quota.used.toFixed(2)}，请求次数: {quota.requestCount}
+            </p>
+          )}
         </div>
       </div>
     </div>

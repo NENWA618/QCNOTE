@@ -279,19 +279,7 @@ export class NoteUI {
   }
 
   showNotification(message: string, duration = 2000) {
-    const notification = document.createElement('div');
-    notification.className = 'notification';
-    notification.textContent = message;
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      notification.classList.add('show');
-    }, 10);
-
-    setTimeout(() => {
-      notification.classList.remove('show');
-      setTimeout(() => notification.remove(), 300);
-    }, duration);
+    showNotification(message, duration);
   }
 
   async updateStats() {
@@ -307,11 +295,11 @@ export class NoteUI {
       </div>
       <div class="stat-item">
         <span class="stat-value">${stats.favoriteNotes}</span>
-        <span class="stat-label">收藏�?/span>
+        <span class="stat-label">收藏</span>
       </div>
       <div class="stat-item">
         <span class="stat-value">${stats.totalTags}</span>
-        <span class="stat-label">标签�?/span>
+        <span class="stat-label">标签</span>
       </div>
       <div class="stat-item">
         <span class="stat-value">${stats.createdToday}</span>
@@ -319,6 +307,26 @@ export class NoteUI {
       </div>
     `;
   }
+}
+
+export function showNotification(message: string, duration = 2000) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  const notification = document.createElement('div');
+  notification.className = 'notification';
+  notification.textContent = message;
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.classList.add('show');
+  }, 10);
+
+  setTimeout(() => {
+    notification.classList.remove('show');
+    setTimeout(() => notification.remove(), 300);
+  }, duration);
 }
 
 export function initNoteUI() {

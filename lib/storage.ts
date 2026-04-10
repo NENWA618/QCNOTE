@@ -568,11 +568,17 @@ export class NoteStorage {
     try {
       // 优先 IndexedDB，次之 localStorage
       if (this.useIndexedDB) {
-        await IDB.setItem(this.storageKey, normalizedNotes);
+        try {
+          await this.writeDataWithCleanupAsync(normalizedNotes);
+        } catch (err) {
+          console.warn('[NoteStorage] IndexedDB 写入失败，回退到 localStorage', err);
+          this.useIndexedDB = false;
+          this._setDataLocal(normalizedNotes);
+        }
       } else {
         // 尝试写入 IndexedDB（可能在启用过程中）
         try {
-          await IDB.setItem(this.storageKey, notes);
+          await this.writeDataWithCleanupAsync(notes);
           this.useIndexedDB = true;
           // 清空 localStorage
           localStorage.removeItem(this.storageKey);
@@ -584,7 +590,6 @@ export class NoteStorage {
 
       // 一旦本地数据写入成功，尝试同步到服务器（如果可用）
       this.syncWithServer(notes).catch((err) => {
-        // 静默失败，服务器可能离线
         logger.warn('[NoteStorage] 同步服务器失败', err);
       });
       return true;
@@ -620,6 +625,47 @@ export class NoteStorage {
       );
     } catch (e) {
       console.debug('[NoteStorage] 无法同步到服务器', e);
+    }
+  }
+
+  private async writeDataWithCleanupAsync(notes: NoteItem[]): Promise<void> {
+    try {
+      await IDB.setItem(this.storageKey, notes);
+    } catch (error: unknown) {
+      const isQuotaError =
+        error instanceof DOMException &&
+        (error.name === 'QuotaExceededError' || error.name === 'QuotaError');
+
+      if (isQuotaError) {
+        logger.warn('[NoteStorage] IndexedDB 空间不足，已回退到 localStorage，不会自动删除笔记内容');
+        if (typeof window !== 'undefined' && window.dispatchEvent) {
+          window.dispatchEvent(
+            new CustomEvent('qcnote:storage-fallback', {
+              detail: {
+                message: '检测到 IndexedDB 存储空间不足，已自动回退到本地存储。笔记未丢失，但建议尽快备份或清理旧数据。',
+              },
+            }),
+          );
+        }
+      } else if (typeof error === 'object' && error !== null) {
+        const maybeMsg = (error as Error).message || '';
+        if (maybeMsg.includes('quota') || maybeMsg.includes('QuotaExceeded')) {
+          logger.warn('[NoteStorage] IndexedDB 空间不足，已回退到 localStorage，不会自动删除笔记内容');
+          if (typeof window !== 'undefined' && window.dispatchEvent) {
+            window.dispatchEvent(
+              new CustomEvent('qcnote:storage-fallback', {
+                detail: {
+                  message: '检测到 IndexedDB 存储空间不足，已自动回退到本地存储。笔记未丢失，但建议尽快备份或清理旧数据。',
+                },
+              }),
+            );
+          }
+        } else {
+          throw error;
+        }
+      }
+
+      throw error;
     }
   }
 

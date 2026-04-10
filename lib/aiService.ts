@@ -165,6 +165,25 @@ class AIService {
     }
   }
 
+  async getQuotaStatus(): Promise<{ remaining: number; used: number; resetTime: number; requestCount: number }> {
+    try {
+      const response = await fetch(`${this.backendUrl}/quotaStatus`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.quota || { remaining: 0, used: 0, resetTime: Date.now(), requestCount: 0 };
+    } catch (error) {
+      console.warn('Backend getQuotaStatus failed:', error);
+      return { remaining: 0, used: 0, resetTime: Date.now(), requestCount: 0 };
+    }
+  }
+
   // Private fallback methods (client-side OpenAI calls - DEPRECATED)
   private async generateTagsClientSide(content: string): Promise<string[]> {
     if (!this.client) {

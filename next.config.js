@@ -34,11 +34,11 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // next.js requires unsafe-inline/eval
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://vercel.live",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://api.openai.com https://live2d.fghrsh.net",
+              "connect-src 'self' https://api.openai.com https://live2d.fghrsh.net https://www.googletagmanager.com https://www.google-analytics.com https://lwl12.com https://jinrishici.com https://hitokoto.cn",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
