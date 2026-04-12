@@ -3,12 +3,17 @@ import { useSession } from 'next-auth/react';
 import axios from 'axios';
 import type { UserSpace, Decoration } from '../types/ugc-types';
 
+type SessionUserWithId = {
+  id?: string;
+};
+
 interface VirtualSpaceProps {
   userId: string;
 }
 
 const VirtualSpace: React.FC<VirtualSpaceProps> = ({ userId }) => {
   const { data: session } = useSession();
+  const sessionUserId = (session?.user as SessionUserWithId | undefined)?.id;
   const [space, setSpace] = useState<UserSpace | null>(null);
   const [theme, setTheme] = useState<string>('minimalist');
   const [decorations, setDecorations] = useState<Decoration[]>([]);
@@ -111,7 +116,7 @@ const VirtualSpace: React.FC<VirtualSpaceProps> = ({ userId }) => {
         </div>
 
         {/* 控制面板 */}
-        {session?.user?.id === userId && (
+        {sessionUserId === userId && (
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-2xl font-bold text-white mb-6">
               {editing ? '编辑虚拟空间' : '虚拟空间设置'}
