@@ -12,6 +12,17 @@ type SessionUserWithId = {
   image?: string | null;
 };
 
+type ExtendedJWT = {
+  id?: string;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+  provider?: string | null;
+  sub?: string;
+  iat?: number;
+  exp?: number;
+};
+
 const NEXTAUTH_URL = process.env.NEXTAUTH_URL || "https://www.qcnote.com";
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "your-secret-key-change-in-production";
 
@@ -57,24 +68,26 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account }): Promise<ExtendedJWT> {
+      const typedToken = token as ExtendedJWT;
       if (user) {
-        token.id = user.id || uuidv4();
-        token.email = user.email;
-        token.name = user.name;
-        token.image = user.image;
-        token.provider = account?.provider;
+        typedToken.id = user.id || uuidv4();
+        typedToken.email = user.email;
+        typedToken.name = user.name;
+        typedToken.image = user.image;
+        typedToken.provider = account?.provider;
       }
-      return token;
+      return typedToken;
     },
 
     async session({ session, token }) {
       if (session.user) {
         const user = session.user as SessionUserWithId;
-        user.id = token.id as string;
-        user.email = token.email;
-        user.name = token.name;
-        user.image = token.image;
+        const typedToken = token as ExtendedJWT;
+        user.id = typedToken.id;
+        user.email = typedToken.email;
+        user.name = typedToken.name;
+        user.image = typedToken.image;
       }
       return session;
     },
