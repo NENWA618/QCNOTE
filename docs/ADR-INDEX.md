@@ -92,8 +92,6 @@
 - `server/aiService.ts` - AI 服务
 - `lib/aiService.ts` - 前端调用
 
-**参考链接：** [DEPLOYMENT.md](../DEPLOYMENT.md) - 部署配置
-
 ---
 
 ### ADR-004
@@ -281,7 +279,6 @@ componentDidCatch() 捕获
 ### 对于运维/DevOps
 
 1. 查看 ADR-006 配置后端安全
-2. 查看 [DEPLOYMENT.md](../DEPLOYMENT.md) 部署指南
 
 ---
 
@@ -319,7 +316,6 @@ componentDidCatch() 捕获
 ## 🔗 关联文档
 
 - **[架构概览](./ARCHITECTURE.md)** - 系统整体设计
-- **[部署指南](../DEPLOYMENT.md)** - 生产部署
 - **[开发指南](../README.md)** - 快速开始
 
 ---

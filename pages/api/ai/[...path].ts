@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const BACKEND_URL = (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_CHARACTER_SERVER_URL || 'http://localhost:10000').replace(/\/$/, '');
+const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:10000').replace(/\/$/, '');
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const path = Array.isArray(req.query.path) ? req.query.path.join('/') : req.query.path || '';

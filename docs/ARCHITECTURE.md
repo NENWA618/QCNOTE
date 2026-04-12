@@ -450,7 +450,7 @@ E2E Tests:
 
 **Frontend:**
 - Deployed to Vercel/Render as Next.js app
-- Environment: `NEXT_PUBLIC_BACKEND_URL` for API endpoint
+- Environment: `BACKEND_URL` for API endpoint
 - Build: `npm run build` → Static + SSG
 
 **Backend:**

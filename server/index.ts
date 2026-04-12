@@ -1,6 +1,10 @@
 import Fastify from 'fastify';
 import fs from 'fs/promises';
 import path from 'path';
+import { initRedisClient, closeRedisClient } from './redis-client';
+import { initPostgresClient } from './postgres-client';
+import { UGCService } from './ugc-service';
+import { RecommendationService } from './recommendation-service';
 
 let logger: { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void };
 try {
@@ -19,6 +23,9 @@ interface Note {
 let serverNotes: Note[] = [];
 const NOTES_PERSIST_PATH = path.join(__dirname, '.notes-cache.json');
 
+let ugcService: UGCService;
+let recommendationService: RecommendationService;
+
 function buildFastify() {
   const fastify = Fastify({ logger: true });
   fastify.register(require('@fastify/cors'), { origin: true });
@@ -32,6 +39,7 @@ function registerRoutes(app: any) {
   if (app.__routesRegistered) return;
   app.__routesRegistered = true;
 
+  // ==================== 原有路由 ====================
   app.post('/syncNote', async (request: any, reply: any) => {
     const note = request.body as Note | undefined;
     if (!note || !note.id || typeof note.id !== 'string') {
@@ -65,6 +73,230 @@ function registerRoutes(app: any) {
       notes: serverNotes.length,
     });
   });
+
+  // ==================== UGC 用户路由 ====================
+
+  // 获取或创建用户资料
+  app.post('/api/ugc/user/init', async (request: any, reply: any) => {
+    try {
+      const { userId, email, username } = request.body;
+
+      let profile = await ugcService.getUserProfile(userId);
+      if (!profile) {
+        profile = await ugcService.createUserProfile(userId, email, username);
+        const space = await ugcService.createUserSpace(userId);
+        reply.send({ success: true, profile, space });
+      } else {
+        reply.send({ success: true, profile });
+      }
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // 获取用户资料
+  app.get('/api/ugc/user/:userId', async (request: any, reply: any) => {
+    try {
+      const { userId } = request.params;
+      const profile = await ugcService.getUserProfile(userId);
+      const followers = await ugcService.getFollowers(userId);
+      const following = await ugcService.getFollowing(userId);
+
+      reply.send({ success: true, profile, followers, following });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // 更新用户资料
+  app.put('/api/ugc/user/:userId', async (request: any, reply: any) => {
+    try {
+      const { userId } = request.params;
+      const updates = request.body;
+      const updated = await ugcService.updateUserProfile(userId, updates);
+      reply.send({ success: true, profile: updated });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // ==================== UGC 虚拟空间路由 ====================
+
+  // 获取用户虚拟空间
+  app.get('/api/ugc/space/:userId', async (request: any, reply: any) => {
+    try {
+      const { userId } = request.params;
+      const space = await ugcService.getUserSpace(userId);
+      reply.send({ success: true, space });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // 更新虚拟空间
+  app.put('/api/ugc/space/:userId', async (request: any, reply: any) => {
+    try {
+      const { userId } = request.params;
+      const updates = request.body;
+      const updated = await ugcService.updateUserSpace(userId, updates);
+      reply.send({ success: true, space: updated });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // 添加装饰品
+  app.post('/api/ugc/space/:userId/decoration', async (request: any, reply: any) => {
+    try {
+      const { userId } = request.params;
+      const decoration = request.body;
+      await ugcService.addDecoration(userId, decoration);
+      reply.send({ success: true, message: 'Decoration added' });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // ==================== UGC 虚拟货币路由 ====================
+
+  // 获取用户虚拟货币
+  app.get('/api/ugc/credit/:userId', async (request: any, reply: any) => {
+    try {
+      const { userId } = request.params;
+      const credit = await ugcService.getCredit(userId);
+      reply.send({ success: true, credit });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // ==================== UGC 社区笔记路由 ====================
+
+  // 发布笔记到社区
+  app.post('/api/ugc/community/publish', async (request: any, reply: any) => {
+    try {
+      const note = request.body;
+      const published = await ugcService.publishCommunityNote(note);
+      await ugcService.addCredit(note.userId, 5, 'Publish community note');
+      await ugcService.recordActivity(note.userId, 'publish-note');
+
+      reply.send({ success: true, communityNote: published });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // 获取社区笔记
+  app.get('/api/ugc/community/note/:communityId', async (request: any, reply: any) => {
+    try {
+      const { communityId } = request.params;
+      const note = await ugcService.getCommunityNote(communityId);
+
+      if (!note) {
+        return reply.status(404).send({ success: false, error: 'Note not found' });
+      }
+
+      reply.send({ success: true, note });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // ==================== UGC 互动路由 ====================
+
+  // 点赞笔记
+  app.post('/api/ugc/community/like/:communityId', async (request: any, reply: any) => {
+    try {
+      const { communityId } = request.params;
+      const { userId } = request.body;
+
+      const liked = await ugcService.likeNote(userId, communityId);
+      const likes = await ugcService.getNoteLikes(communityId);
+
+      reply.send({ success: true, liked, likes });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // 检查是否已点赞
+  app.get('/api/ugc/community/liked/:communityId/:userId', async (request: any, reply: any) => {
+    try {
+      const { communityId, userId } = request.params;
+      const liked = await ugcService.isNoteLikedByUser(userId, communityId);
+      reply.send({ success: true, liked });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // ==================== UGC 关注路由 ====================
+
+  // 关注用户
+  app.post('/api/ugc/follow', async (request: any, reply: any) => {
+    try {
+      const { followerId, followeeId } = request.body;
+      await ugcService.followUser(followerId, followeeId);
+      reply.send({ success: true, message: 'User followed' });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // 取消关注
+  app.post('/api/ugc/unfollow', async (request: any, reply: any) => {
+    try {
+      const { followerId, followeeId } = request.body;
+      await ugcService.unfollowUser(followerId, followeeId);
+      reply.send({ success: true, message: 'User unfollowed' });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // 检查是否关注
+  app.get('/api/ugc/following/:followerId/:followeeId', async (request: any, reply: any) => {
+    try {
+      const { followerId, followeeId } = request.params;
+      const following = await ugcService.isFollowing(followerId, followeeId);
+      reply.send({ success: true, following });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // ==================== UGC 排行榜路由 ====================
+
+  // 获取排行榜
+  app.get('/api/ugc/leaderboard/:type', async (request: any, reply: any) => {
+    try {
+      const { type } = request.params;
+      const limit = request.query.limit || 50;
+
+      const leaderboardKey = `leaderboard:${type}`;
+      const leaderboard = await ugcService.getLeaderboard(leaderboardKey, limit);
+
+      reply.send({ success: true, leaderboard });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  // ==================== UGC 推荐路由 ====================
+
+  // 获取个性化推荐
+  app.get('/api/ugc/recommendations/:userId', async (request: any, reply: any) => {
+    try {
+      const { userId } = request.params;
+      const limit = request.query.limit || 20;
+
+      const recommendations = await recommendationService.recommendNotesForUser(userId, limit);
+
+      reply.send({ success: true, recommendations });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
 }
 
 registerRoutes(fastify);
@@ -88,17 +320,43 @@ async function saveNotesToDisk(): Promise<void> {
   }
 }
 
-const PORT = Number(process.env.PORT || process.env.REDIRECT_PORT || 3000);
+const PORT = Number(process.env.PORT || process.env.REDIRECT_PORT || 10000);
 const HOST = process.env.HOST || '0.0.0.0';
 
-loadNotesFromDisk()
-  .then(() => fastify.listen({ port: PORT, host: HOST }))
-  .then(() => {
-    logger.info(`[Server] listening on ${HOST}:${PORT}`);
-  })
-  .catch((err: unknown) => {
-    logger.error('[Server] failed to start', err);
+// 初始化 Redis、PostgreSQL 和服务
+async function startServer() {
+  try {
+    const redis = await initRedisClient();
+    logger.info('[Server] Redis connected');
+
+    const postgres = await initPostgresClient();
+    logger.info('[Server] PostgreSQL connected');
+
+    // 初始化服务
+    ugcService = new UGCService(redis, postgres);
+    recommendationService = new RecommendationService(redis, ugcService);
+    logger.info('[Server] UGC services initialized');
+
+    // 仅保留现有笔记缓存加载逻辑，不影响新 PG 存储
+    await loadNotesFromDisk();
+
+    await fastify.listen({ port: PORT, host: HOST });
+    logger.info(`[Server] Listening on ${HOST}:${PORT}`);
+  } catch (err: unknown) {
+    logger.error('[Server] Failed to start:', err);
     process.exit(1);
-  });
+  }
+}
+
+// 优雅关闭
+process.on('SIGTERM', async () => {
+  logger.info('[Server] SIGTERM received, shutting down gracefully');
+  await fastify.close();
+  await closeRedisClient();
+  process.exit(0);
+});
+
+startServer();
 
 module.exports = { buildFastify };
+

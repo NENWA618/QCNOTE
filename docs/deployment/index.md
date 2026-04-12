@@ -96,7 +96,6 @@
 | 变量 | 值 | 说明 |
 |------|---|----|
 | `BACKEND_URL` | `https://your-backend.onrender.com` | 后端服务地址，前端将通过本地 `/api/ai/*` 代理到此地址 |
-| `NEXT_PUBLIC_CHARACTER_SERVER_URL` | `https://your-backend.onrender.com` | 可选：客户端直接访问后端的备用地址 |
 | `NEXT_PUBLIC_VAPID_PUBLIC` | `BMxxxx...` | Web Push 公钥 |
 
 **构建设置：**
@@ -437,7 +436,6 @@ server {
 | 变量 | 必需 | 描述 | 示例 |
 |------|------|------|------|
 | `BACKEND_URL` | ✅ 是 | 后端服务地址，用于前端代理 `/api/ai/*` | `https://api.example.com` |
-| `NEXT_PUBLIC_CHARACTER_SERVER_URL` | ❌ 可选 | 后端 API 地址 | `https://api.example.com` |
 | `NEXT_PUBLIC_VAPID_PUBLIC` | ✅ 是 | Web Push 公钥 | `BMxxxx...` |
 
 #### 后端环境变量

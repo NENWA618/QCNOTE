@@ -22,6 +22,7 @@
     "isomorphic-fetch": "^3.0.0",
     "lunr": "^2.3.9",
     "next": "^14.0.0",
+    "next-auth": "^4.24.7",
     "pixi-live2d-display": "^0.2.2",
     "pixi.js": "^6.5.10",
     "react": "^18.2.0",
@@ -33,7 +34,9 @@
     "react-window-infinite-loader": "^2.0.1",
     "rehype-sanitize": "^5.0.1",
     "remark-gfm": "^4.0.1",
-    "sentiment": "^5.0.1"
+    "sentiment": "^5.0.1",
+    "axios": "^1.6.5",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",

@@ -151,7 +151,7 @@ const decryptText = (encryptedText: string, passphrase: string): string => {
 
 **前端 (.env.production)**
 ```env
-NEXT_PUBLIC_CHARACTER_SERVER_URL=https://api.qcnote.com
+BACKEND_URL=https://api.qcnote.com
 NEXT_PUBLIC_API_URL=https://qcnote.com
 NODE_ENV=production
 ```
@@ -250,9 +250,7 @@ grep "API request" /var/log/qcnote/access.log | wc -l
 
 ## 📚 相关文档
 
-- [部署指南](../deployment/DEPLOYMENT.md)
 - [架构文档](../developer/architecture.md)
-- [API 参考](../developer/api-reference.md)
 - [测试指南](../developer/testing.md)
 
 ---
