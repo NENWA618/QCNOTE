@@ -1,10 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useState } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import DarkModeToggle from './DarkModeToggle';
 
 const Header: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { data: session } = useSession();
 
   return (
     <header>
@@ -76,6 +78,63 @@ const Header: React.FC = () => {
             >
               帮助
             </Link>
+          </li>
+          {session && (
+            <>
+              <li>
+                <Link
+                  href="/ugc/community"
+                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  社区
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/ugc/space"
+                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  虚拟空间
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/ugc/leaderboard"
+                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  排行榜
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/dashboard"
+                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  控制台
+                </Link>
+              </li>
+            </>
+          )}
+          <li>
+            {session ? (
+              <button
+                onClick={() => signOut()}
+                className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink bg-transparent border-none cursor-pointer"
+              >
+                登出
+              </button>
+            ) : (
+              <button
+                onClick={() => signIn()}
+                className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink bg-transparent border-none cursor-pointer"
+              >
+                登录
+              </button>
+            )}
           </li>
         </ul>
       </nav>

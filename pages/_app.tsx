@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Script from 'next/script';
+import { SessionProvider } from 'next-auth/react';
 import '../styles/globals.css';
 import { Inter } from 'next/font/google';
 import { initWindowStorage } from '../lib/storage';
@@ -97,9 +98,11 @@ export default function App({ Component, pageProps }: AppProps) {
         </div>
       ) : (
         <ErrorBoundary>
-          <main className={inter.className}>
-            <Component {...pageProps} />
-          </main>
+          <SessionProvider session={pageProps.session}>
+            <main className={inter.className}>
+              <Component {...pageProps} />
+            </main>
+          </SessionProvider>
         </ErrorBoundary>
       )}
     </>
