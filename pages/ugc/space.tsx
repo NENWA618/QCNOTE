@@ -3,10 +3,15 @@ import Link from 'next/link';
 import VirtualSpace from '../components/VirtualSpace';
 import { useSession } from 'next-auth/react';
 
+type SessionUserWithId = {
+  id?: string;
+};
+
 export default function SpacePage() {
   const { data: session } = useSession();
+  const userId = (session?.user as SessionUserWithId | undefined)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
@@ -19,5 +24,5 @@ export default function SpacePage() {
     );
   }
 
-  return <VirtualSpace userId={session.user.id} />;
+  return <VirtualSpace userId={userId} />;
 }
