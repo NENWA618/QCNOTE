@@ -11,11 +11,6 @@ interface SensitivePatterns {
 
 const SENSITIVE_PATTERNS: SensitivePatterns[] = [
   {
-    pattern: /sk-[a-zA-Z0-9]{40,}/gi,
-    replacement: 'sk-***REDACTED***',
-    description: 'OpenAI API Key',
-  },
-  {
     pattern: /Bearer\s+[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+/gi,
     replacement: 'Bearer ***JWT_REDACTED***',
     description: 'JWT Token',

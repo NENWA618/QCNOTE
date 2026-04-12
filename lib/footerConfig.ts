@@ -24,7 +24,6 @@ export const FOOTER_CONFIG = {
   // 其他依赖
   other: [
     { name: 'remark-gfm', url: 'https://github.com/remarkjs/remark-gfm', license: 'MIT License' },
-    { name: 'OpenAI', url: 'https://openai.com/', license: 'Apache-2.0' },
     { name: 'react-beautiful-dnd', url: 'https://github.com/react-beautiful-dnd', license: 'Apache-2.0' },
   ],
   
@@ -33,7 +32,7 @@ export const FOOTER_CONFIG = {
     name: 'Live2D 看板娘',
     url: 'https://github.com/fghrsh/live2d_demo',
     license: 'GPL-2.0',
-    description: '支持自定义台词、健康提醒、天气查询、待办事项等功能',
+    description: '可爱的看板娘形象，纯展示性互动，不会访问或分析笔记内容。',
   },
   
   // 政策链接

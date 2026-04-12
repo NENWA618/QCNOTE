@@ -76,89 +76,16 @@ describe('Server routes', () => {
     expect(body.ok).toBe(false);
   });
 
-  it('POST /reply returns a reply object', async () => {
-    const res = await app.inject({ method: 'POST', url: '/reply', payload: { message: 'hello' } });
+  it('GET /api/health returns healthy status', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/health' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
-    expect(body).toHaveProperty('reply');
-    expect(body).toHaveProperty('mood');
-  });
-
-  it('POST /reply with empty body still responds', async () => {
-    const res = await app.inject({ method: 'POST', url: '/reply', payload: {} });
-    expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body).toHaveProperty('reply');
+    expect(body).toHaveProperty('status', 'healthy');
+    expect(body).toHaveProperty('notes');
   });
 
   it('Unknown route returns 404', async () => {
     const res = await app.inject({ method: 'GET', url: '/nonexistent' });
     expect(res.statusCode).toBe(404);
-  });
-});
-
-describe('Rate Limiting Middleware', () => {
-  it('should include rate limit headers in response', async () => {
-    const app = buildFastify();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/ai/generateTags',
-      payload: { content: 'test' },
-    });
-
-    expect(res.headers['x-ratelimit-limit']).toBe('30');
-    expect(res.headers['x-ratelimit-remaining']).toBeDefined();
-  });
-
-  it('should not rate limit non-AI endpoints', async () => {
-    const app = buildFastify();
-    const res = await app.inject({
-      method: 'GET',
-      url: '/stats',
-    });
-
-    expect(res.statusCode).toBe(200);
-    // Non-AI endpoints should not have rate limit headers
-    expect(res.headers['x-ratelimit-limit']).toBeUndefined();
-  });
-});
-
-describe('Error Handling', () => {
-  it('should return 400 for missing content in generateTags', async () => {
-    const app = buildFastify();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/ai/generateTags',
-      payload: {},
-    });
-
-    expect(res.statusCode).toBe(400);
-    const body = JSON.parse(res.body);
-    expect(body.error).toBe('content is required');
-  });
-
-  it('should return 400 for missing content in generateSummary', async () => {
-    const app = buildFastify();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/ai/generateSummary',
-      payload: {},
-    });
-
-    expect(res.statusCode).toBe(400);
-    const body = JSON.parse(res.body);
-    expect(body.error).toBe('content is required');
-  });
-
-  it('should handle malformed JSON gracefully', async () => {
-    const app = buildFastify();
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/ai/generateTags',
-      payload: null,
-    });
-
-    // Should handle gracefully (400 or 500 but not crash)
-    expect(res.statusCode).toBeGreaterThanOrEqual(400);
   });
 });

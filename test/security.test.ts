@@ -37,47 +37,6 @@ describe('Security Tests', () => {
     });
   });
 
-  describe('Rate Limiting', () => {
-    it('should track requests per IP', async () => {
-      const { getRateLimitStats } = await import('../server/middleware');
-      const stats = getRateLimitStats();
-      expect(stats).toHaveProperty('trackedIPs');
-      expect(stats).toHaveProperty('maxRequestsPerWindow');
-    });
-  });
-
-  describe('Quota Management', () => {
-    it('should estimate tokens correctly', async () => {
-      const { estimateTokens } = await import('../lib/quotaManager');
-      const tokens = estimateTokens('Hello world');
-      expect(tokens.inputTokens).toBeGreaterThan(0);
-      expect(tokens.outputTokens).toBeGreaterThan(0);
-    });
-
-    it('should calculate API cost', async () => {
-      const { estimateTokens, estimateAPICost } = await import('../lib/quotaManager');
-      const tokens = estimateTokens('This is a test message');
-      const cost = estimateAPICost(tokens);
-      expect(cost).toBeGreaterThan(0);
-      expect(cost).toBeLessThan(1); // Should be cheap estimate
-    });
-
-    it('should enforce quota limits', async () => {
-      const { checkQuota, recordUsage, getQuotaStatus } = await import('../lib/quotaManager');
-      
-      const clientId = 'test-client-' + Date.now();
-      
-      // Should allow initial request
-      expect(checkQuota(clientId, 0.5)).toBe(true);
-      recordUsage(clientId, 0.5);
-      
-      // Check remaining quota
-      const status = getQuotaStatus(clientId);
-      expect(status.remaining).toBeLessThan(10);
-      expect(status.used).toBe(0.5);
-    });
-  });
-
   describe('Input Validation', () => {
     it('should reject malicious content', () => {
       const maliciousInputs = [

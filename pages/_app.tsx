@@ -45,15 +45,6 @@ export default function App({ Component, pageProps }: AppProps) {
   }, []);
 
   useEffect(() => {
-    const handleRouteChange = (url: string) => {
-      const gtag = (window as any).gtag;
-      if (typeof gtag === 'function') {
-        gtag('config', GA_MEASUREMENT_ID, {
-          page_path: url,
-        });
-      }
-    };
-
     const handleStorageFallback = (event: Event) => {
       const detail = (event as CustomEvent<{ message: string }>).detail;
       if (detail?.message) {
@@ -61,31 +52,15 @@ export default function App({ Component, pageProps }: AppProps) {
       }
     };
 
-    router.events.on('routeChangeComplete', handleRouteChange);
     window.addEventListener('qcnote:storage-fallback', handleStorageFallback);
 
     return () => {
-      router.events.off('routeChangeComplete', handleRouteChange);
       window.removeEventListener('qcnote:storage-fallback', handleStorageFallback);
     };
-  }, [router.events]);
+  }, []);
 
   return (
     <>
-      <Script
-        src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-        strategy="afterInteractive"
-      />
-      <Script
-        id="ga-init"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', '${GA_MEASUREMENT_ID}', { page_path: window.location.pathname });`,
-        }}
-      />
       <Script
         src="/js/jquery.min.js"
         strategy="afterInteractive"

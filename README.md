@@ -1,4 +1,4 @@
-# 🎉 QCNOTE - 你的智能笔记伙伴
+# 🎉 QCNOTE - 私有本地优先的个人笔记伙伴
 
 <div align="center">
 
@@ -6,9 +6,9 @@
 
 **让记录变得简单而优雅**
 
-*AI 驱动的个人笔记管理系统，专为现代人设计*
+*本地优先的个人笔记应用，专注隐私与高效记录*
 
-[![版本](https://img.shields.io/badge/版本-2.1.0-blue.svg)](https://github.com/your-org/qcnote/releases)
+[![版本](https://img.shields.io/badge/版本-1.0.0-blue.svg)](https://github.com/your-org/qcnote/releases)
 [![许可证](https://img.shields.io/badge/许可证-MIT-green.svg)](LICENSE)
 [![在线体验](https://img.shields.io/badge/在线体验-立即使用-orange.svg)](https://qcnote.com)
 
@@ -20,12 +20,12 @@
 
 ## 🌟 为什么选择 QCNOTE？
 
-QCNOTE 不仅仅是一个笔记应用，它是你的**个人知识管理助手**。我们相信好的工具应该：
+QCNOTE 不仅仅是一个笔记应用，它是你的**个人知识库助手**。我们相信好的工具应该：
 
-- 🤖 **智能辅助** - AI 帮你组织和理解内容
 - 🔒 **隐私优先** - 你的数据只属于你自己
 - 🎨 **美观易用** - 精心设计的用户体验
 - 🚀 **高效强大** - 从简单记录到复杂管理
+- 📁 **本地优先** - 离线可用，数据保存在你的设备
 
 ---
 
@@ -37,13 +37,13 @@ QCNOTE 不仅仅是一个笔记应用，它是你的**个人知识管理助手**
 - **自动保存** - 每30秒自动保存，永不丢失
 - **富媒体** - 支持图片、链接、附件等
 
-### 🧠 AI 增强功能
-- **智能标签** - AI 自动分析并生成标签
-- **内容摘要** - 一键生成笔记核心要点
-- **情感分析** - 了解写作时的情绪状态
-- **智能推荐** - 发现相关内容和想法
-
 ### 🔍 强大搜索
+- **全文搜索** - 支持中英文混合搜索
+- **主题筛选** - 按时间、标签、类型筛选
+- **快速定位** - 轻松查找你需要的笔记
+- **模糊匹配** - 容错查找，提高检索效率
+
+### 🎨 个性化体验
 - **全文搜索** - 支持中英文混合搜索
 - **语义搜索** - 理解你的意图而不仅是关键词
 - **高级筛选** - 按时间、标签、类型筛选
@@ -112,10 +112,10 @@ docker-compose up -d
 </td>
 <td width="50%">
 
-### AI 助手
-![AI 功能](https://via.placeholder.com/400x300/50C878/FFFFFF?text=AI+智能助手)
+### 看板娘助手
+![看板娘](https://via.placeholder.com/400x300/50C878/FFFFFF?text=Live2D+看板娘)
 
-*AI 帮你生成标签、摘要，优化笔记组织*
+*可爱的Live2D看板娘陪伴你记录一切*
 
 </td>
 </tr>
@@ -149,11 +149,11 @@ docker-compose up -d
 3. **添加标签** - 让笔记更有条理
 4. **保存并查看** - 你的笔记已经创建完成！
 
-### 体验 AI 功能
-1. **选中笔记内容** - 选择要分析的文本
-2. **点击 AI 按钮** - 选择需要的功能
-3. **等待处理** - AI 会自动生成结果
-4. **应用建议** - 采纳 AI 的智能建议
+### 基础使用
+1. **打开笔记** - 选择任意笔记开始编辑
+2. **输入内容** - 支持 Markdown 格式、实时保存
+3. **组织笔记** - 手动管理和分类笔记
+4. **同步数据** - 可选链接OneDrive或WebDAV进行同步
 
 ### 搜索和发现
 1. **输入关键词** - 在搜索框输入内容
@@ -179,10 +179,10 @@ docker-compose up -d
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14-4169E1?style=flat-square&logo=postgresql)
 ![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis)
 
-### AI & 搜索
-![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-412991?style=flat-square&logo=openai)
+### 搜索 & 存储
 ![Lunr.js](https://img.shields.io/badge/Lunr.js-2.3-000000?style=flat-square)
-![向量搜索](https://img.shields.io/badge/向量搜索-自定义-FF6B6B?style=flat-square)
+![IndexedDB](https://img.shields.io/badge/IndexedDB-本地存储-FF6B6B?style=flat-square)
+![Live2D](https://img.shields.io/badge/Live2D-看板娘-50C878?style=flat-square)
 
 ### 部署 & 工具
 ![Docker](https://img.shields.io/badge/Docker-24-2496ED?style=flat-square&logo=docker)
@@ -343,7 +343,7 @@ QCNOTE 的开发离不开众多优秀开源项目的支持：
 ## 🎉 更新日志
 
 ### v2.1.0 (最新) - 2024年1月
-- ✨ **AI 内容摘要** - 新增智能摘要功能
+- 🏠 **本地优先** - 所有数据存储在本地浏览器
 - 🎨 **暗黑模式优化** - 改进夜间使用体验
 - 🔍 **搜索性能提升** - 更快的搜索响应
 - 🐛 **稳定性改进** - 修复多个已知问题

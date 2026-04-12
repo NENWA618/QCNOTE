@@ -9,10 +9,10 @@ export default function Home() {
     <>
       <Head>
         {/* Primary Meta Tags */}
-        <title>QCNOTE - AI驱动的个人笔记管理平台</title>
-        <meta name="title" content="QCNOTE - AI驱动的个人笔记管理平台" />
-        <meta name="description" content="跨设备同步、智能分类、离线优先的全功能笔记应用。使用AI助手快速整理和分析你的笔记。安全的个人知识库管理系统。" />
-        <meta name="keywords" content="笔记应用,知识管理,AI助手,个人日记,笔记管理,跨平台,离线优先" />
+        <title>QCNOTE - 私有本地优先的个人笔记平台</title>
+        <meta name="title" content="QCNOTE - 私有本地优先的个人笔记平台" />
+        <meta name="description" content="本地优先、隐私优先的个人笔记应用，支持Markdown、搜索、分类和离线保存。安全的个人知识库管理系统。" />
+        <meta name="keywords" content="笔记应用,知识管理,个人日记,笔记管理,跨平台,离线优先" />
         <meta name="gridinsoft-key" content="u96d6ujbp6vlwimrk5etqc6zudk6dnhfnvpp18nrqgf21dc76n2eh8nhum348dk3" />
         <meta name="360-site-verification" content="dce2998aeb65ee729d8ee59905965822" />
 
@@ -20,7 +20,7 @@ export default function Home() {
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://qcnote.com/" />
         <meta property="og:title" content="QCNOTE - 个人笔记管理平台" />
-        <meta property="og:description" content="智能、安全、跨平台的笔记应用。AI助手帮你快速整理和分析笔记。" />
+        <meta property="og:description" content="智能、安全、跨平台的笔记应用。专注于本地存储与隐私保护，让你安心记录每一刻。" />
         <meta property="og:image" content="https://qcnote.com/images/icons/note_icon.png" />
         <meta property="og:site_name" content="QCNOTE" />
         <meta property="og:locale" content="zh_CN" />
@@ -29,7 +29,7 @@ export default function Home() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content="https://qcnote.com/" />
         <meta name="twitter:title" content="QCNOTE - 个人笔记管理平台" />
-        <meta name="twitter:description" content="智能、安全、跨平台的笔记应用。" />
+        <meta name="twitter:description" content="智能、安全、跨平台的笔记应用。专注于本地数据与离线体验。" />
         <meta name="twitter:image" content="https://qcnote.com/images/icons/note_icon.png" />
 
         {/* Additional SEO Tags */}
@@ -46,7 +46,7 @@ export default function Home() {
               '@context': 'https://schema.org',
               '@type': 'SoftwareApplication',
               'name': 'QCNOTE',
-              'description': 'AI驱动的个人笔记管理平台',
+              'description': '本地优先的个人笔记管理平台，强调隐私与易用性。',
               'url': 'https://qcnote.com',
               'applicationCategory': 'ProductivityApplication',
               'offers': {
@@ -153,7 +153,7 @@ export default function Home() {
 
             <div className="card" style={{ background: 'rgba(220, 150, 180, 0.08)' }}>
               <h3 className="text-accent-pink text-4xl mb-2">🏷️</h3>
-              <h4 className="text-primary-dark mb-4 text-lg font-semibold">智能分类</h4>
+              <h4 className="text-primary-dark mb-4 text-lg font-semibold">便捷分类</h4>
               <p className="text-text-light m-0">按分类和标签组织笔记，快速找到你需要的内容。</p>
             </div>
 
