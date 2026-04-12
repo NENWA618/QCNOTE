@@ -5,6 +5,13 @@ import DiscordProvider from "next-auth/providers/discord";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { v4 as uuidv4 } from "uuid";
 
+type SessionUserWithId = {
+  id?: string;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+};
+
 const NEXTAUTH_URL = process.env.NEXTAUTH_URL || "https://www.qcnote.com";
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "your-secret-key-change-in-production";
 
@@ -63,10 +70,11 @@ export const authOptions: NextAuthOptions = {
 
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.email = token.email;
-        session.user.name = token.name;
-        session.user.image = token.image;
+        const user = session.user as SessionUserWithId;
+        user.id = token.id as string;
+        user.email = token.email;
+        user.name = token.name;
+        user.image = token.image;
       }
       return session;
     },
