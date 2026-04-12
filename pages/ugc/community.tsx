@@ -3,10 +3,15 @@ import Link from 'next/link';
 import CommunityHub from '../components/CommunityHub';
 import { useSession } from 'next-auth/react';
 
+type SessionUserWithId = {
+  id?: string;
+};
+
 export default function CommunityPage() {
   const { data: session } = useSession();
+  const userId = (session?.user as SessionUserWithId | undefined)?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">

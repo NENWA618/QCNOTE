@@ -3,23 +3,28 @@ import { useSession } from 'next-auth/react';
 import axios from 'axios';
 import type { CommunityNote, RecommendationItem } from '../types/ugc-types';
 
+type SessionUserWithId = {
+  id?: string;
+};
+
 const CommunityHub: React.FC = () => {
   const { data: session } = useSession();
+  const userId = (session?.user as SessionUserWithId | undefined)?.id;
   const [recommendations, setRecommendations] = useState<RecommendationItem[]>([]);
   const [notes, setNotes] = useState<Record<string, CommunityNote>>({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'recommended' | 'trending' | 'following'>('recommended');
 
   useEffect(() => {
-    if (session?.user?.id) {
+    if (userId) {
       fetchRecommendations();
     }
-  }, [session?.user?.id, filter]);
+  }, [userId, filter]);
 
   const fetchRecommendations = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/ugc/recommendations/${session?.user?.id}?limit=20`);
+      const response = await axios.get(`/api/ugc/recommendations/${userId}?limit=20`);
 
       if (response.data.success) {
         setRecommendations(response.data.recommendations);
@@ -48,7 +53,7 @@ const CommunityHub: React.FC = () => {
   const handleLike = async (communityId: string) => {
     try {
       const response = await axios.post(`/api/ugc/community/like/${communityId}`, {
-        userId: session?.user?.id,
+        userId,
       });
 
       if (response.data.success) {
