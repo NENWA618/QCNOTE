@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import VirtualSpace from '../components/VirtualSpace';
+import VirtualSpace from '../../components/VirtualSpace';
 import { useSession } from 'next-auth/react';
 
 type SessionUserWithId = {

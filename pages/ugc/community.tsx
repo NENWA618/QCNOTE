@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import CommunityHub from '../components/CommunityHub';
+import CommunityHub from '../../components/CommunityHub';
 import { useSession } from 'next-auth/react';
 
 type SessionUserWithId = {
