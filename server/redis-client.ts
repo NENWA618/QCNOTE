@@ -52,7 +52,7 @@ export async function initRedisClient(): Promise<RedisClientType> {
     } as any;
   }
   
-  return redisClient;
+  return redisClient!;
 }
 
 export function getRedisClient(): RedisClientType {

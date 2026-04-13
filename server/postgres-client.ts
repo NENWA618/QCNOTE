@@ -50,7 +50,7 @@ export async function initPostgresClient(): Promise<Pool> {
     } as any;
   }
 
-  return pgPool;
+  return pgPool!;
 }
 
 export function getPostgresClient(): Pool {
