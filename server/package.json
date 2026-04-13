@@ -6,8 +6,9 @@
   "scripts": {
     "start": "tsx index.ts",
     "dev": "tsx watch index.ts",
-    "postinstall": "if [ -n \"$ADMIN_CHECK_EMAIL\" ]; then npm run check-admin -- \"$ADMIN_CHECK_EMAIL\"; else echo \"ADMIN_CHECK_EMAIL not set, skipping admin check\"; fi",
-    "check-admin": "tsx check-admin.ts"
+    "postinstall": "if [ -n \"$ADMIN_SET_EMAIL\" ]; then npm run set-admin -- \"$ADMIN_SET_EMAIL\"; elif [ -n \"$ADMIN_CHECK_EMAIL\" ]; then npm run check-admin -- \"$ADMIN_CHECK_EMAIL\"; else echo \"ADMIN_CHECK_EMAIL not set, skipping admin check\"; fi",
+    "check-admin": "tsx check-admin.ts",
+    "set-admin": "tsx set-admin.ts"
   },
   "dependencies": {
     "@fastify/cors": "^8.2.0",
