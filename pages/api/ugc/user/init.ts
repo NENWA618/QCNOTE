@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { UGCService } from '../../../server/ugc-service';
-import { getRedisClient, initRedisClient } from '../../../server/redis-client';
-import { getPostgresClient, initPostgresClient } from '../../../server/postgres-client';
+import { UGCService } from '../../../../server/ugc-service';
+import { getRedisClient, initRedisClient } from '../../../../server/redis-client';
+import { getPostgresClient, initPostgresClient } from '../../../../server/postgres-client';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

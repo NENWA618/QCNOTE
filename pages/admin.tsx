@@ -1,7 +1,9 @@
 import { GetServerSideProps } from 'next';
-import Head from 'next/head';import Link from 'next/link';import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../api/auth/authConfig';
-import AdminPanel from '../../components/AdminPanel';
+import Head from 'next/head';
+import Link from 'next/link';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from './api/auth/authConfig';
+import AdminPanel from '../components/AdminPanel';
 
 interface AdminPageProps {
   userRole: string;

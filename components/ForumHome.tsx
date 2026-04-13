@@ -12,7 +12,6 @@ interface ForumHomeProps {
 
 interface PostWithRole extends ForumPost {
   authorRole?: string;
-  authorId?: string;
 }
 
 export default function ForumHome({ initialPosts, categories, stats }: ForumHomeProps) {
