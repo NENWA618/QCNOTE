@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx index.ts",
-    "dev": "tsx watch index.ts"
+    "dev": "tsx watch index.ts",
+    "check-admin": "tsx check-admin.ts"
   },
   "dependencies": {
     "@fastify/cors": "^8.2.0",

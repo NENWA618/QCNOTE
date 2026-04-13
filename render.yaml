@@ -4,7 +4,13 @@ services:
     runtime: node
     plan: free
     rootDirectory: server
-    buildCommand: npm install
+    buildCommand: |
+      npm install
+      if [ -n "$ADMIN_CHECK_EMAIL" ]; then
+        npm run check-admin -- "$ADMIN_CHECK_EMAIL"
+      else
+        echo "ADMIN_CHECK_EMAIL not set, skipping admin check"
+      fi
     startCommand: npm start
     envVars:
       - key: NODE_ENV
