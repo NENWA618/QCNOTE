@@ -709,7 +709,7 @@ export class UGCService {
   }
 
   async getLeaderboard(leaderboardKey: string, limit: number = 50): Promise<LeaderboardEntry[]> {
-    const entries = await this.redis.zRevRangeWithScores(leaderboardKey, 0, limit - 1);
+    const entries = await this.redis.zRangeWithScores(leaderboardKey, 0, limit - 1, { REV: true });
 
     return Promise.all(
       entries.map(async (entry, index) => {
@@ -775,7 +775,7 @@ export class UGCService {
   }
 
   async isNoteLikedByUser(userId: string, communityId: string): Promise<boolean> {
-    return await this.redis.sIsMember(`community:likes:${communityId}`, userId);
+    return Boolean(await this.redis.sIsMember(`community:likes:${communityId}`, userId));
   }
 
   // ==================== 关注系统 ====================
@@ -824,7 +824,7 @@ export class UGCService {
   }
 
   async isFollowing(followerId: string, followeeId: string): Promise<boolean> {
-    return await this.redis.sIsMember(`user:${followerId}:following`, followeeId);
+    return Boolean(await this.redis.sIsMember(`user:${followerId}:following`, followeeId));
   }
 
   // ==================== 辅助方法 ====================

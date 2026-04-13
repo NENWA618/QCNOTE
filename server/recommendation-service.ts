@@ -201,6 +201,18 @@ export class RecommendationService {
   }
 
   /**
+   * 计算热度分
+   */
+  private async calculatePopularityScore(note: CommunityNote): Promise<number> {
+    const likes = note.likes || 0;
+    const shares = note.shares || 0;
+    const views = note.views || 0;
+
+    const score = likes * 0.4 + shares * 0.3 + Math.min(views, 100) * 0.3;
+    return Math.min(Math.round(score), 100);
+  }
+
+  /**
    * 计算新鲜度分
    */
   private calculateFreshnessScore(publishedAt: number): number {

@@ -1,4 +1,4 @@
-import { Redis } from 'ioredis';
+import { RedisClientType } from 'redis';
 import { Pool } from 'pg';
 import {
   ForumPost,
@@ -12,10 +12,10 @@ import {
 } from '../types/ugc-types';
 
 export class ForumService {
-  private redis: Redis;
+  private redis: RedisClientType;
   private postgres: Pool;
 
-  constructor(redis: Redis, postgres: Pool) {
+  constructor(redis: RedisClientType, postgres: Pool) {
     this.redis = redis;
     this.postgres = postgres;
   }
@@ -35,7 +35,7 @@ export class ForumService {
     );
 
     const role = result.rows[0]?.role || 'user';
-    await this.redis.setex(cacheKey, 3600, role); // 缓存1小时
+    await this.redis.setEx(cacheKey, 3600, role); // 缓存1小时
 
     return role as UserRole;
   }
@@ -76,6 +76,7 @@ export class ForumService {
       content: post.content,
       categoryId: post.category_id,
       authorId: post.author_id,
+      authorName: '',
       tags: post.tags,
       createdAt: post.created_at,
       updatedAt: post.updated_at,
@@ -174,7 +175,7 @@ export class ForumService {
     };
 
     // 缓存1小时
-    await this.redis.setex(cacheKey, 3600, JSON.stringify(postData));
+    await this.redis.setEx(cacheKey, 3600, JSON.stringify(postData));
 
     return postData;
   }
@@ -190,7 +191,7 @@ export class ForumService {
       [updateData.title, updateData.content, updateData.tags, postId, userId]
     );
 
-    if (result.rowCount > 0) {
+    if (result?.rowCount && result.rowCount > 0) {
       // 清除缓存
       await this.redis.del(`forum_post:${postId}`);
       await this.redis.del('forum_posts:recent');
@@ -218,7 +219,7 @@ export class ForumService {
 
     const result = await this.postgres.query(query, params);
 
-    if (result.rowCount > 0) {
+    if (result?.rowCount && result.rowCount > 0) {
       // 清除缓存
       await this.redis.del(`forum_post:${postId}`);
       await this.redis.del('forum_posts:recent');
@@ -264,6 +265,7 @@ export class ForumService {
       postId: reply.post_id,
       content: reply.content,
       authorId: reply.author_id,
+      authorName: '',
       parentReplyId: reply.parent_reply_id,
       createdAt: reply.created_at,
       likeCount: reply.like_count
@@ -310,7 +312,7 @@ export class ForumService {
     }));
 
     const data = { replies, total };
-    await this.redis.setex(cacheKey, 1800, JSON.stringify(data)); // 缓存30分钟
+    await this.redis.setEx(cacheKey, 1800, JSON.stringify(data)); // 缓存30分钟
 
     return data;
   }
@@ -398,7 +400,7 @@ export class ForumService {
       createdAt: row.created_at
     }));
 
-    await this.redis.setex(cacheKey, 3600, JSON.stringify(categories)); // 缓存1小时
+    await this.redis.setEx(cacheKey, 3600, JSON.stringify(categories)); // 缓存1小时
 
     return categories;
   }
@@ -447,7 +449,7 @@ export class ForumService {
       totalCategories: parseInt(categoriesResult.rows[0].count)
     };
 
-    await this.redis.setex(cacheKey, 1800, JSON.stringify(stats)); // 缓存30分钟
+    await this.redis.setEx(cacheKey, 1800, JSON.stringify(stats)); // 缓存30分钟
 
     return stats;
   }

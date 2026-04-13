@@ -12,11 +12,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const session = await getServerSession(req, res, authOptions);
-    if (!session?.user?.id) {
+    if (!(session?.user as any)?.id) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = session.user.id;
+    const userId = (session?.user as any)?.id;
     const { shareToCommunity } = req.body;
 
     // 这里应该处理文件上传

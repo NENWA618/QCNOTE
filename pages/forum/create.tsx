@@ -1,11 +1,12 @@
 import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../../auth/[...nextauth]';
-import CreatePost from '../../../components/CreatePost';
+import { authOptions } from '../api/auth/[...nextauth]';
+import CreatePost from '../../components/CreatePost';
 import { ForumCategory } from '../../types/ugc-types';
-import { ForumService } from '../../../server/forum-service';
-import { getRedisClient, getPostgresClient } from '../../../server/redis-client';
+import { ForumService } from '../../server/forum-service';
+import { getRedisClient } from '../../server/redis-client';
+import { getPostgresClient } from '../../server/postgres-client';
 
 interface CreatePostPageProps {
   categories: ForumCategory[];

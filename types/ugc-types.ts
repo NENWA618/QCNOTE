@@ -191,6 +191,28 @@ export interface ForumPost {
   dislikedBy?: string[]; // 踩用户ID列表
 }
 
+export interface CreatePostRequest {
+  title: string;
+  content: string;
+  categoryId: string;
+  tags: string[];
+}
+
+export interface UpdatePostRequest {
+  title?: string;
+  content?: string;
+  categoryId?: string;
+  tags?: string[];
+  isPinned?: boolean;
+  isLocked?: boolean;
+}
+
+export interface CreateReplyRequest {
+  postId: string;
+  content: string;
+  parentReplyId?: string;
+}
+
 // 论坛回复
 export interface ForumReply {
   id: string;

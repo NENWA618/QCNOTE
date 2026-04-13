@@ -1,11 +1,12 @@
 import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]';
+import { authOptions } from '../api/auth/[...nextauth]';
 import ForumHome from '../../components/ForumHome';
 import { ForumPost, ForumCategory, ForumStats } from '../../types/ugc-types';
 import { ForumService } from '../../server/forum-service';
-import { getRedisClient, getPostgresClient } from '../../server/redis-client';
+import { getRedisClient } from '../../server/redis-client';
+import { getPostgresClient } from '../../server/postgres-client';
 
 interface ForumPageProps {
   posts: ForumPost[];
