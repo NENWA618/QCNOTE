@@ -1,12 +1,27 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import DarkModeToggle from './DarkModeToggle';
 
 const Header: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string>('user');
   const { data: session } = useSession();
+
+  useEffect(() => {
+    if (session?.user) {
+      // 获取用户角色
+      fetch('/api/forum/roles')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setUserRole(data.role);
+          }
+        })
+        .catch(err => console.error('Failed to fetch user role:', err));
+    }
+  }, [session]);
 
   return (
     <header>
@@ -108,6 +123,17 @@ const Header: React.FC = () => {
                   控制台
                 </Link>
               </li>
+              {userRole === 'admin' && (
+                <li>
+                  <Link
+                    href="/admin"
+                    className="block py-2 md:py-0 text-red-600 font-medium no-underline transition-colors hover:text-red-800"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    管理员
+                  </Link>
+                </li>
+              )}
             </>
           )}
           <li>

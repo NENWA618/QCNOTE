@@ -17,19 +17,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
-      const session = await getServerSession(req, res, authOptions);
-      const userId = (session?.user as any)?.id as string | undefined;
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-
+      const { userId } = req.query;
       const forumService = new ForumService(getRedisClient(), getPostgresClient());
-      const role = await forumService.getUserRole(userId);
 
-      res.status(200).json({
-        success: true,
-        role
-      });
+      if (userId && typeof userId === 'string') {
+        // 查询特定用户的角色
+        const role = await forumService.getUserRole(userId);
+        return res.status(200).json({
+          success: true,
+          role
+        });
+      } else {
+        // 查询当前用户的角色
+        const session = await getServerSession(req, res, authOptions);
+        const currentUserId = (session?.user as any)?.id as string | undefined;
+        if (!currentUserId) {
+          return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const role = await forumService.getUserRole(currentUserId);
+        return res.status(200).json({
+          success: true,
+          role
+        });
+      }
     } catch (error) {
       console.error('Get user role error:', error);
       res.status(500).json({ error: 'Internal server error' });

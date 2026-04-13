@@ -10,13 +10,46 @@ interface ForumHomeProps {
   stats: ForumStats;
 }
 
+interface PostWithRole extends ForumPost {
+  authorRole?: string;
+  authorId?: string;
+}
+
 export default function ForumHome({ initialPosts, categories, stats }: ForumHomeProps) {
   const { data: session } = useSession();
-  const [posts, setPosts] = useState<ForumPost[]>(initialPosts);
+  const [posts, setPosts] = useState<PostWithRole[]>(initialPosts);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('newest');
   const [loading, setLoading] = useState(false);
+
+  // 为帖子添加角色信息
+  useEffect(() => {
+    const loadPostsWithRoles = async () => {
+      const postsWithRoles = await Promise.all(
+        initialPosts.map(async (post) => {
+          try {
+            const response = await fetch(`/api/forum/roles?userId=${post.authorId}`);
+            const data = await response.json();
+            return {
+              ...post,
+              authorRole: data.success ? data.role : 'user',
+              authorId: post.authorId,
+            };
+          } catch (error) {
+            return {
+              ...post,
+              authorRole: 'user',
+              authorId: post.authorId,
+            };
+          }
+        })
+      );
+      setPosts(postsWithRoles);
+    };
+
+    loadPostsWithRoles();
+  }, [initialPosts]);
 
   const loadPosts = async (categoryId?: string, search: string = searchQuery, sort: string = sortBy) => {
     setLoading(true);
@@ -30,7 +63,27 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
       const data = await response.json();
 
       if (data.success) {
-        setPosts(data.posts);
+        // 为新加载的帖子添加角色信息
+        const postsWithRoles = await Promise.all(
+          data.posts.map(async (post: ForumPost) => {
+            try {
+              const roleResponse = await fetch(`/api/forum/roles?userId=${post.authorId}`);
+              const roleData = await roleResponse.json();
+              return {
+                ...post,
+                authorRole: roleData.success ? roleData.role : 'user',
+                authorId: post.authorId,
+              };
+            } catch (error) {
+              return {
+                ...post,
+                authorRole: 'user',
+                authorId: post.authorId,
+              };
+            }
+          })
+        );
+        setPosts(postsWithRoles);
       }
     } catch (error) {
       console.error('Failed to load posts:', error);
@@ -220,7 +273,22 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
                             {post.content.length > 200 ? `${post.content.substring(0, 200)}...` : post.content}
                           </p>
                           <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
-                            <span>{post.authorName}</span>
+                            <span className="flex items-center space-x-2">
+                              <span>{post.authorName}</span>
+                              {post.authorRole && (
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  post.authorRole === 'admin'
+                                    ? 'bg-red-100 text-red-800'
+                                    : post.authorRole === 'moderator'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {post.authorRole === 'admin' ? '管理员' :
+                                   post.authorRole === 'moderator' ? '版主' : '用户'}
+                                </span>
+                              )}
+                            </span>
+                            <span className="font-mono text-xs">ID: {post.authorId}</span>
                             <span>{formatDate(post.createdAt)}</span>
                             <span>👁 {post.viewCount}</span>
                             <span>👍 {post.likeCount}</span>

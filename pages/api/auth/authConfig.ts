@@ -102,13 +102,8 @@ export const authOptions: NextAuthOptions = {
 
     async signIn({ user, account, profile }) {
       try {
-        const backendUrl = process.env.BACKEND_URL;
-        if (!backendUrl) {
-          console.warn('BACKEND_URL not set, skipping UGC init');
-          return true;
-        }
-
-        const response = await fetch(`${backendUrl}/api/ugc/user/init`, {
+        // 初始化用户资料到数据库
+        const response = await fetch(`${process.env.NEXTAUTH_URL}/api/ugc/user/init`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -121,13 +116,13 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!response.ok) {
-          console.error('Failed to initialize UGC user:', await response.text());
+          console.error('Failed to initialize user:', await response.text());
           // 仍然允许登录，但记录错误
         } else {
-          console.log('UGC user initialized successfully');
+          console.log('User initialized successfully');
         }
       } catch (error) {
-        console.error('Error initializing UGC user:', error);
+        console.error('Error initializing user:', error);
         // 仍然允许登录
       }
 
