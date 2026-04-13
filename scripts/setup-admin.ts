@@ -1,12 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 
 // 设置管理员用户脚本
 // 用于将指定用户设置为管理员
 
 import { Pool } from 'pg';
-import { createClient } from 'redis';
-import { ForumService } from '../server/forum-service.js';
-import { UGCService } from '../server/ugc-service.js';
 
 async function setupAdmin() {
   const args = process.argv.slice(2);
@@ -33,8 +30,6 @@ async function setupAdmin() {
   }
 
   const pool = new Pool({ connectionString: databaseUrl });
-  const redis = createClient();
-  await redis.connect();
 
   try {
     console.log('连接数据库...');
@@ -65,10 +60,41 @@ async function setupAdmin() {
           process.exit(1);
         }
 
-        const ugcService = new UGCService(redis, pool);
-        const profile = await ugcService.createUserProfile(identifier, identifier, username);
+        const now = Date.now();
+        const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
+        const bio = '这是我的个人空间';
 
-        console.log(`✅ 已创建新用户: ${profile.username} (${profile.email})`);
+        await pool.query(
+          `INSERT INTO users(id, email, username, image, provider, bio, joined_at, followers, following, credit, is_public, heatmap, current_streak, longest_streak, total_active_days, created_at, updated_at)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+           ON CONFLICT (id) DO UPDATE
+             SET email = EXCLUDED.email,
+                 username = EXCLUDED.username,
+                 image = EXCLUDED.image,
+                 provider = EXCLUDED.provider,
+                 updated_at = EXCLUDED.updated_at`,
+          [
+            identifier, // userId
+            identifier, // email
+            username,
+            avatar,
+            'nextauth',
+            bio,
+            now,
+            0, // followers
+            0, // following
+            10, // credit
+            true, // is_public
+            JSON.stringify({}), // heatmap
+            0, // current_streak
+            0, // longest_streak
+            0, // total_active_days
+            now,
+            now,
+          ]
+        );
+
+        console.log(`✅ 已创建新用户: ${username} (${identifier})`);
 
         // 重新查询用户
         userResult = await pool.query(
@@ -87,8 +113,15 @@ async function setupAdmin() {
     console.log(`找到用户: ${user.name || user.username} (${user.email}) - ID: ${user.id}`);
 
     // 设置为管理员
-    const forumService = new ForumService(redis, pool);
-    await forumService.setUserRole(user.id, 'admin', user.id);
+    await pool.query(
+      `INSERT INTO user_roles (user_id, role, updated_by, updated_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET
+         role = EXCLUDED.role,
+         updated_by = EXCLUDED.updated_by,
+         updated_at = NOW()`,
+      [user.id, 'admin', user.id]
+    );
 
     console.log(`✅ 成功将用户 ${user.name || user.username} 设置为管理员！`);
     console.log(`用户ID: ${user.id}`);
@@ -99,7 +132,6 @@ async function setupAdmin() {
     process.exit(1);
   } finally {
     await pool.end();
-    await redis.disconnect();
   }
 }
 

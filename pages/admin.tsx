@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from './api/auth/authConfig';
 import AdminPanel from '../components/AdminPanel';
+import { ForumService } from '../server/forum-service';
+import { getRedisClient, initRedisClient } from '../server/redis-client';
+import { getPostgresClient, initPostgresClient } from '../server/postgres-client';
 
 interface AdminPageProps {
   userRole: string;
@@ -47,13 +50,23 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
-  // 这里应该从数据库获取用户角色
-  // 暂时返回默认角色，实际应用中需要查询数据库
-  const userRole = 'admin'; // 临时设置为admin用于测试
+  try {
+    await initRedisClient();
+    await initPostgresClient();
+    const forumService = new ForumService(getRedisClient(), getPostgresClient());
+    const userRole = await forumService.getUserRole((session.user as any).id);
 
-  return {
-    props: {
-      userRole,
-    },
-  };
+    return {
+      props: {
+        userRole,
+      },
+    };
+  } catch (error) {
+    console.error('Get admin role error:', error);
+    return {
+      props: {
+        userRole: 'user',
+      },
+    };
+  }
 };
