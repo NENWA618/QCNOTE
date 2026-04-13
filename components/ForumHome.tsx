@@ -184,7 +184,7 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
               {session?.user && (
                 <div className="mt-6">
                   <Link
-                    href="/forum/create"
+                    href="/forum-create"
                     className="w-full btn btn-primary inline-block text-center"
                   >
                     发布新帖
@@ -233,7 +233,7 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
                   <p className="text-gray-500">暂无帖子</p>
                   {session?.user && (
                     <Link
-                      href="/forum/create"
+                      href="/forum-create"
                       className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
                     >
                       发布第一个帖子

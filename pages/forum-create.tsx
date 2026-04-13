@@ -32,7 +32,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     if (!session?.user) {
       return {
         redirect: {
-          destination: '/auth/signin?callbackUrl=/forum/create',
+          destination: '/auth/signin?callbackUrl=/forum-create',
           permanent: false
         }
       };
