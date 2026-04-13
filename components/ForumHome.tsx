@@ -94,15 +94,15 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* 侧边栏 - 分类 */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">分类</h2>
+            <div className="card dark:bg-dark-surface dark:border-dark-border">
+              <h2 className="text-lg font-semibold text-primary-dark dark:text-dark-text mb-4">分类</h2>
               <div className="space-y-2">
                 <button
                   onClick={() => handleCategoryChange('')}
                   className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     selectedCategory === ''
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                      ? 'bg-accent-pink text-white'
+                      : 'text-primary-dark hover:bg-primary-light dark:text-dark-text dark:hover:bg-dark-surface-light'
                   }`}
                 >
                   全部帖子
@@ -115,13 +115,13 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
                       onClick={() => handleCategoryChange(categoryId)}
                       className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                         selectedCategory === categoryId
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                          : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                          ? 'bg-accent-pink text-white'
+                          : 'text-primary-dark hover:bg-primary-light dark:text-dark-text dark:hover:bg-dark-surface-light'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <span>{category.name}</span>
-                        <span className="text-xs text-gray-500">({category.postCount})</span>
+                        <span className="text-xs text-text-light dark:text-dark-text-secondary">({category.postCount})</span>
                       </div>
                     </button>
                   );
@@ -132,7 +132,7 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
                 <div className="mt-6">
                   <Link
                     href="/forum/create"
-                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors inline-block text-center"
+                    className="w-full btn btn-primary inline-block text-center"
                   >
                     发布新帖
                   </Link>

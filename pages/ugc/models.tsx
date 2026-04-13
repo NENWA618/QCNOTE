@@ -24,5 +24,9 @@ export default function ModelsPage() {
     );
   }
 
-  return <Models userId={userId} />;
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 text-primary-dark dark:bg-dark-bg p-8">
+      <Models userId={userId} />
+    </div>
+  );
 }

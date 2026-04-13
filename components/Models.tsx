@@ -178,7 +178,7 @@ const Models: React.FC<ModelsProps> = ({ userId }) => {
   if (loading) return <div className="p-8 text-center text-primary-dark dark:text-dark-text">加载中...</div>;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-dark-bg p-8">
+    <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 text-primary-dark dark:bg-dark-bg p-8">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-primary-dark dark:text-dark-text">Live2D模型管理</h1>
 

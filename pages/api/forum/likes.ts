@@ -2,10 +2,19 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]';
 import { ForumService } from '../../../server/forum-service';
-import { getRedisClient } from '../../../server/redis-client';
-import { getPostgresClient } from '../../../server/postgres-client';
+import { getRedisClient, initRedisClient } from '../../../server/redis-client';
+import { getPostgresClient, initPostgresClient } from '../../../server/postgres-client';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Initialize clients if not already initialized
+  try {
+    await initRedisClient();
+    await initPostgresClient();
+  } catch (error) {
+    console.error('Client initialization error:', error);
+    return res.status(500).json({ error: 'Database connection failed' });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

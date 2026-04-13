@@ -92,7 +92,7 @@ const Header: React.FC = () => {
               </li>
               <li>
                 <Link
-                  href="/ugc/forum"
+                  href="/forum"
                   className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
                   onClick={() => setMenuOpen(false)}
                 >

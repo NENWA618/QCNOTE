@@ -10,7 +10,19 @@ export async function initRedisClient(): Promise<RedisClientType> {
   const redisUrl = process.env.REDIS_URL || process.env.REDIS_CONNECTION_STRING;
   
   if (!redisUrl) {
-    throw new Error('REDIS_URL or REDIS_CONNECTION_STRING environment variable is not set');
+    console.warn('REDIS_URL or REDIS_CONNECTION_STRING environment variable is not set, using mock Redis client');
+    // Return a mock Redis client for development
+    redisClient = {
+      get: async () => null,
+      set: async () => 'OK',
+      setEx: async () => 'OK',
+      del: async () => 1,
+      quit: async () => 'OK',
+      on: () => {},
+      connect: async () => {},
+      isOpen: true
+    } as any;
+    return redisClient;
   }
 
   redisClient = createClient({ url: redisUrl });
@@ -23,7 +35,23 @@ export async function initRedisClient(): Promise<RedisClientType> {
     console.log('[Redis] Connected successfully');
   });
 
-  await redisClient.connect();
+  try {
+    await redisClient.connect();
+  } catch (error) {
+    console.warn('Redis connection failed, using mock Redis client:', error);
+    // Return a mock Redis client for development
+    redisClient = {
+      get: async () => null,
+      set: async () => 'OK',
+      setEx: async () => 'OK',
+      del: async () => 1,
+      quit: async () => 'OK',
+      on: () => {},
+      connect: async () => {},
+      isOpen: true
+    } as any;
+  }
+  
   return redisClient;
 }
 
