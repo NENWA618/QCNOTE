@@ -6,6 +6,7 @@
   "scripts": {
     "start": "tsx index.ts",
     "dev": "tsx watch index.ts",
+    "postinstall": "if [ -n \"$ADMIN_CHECK_EMAIL\" ]; then npm run check-admin -- \"$ADMIN_CHECK_EMAIL\"; else echo \"ADMIN_CHECK_EMAIL not set, skipping admin check\"; fi",
     "check-admin": "tsx check-admin.ts"
   },
   "dependencies": {
