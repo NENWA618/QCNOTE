@@ -22,7 +22,7 @@ export async function initRedisClient(): Promise<RedisClientType> {
       connect: async () => {},
       isOpen: true
     } as any;
-    return redisClient;
+    return redisClient!;
   }
 
   redisClient = createClient({ url: redisUrl });

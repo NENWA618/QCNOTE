@@ -16,7 +16,7 @@ export async function initPostgresClient(): Promise<Pool> {
       connect: async () => ({}),
       on: () => {}
     } as any;
-    return pgPool;
+    return pgPool!;
   }
 
   pgPool = new Pool({ connectionString: databaseUrl });
