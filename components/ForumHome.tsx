@@ -13,13 +13,17 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
   const { data: session } = useSession();
   const [posts, setPosts] = useState<ForumPost[]>(initialPosts);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('newest');
   const [loading, setLoading] = useState(false);
 
-  const loadPosts = async (categoryId?: string) => {
+  const loadPosts = async (categoryId?: string, search: string = searchQuery, sort: string = sortBy) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (categoryId) params.set('categoryId', categoryId);
+      if (categoryId) params.set('category', categoryId);
+      if (search) params.set('q', search);
+      params.set('sort', sort);
 
       const response = await fetch(`/api/forum/posts?${params}`);
       const data = await response.json();
@@ -37,6 +41,18 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategory(categoryId);
     loadPosts(categoryId || undefined);
+  };
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    // Debounce search - would be better with a useEffect and timer
+    loadPosts(selectedCategory, query, sortBy);
+  };
+
+  const handleSortChange = (newSort: string) => {
+    setSortBy(newSort);
+    loadPosts(selectedCategory, searchQuery, newSort);
   };
 
   const formatDate = (date: string | number) => {
@@ -127,6 +143,32 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
 
           {/* 主内容区 - 帖子列表 */}
           <div className="lg:col-span-3">
+            {/* 搜索和排序栏 */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-4 border border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="搜索帖子..."
+                    value={searchQuery}
+                    onChange={handleSearch}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+                <div className="sm:w-40">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => handleSortChange(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <option value="newest">最新</option>
+                    <option value="hottest">热门</option>
+                    <option value="trending">趋势</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
               {loading ? (
                 <div className="p-8 text-center">

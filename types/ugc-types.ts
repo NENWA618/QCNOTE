@@ -44,27 +44,6 @@ export interface Decoration {
   description: string;
 }
 
-// 社区笔记
-export interface CommunityNote {
-  communityId: string;
-  originalNoteId: string;
-  userId: string;
-  username: string;
-  title: string;
-  preview: string;
-  content: string;
-  category: string;
-  tags: string[];
-  likes: number;
-  comments: number;
-  views: number;
-  shares: number;
-  publishedAt: number;
-  isPublished: boolean;
-  lastModifiedAt: number;
-  coverImage?: string;
-}
-
 // 用户互动
 export interface UserInteraction {
   interactionId: string;
@@ -428,15 +407,5 @@ export interface StoryLink {
   fromNoteId: string;
   toNoteId: string;
   linkType: 'sequel' | 'prequel' | 'related' | 'branch';
-  createdAt: number;
-}
-
-// 社区地图数据（用户聚类）
-export interface CommunityMapCluster {
-  clusterId: string;
-  clusterName: string;
-  category: string;
-  users: string[];
-  averageScore: number;
   createdAt: number;
 }

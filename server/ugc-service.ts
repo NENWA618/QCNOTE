@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   UserProfile,
   UserSpace,
-  CommunityNote,
   LeaderboardEntry,
   RecommendationItem,
   HeatmapData,
@@ -568,130 +567,6 @@ export class UGCService {
     return credit;
   }
 
-  // ==================== 社区笔记管理 ====================
-
-  async publishCommunityNote(note: CommunityNote): Promise<CommunityNote> {
-    const communityId = uuidv4();
-    const published: CommunityNote = {
-      ...note,
-      communityId,
-      publishedAt: Date.now(),
-      isPublished: true,
-    };
-
-    await this.db.query(
-      `INSERT INTO community_notes(
-        community_id, original_note_id, user_id, username, title, preview, content,
-        category, tags, likes, comments, views, shares, published_at, is_published,
-        last_modified_at, cover_image
-      ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
-      [
-        communityId,
-        note.originalNoteId,
-        note.userId,
-        note.username,
-        note.title,
-        note.preview,
-        note.content,
-        note.category,
-        JSON.stringify(note.tags),
-        0,
-        0,
-        0,
-        0,
-        published.publishedAt,
-        true,
-        published.publishedAt,
-        note.coverImage || null,
-      ]
-    );
-
-    await this.cacheCommunityNote(published);
-    await this.redis.lPush('community:notes:all', communityId);
-    await this.redis.lPush(`community:notes:user:${note.userId}`, communityId);
-    await this.redis.zAdd('community:trending:24h', {
-      score: Date.now(),
-      value: communityId,
-    });
-
-    if (Array.isArray(note.tags)) {
-      for (const tag of note.tags) {
-        await this.redis.sAdd(`community:notes:tag:${tag}`, communityId);
-      }
-    }
-
-    await this.redis.lPush(`community:notes:category:${note.category}`, communityId);
-    return published;
-  }
-
-  async getCommunityNote(communityId: string): Promise<CommunityNote | null> {
-    const cached = await this.redis.get(`community:note:${communityId}`);
-    if (cached) {
-      return JSON.parse(cached) as CommunityNote;
-    }
-
-    const result = await this.db.query(
-      `SELECT community_id, original_note_id, user_id, username, title, preview, content, category, tags,
-              likes, comments, views, shares, published_at, is_published, last_modified_at, cover_image
-       FROM community_notes WHERE community_id = $1`,
-      [communityId]
-    );
-
-    if (!result.rowCount) {
-      return null;
-    }
-
-    const row = result.rows[0];
-    const note: CommunityNote = {
-      communityId: row.community_id,
-      originalNoteId: row.original_note_id,
-      userId: row.user_id,
-      username: row.username,
-      title: row.title,
-      preview: row.preview,
-      content: row.content,
-      category: row.category,
-      tags: row.tags || [],
-      likes: Number(row.likes),
-      comments: Number(row.comments),
-      views: Number(row.views),
-      shares: Number(row.shares),
-      publishedAt: Number(row.published_at),
-      isPublished: row.is_published,
-      lastModifiedAt: Number(row.last_modified_at),
-      coverImage: row.cover_image,
-    };
-
-    await this.cacheCommunityNote(note);
-    return note;
-  }
-
-  async updateCommunityNoteStats(
-    communityId: string,
-    stats: { likes?: number; comments?: number; views?: number; shares?: number }
-  ): Promise<void> {
-    const note = await this.getCommunityNote(communityId);
-    if (!note) throw new Error('Note not found');
-
-    const updated = {
-      ...note,
-      likes: stats.likes ?? note.likes,
-      comments: stats.comments ?? note.comments,
-      views: stats.views ?? note.views,
-      shares: stats.shares ?? note.shares,
-      lastModifiedAt: Date.now(),
-    };
-
-    await this.db.query(
-      `UPDATE community_notes SET likes = $1, comments = $2, views = $3, shares = $4, last_modified_at = $5 WHERE community_id = $6`,
-      [updated.likes, updated.comments, updated.views, updated.shares, updated.lastModifiedAt, communityId]
-    );
-    await this.cacheCommunityNote(updated);
-
-    const score = updated.likes * 1.2 + updated.comments * 0.8 + updated.views * 0.1;
-    await this.redis.zAdd('community:trending:24h', { score, value: communityId });
-  }
-
   // ==================== 排行榜管理 ====================
 
   async addToLeaderboard(
@@ -726,56 +601,6 @@ export class UGCService {
         };
       })
     );
-  }
-
-  // ==================== 互动管理 ====================
-
-  async likeNote(userId: string, communityId: string): Promise<boolean> {
-    const isLiked = await this.redis.sIsMember(`community:likes:${communityId}`, userId);
-
-    let likes = 0;
-    if (isLiked) {
-      await this.redis.sRem(`community:likes:${communityId}`, userId);
-      const result = await this.db.query(
-        `UPDATE community_notes SET likes = GREATEST(likes - 1, 0) WHERE community_id = $1 RETURNING likes`,
-        [communityId]
-      );
-      likes = result.rowCount ? Number(result.rows[0].likes) : 0;
-      await this.addCredit(userId, -1, 'Unlike note');
-    } else {
-      await this.redis.sAdd(`community:likes:${communityId}`, userId);
-      const result = await this.db.query(
-        `UPDATE community_notes SET likes = likes + 1 WHERE community_id = $1 RETURNING likes`,
-        [communityId]
-      );
-      likes = result.rowCount ? Number(result.rows[0].likes) : 0;
-      await this.addCredit(userId, 1, 'Like note');
-      await this.db.query(
-        `INSERT INTO interactions(interaction_id, from_user_id, to_note_id, type, created_at)
-         VALUES($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
-        [uuidv4(), userId, communityId, 'like', Date.now()]
-      );
-    }
-
-    await this.redis.set(`community:note:${communityId}:likes`, likes.toString());
-    await this.redis.zAdd('community:trending:24h', { score: likes * 1.2, value: communityId });
-    return !isLiked;
-  }
-
-  async getNoteLikes(communityId: string): Promise<number> {
-    const cached = await this.redis.get(`community:note:${communityId}:likes`);
-    if (cached !== null) {
-      return Number(cached);
-    }
-
-    const result = await this.db.query(`SELECT likes FROM community_notes WHERE community_id = $1`, [communityId]);
-    const likes = result.rowCount ? Number(result.rows[0].likes) : 0;
-    await this.redis.set(`community:note:${communityId}:likes`, likes.toString());
-    return likes;
-  }
-
-  async isNoteLikedByUser(userId: string, communityId: string): Promise<boolean> {
-    return Boolean(await this.redis.sIsMember(`community:likes:${communityId}`, userId));
   }
 
   // ==================== 关注系统 ====================
@@ -886,10 +711,6 @@ export class UGCService {
 
   private async cacheUserSpace(space: UserSpace): Promise<void> {
     await this.redis.set(`user:${space.userId}:space`, JSON.stringify(space));
-  }
-
-  private async cacheCommunityNote(note: CommunityNote): Promise<void> {
-    await this.redis.set(`community:note:${note.communityId}`, JSON.stringify(note));
   }
 
   private async addUserCreditHistory(userId: string, amount: number, reason: string, newBalance: number): Promise<void> {

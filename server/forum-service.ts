@@ -86,7 +86,13 @@ export class ForumService {
     };
   }
 
-  async getPosts(categoryId?: string, page = 1, limit = 20): Promise<{ posts: ForumPost[], total: number }> {
+  async getPosts(
+    categoryId?: string,
+    page = 1,
+    limit = 20,
+    searchQuery = '',
+    sortBy = 'newest'
+  ): Promise<{ posts: ForumPost[], total: number }> {
     const offset = (page - 1) * limit;
     let query = `
       SELECT p.id, p.title, p.content, p.category_id, p.author_id, p.tags,
@@ -97,23 +103,63 @@ export class ForumService {
       WHERE p.is_deleted = false
     `;
     const params: any[] = [];
+    let paramIndex = 1;
 
+    // Filter by category
     if (categoryId) {
-      query += ' AND p.category_id = $1';
+      query += ` AND p.category_id = $${paramIndex}`;
       params.push(categoryId);
+      paramIndex++;
     }
 
-    query += ' ORDER BY p.created_at DESC LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
+    // Search by title or content
+    if (searchQuery && searchQuery.trim()) {
+      query += ` AND (p.title ILIKE $${paramIndex} OR p.content ILIKE $${paramIndex})`;
+      params.push(`%${searchQuery}%`);
+      paramIndex++;
+    }
+
+    // Sort by option
+    switch (sortBy.toLowerCase()) {
+      case 'hottest':
+        query += ' ORDER BY (p.like_count + p.reply_count * 0.5) DESC, p.created_at DESC';
+        break;
+      case 'trending':
+        // Posts from last 7 days, ranked by recent activity
+        query += ' AND p.created_at > NOW() - INTERVAL \'7 days\' ORDER BY (p.like_count + p.reply_count) DESC, p.created_at DESC';
+        break;
+      case 'newest':
+      default:
+        query += ' ORDER BY p.created_at DESC';
+        break;
+    }
+
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
     const result = await this.postgres.query(query, params);
 
     // 获取总数
     let countQuery = 'SELECT COUNT(*) as total FROM forum_posts WHERE is_deleted = false';
+    const countParams: any[] = [];
+    
     if (categoryId) {
       countQuery += ' AND category_id = $1';
+      countParams.push(categoryId);
     }
-    const countResult = await this.postgres.query(countQuery, categoryId ? [categoryId] : []);
+    
+    if (searchQuery && searchQuery.trim()) {
+      const paramPlace = categoryId ? '$2' : '$1';
+      countQuery += ` AND (title ILIKE ${paramPlace} OR content ILIKE ${paramPlace})`;
+      countParams.push(`%${searchQuery}%`);
+    }
+
+    // Add trending filter if applicable
+    if (sortBy.toLowerCase() === 'trending') {
+      countQuery += ' AND created_at > NOW() - INTERVAL \'7 days\'';
+    }
+
+    const countResult = await this.postgres.query(countQuery, countParams);
     const total = parseInt(countResult.rows[0].total);
 
     const posts = result.rows.map(row => ({

@@ -170,67 +170,9 @@ function registerRoutes(app: any) {
     }
   });
 
-  // ==================== UGC 社区笔记路由 ====================
-
-  // 发布笔记到社区
-  app.post('/api/ugc/community/publish', async (request: any, reply: any) => {
-    try {
-      const note = request.body;
-      const published = await ugcService.publishCommunityNote(note);
-      await ugcService.addCredit(note.userId, 5, 'Publish community note');
-      await ugcService.recordActivity(note.userId, 'publish-note');
-
-      reply.send({ success: true, communityNote: published });
-    } catch (error) {
-      reply.status(400).send({ success: false, error: (error as Error).message });
-    }
-  });
-
-  // 获取社区笔记
-  app.get('/api/ugc/community/note/:communityId', async (request: any, reply: any) => {
-    try {
-      const { communityId } = request.params;
-      const note = await ugcService.getCommunityNote(communityId);
-
-      if (!note) {
-        return reply.status(404).send({ success: false, error: 'Note not found' });
-      }
-
-      reply.send({ success: true, note });
-    } catch (error) {
-      reply.status(400).send({ success: false, error: (error as Error).message });
-    }
-  });
+  // ==================== 社区功能已迁移至论坛系统 ====================
 
   // ==================== UGC 互动路由 ====================
-
-  // 点赞笔记
-  app.post('/api/ugc/community/like/:communityId', async (request: any, reply: any) => {
-    try {
-      const { communityId } = request.params;
-      const { userId } = request.body;
-
-      const liked = await ugcService.likeNote(userId, communityId);
-      const likes = await ugcService.getNoteLikes(communityId);
-
-      reply.send({ success: true, liked, likes });
-    } catch (error) {
-      reply.status(400).send({ success: false, error: (error as Error).message });
-    }
-  });
-
-  // 检查是否已点赞
-  app.get('/api/ugc/community/liked/:communityId/:userId', async (request: any, reply: any) => {
-    try {
-      const { communityId, userId } = request.params;
-      const liked = await ugcService.isNoteLikedByUser(userId, communityId);
-      reply.send({ success: true, liked });
-    } catch (error) {
-      reply.status(400).send({ success: false, error: (error as Error).message });
-    }
-  });
-
-  // ==================== UGC 关注路由 ====================
 
   // 关注用户
   app.post('/api/ugc/follow', async (request: any, reply: any) => {

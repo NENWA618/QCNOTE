@@ -1,13 +1,13 @@
 import React from 'react';
 import Link from 'next/link';
-import CommunityHub from '../../components/CommunityHub';
+import Models from '../../components/Models';
 import { useSession } from 'next-auth/react';
 
 type SessionUserWithId = {
   id?: string;
 };
 
-export default function CommunityPage() {
+export default function ModelsPage() {
   const { data: session } = useSession();
   const userId = (session?.user as SessionUserWithId | undefined)?.id;
 
@@ -24,5 +24,5 @@ export default function CommunityPage() {
     );
   }
 
-  return <CommunityHub />;
+  return <Models userId={userId} />;
 }

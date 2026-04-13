@@ -1,13 +1,12 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import axios from 'axios';
-import type { UserSpace } from '../types/ugc-types';
 
 type SessionUserWithId = {
   id?: string;
 };
 
-interface VirtualSpaceProps {
+interface ModelsProps {
   userId: string;
 }
 
@@ -26,10 +25,9 @@ interface Live2DModel {
   previewImage?: string;
 }
 
-const VirtualSpace: React.FC<VirtualSpaceProps> = ({ userId }) => {
+const Models: React.FC<ModelsProps> = ({ userId }) => {
   const { data: session } = useSession();
   const sessionUserId = (session?.user as SessionUserWithId | undefined)?.id;
-  const [space, setSpace] = useState<UserSpace | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentModel, setCurrentModel] = useState<Live2DModel | null>(null);
   const [availableModels, setAvailableModels] = useState<Live2DModel[]>([]);
@@ -41,29 +39,13 @@ const VirtualSpace: React.FC<VirtualSpaceProps> = ({ userId }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchUserSpace();
     fetchAvailableModels();
     fetchMarketModels();
     if (sessionUserId) {
       fetchUserCredit();
     }
+    setLoading(false);
   }, [userId, sessionUserId]);
-
-  const fetchUserSpace = async () => {
-    try {
-      const response = await axios.get(`/api/ugc/space/${userId}`);
-      if (response.data.success) {
-        setSpace(response.data.space);
-        if (response.data.space.live2dModel) {
-          setCurrentModel(response.data.space.live2dModel);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch user space:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchAvailableModels = async () => {
     try {
@@ -132,14 +114,7 @@ const VirtualSpace: React.FC<VirtualSpaceProps> = ({ userId }) => {
 
   const handleModelChange = async (model: Live2DModel) => {
     try {
-      const response = await axios.put(`/api/ugc/space/${userId}`, {
-        live2dModel: model,
-      });
-
-      if (response.data.success) {
-        setCurrentModel(model);
-        setSpace(response.data.space);
-      }
+      setCurrentModel(model);
     } catch (error) {
       console.error('Failed to update model:', error);
     }
@@ -205,34 +180,7 @@ const VirtualSpace: React.FC<VirtualSpaceProps> = ({ userId }) => {
   return (
     <div className="min-h-screen bg-white dark:bg-dark-bg p-8">
       <div className="max-w-6xl mx-auto">
-        {/* 虚拟空间主体 */}
-        <div className="card dark:bg-dark-surface dark:border-dark-border mb-8 min-h-96 relative">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-primary-light dark:bg-dark-surface rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary-light dark:bg-dark-surface rounded-full blur-3xl"></div>
-          </div>
-
-          <div className="relative z-10">
-            <h1 className="text-4xl font-bold mb-4 text-primary-dark dark:text-dark-text">{space?.spaceName}</h1>
-            <p className="text-lg opacity-75 text-primary-dark dark:text-dark-text">欢迎来到我的创意空间</p>
-
-            {currentModel && (
-              <div className="mt-8 flex justify-center">
-                <div className="w-64 h-64 bg-primary-light dark:bg-dark-surface rounded-lg overflow-hidden shadow-light">
-                  <div className="w-full h-full flex items-center justify-center text-primary-dark dark:text-dark-text">
-                    <div className="text-center">
-                      <div className="text-6xl mb-2">🎭</div>
-                      <p className="text-sm">{currentModel.name}</p>
-                      <p className="text-xs text-text-light dark:text-dark-text-secondary">
-                        {currentModel.isCustom ? '自定义模型' : '系统模型'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <h1 className="text-4xl font-bold mb-8 text-primary-dark dark:text-dark-text">Live2D模型管理</h1>
 
         {sessionUserId === userId && (
           <div className="space-y-6">
@@ -367,4 +315,4 @@ const VirtualSpace: React.FC<VirtualSpaceProps> = ({ userId }) => {
   );
 };
 
-export default VirtualSpace;
+export default Models;

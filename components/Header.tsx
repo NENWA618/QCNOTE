@@ -83,20 +83,11 @@ const Header: React.FC = () => {
             <>
               <li>
                 <Link
-                  href="/ugc/community"
+                  href="/ugc/models"
                   className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
                   onClick={() => setMenuOpen(false)}
                 >
-                  社区
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/ugc/space"
-                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  虚拟空间
+                  模型
                 </Link>
               </li>
               <li>

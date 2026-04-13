@@ -8,13 +8,22 @@ import { getPostgresClient } from '../../../server/postgres-client';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-      const { category, page = '1', limit = '20' } = req.query;
+      const { 
+        category, 
+        page = '1', 
+        limit = '20',
+        q = '',  // search query
+        sort = 'newest' // newest, hottest, trending
+      } = req.query;
+      
       const forumService = new ForumService(getRedisClient(), getPostgresClient());
 
       const { posts, total } = await forumService.getPosts(
         category as string | undefined,
         parseInt(page as string),
-        parseInt(limit as string)
+        parseInt(limit as string),
+        q as string,
+        sort as string
       );
 
       res.status(200).json({

@@ -25,7 +25,7 @@ export default function SignIn({ providers }: SignInProps) {
             <span className="text-3xl font-bold text-white">QCNOTE</span>
           </Link>
           <h2 className="text-3xl font-bold text-white mb-2">欢迎回来</h2>
-          <p className="text-gray-400">登录您的账户以访问 UGC 功能</p>
+          <p className="text-gray-400">登录您的账户以访问模型和论坛</p>
         </div>
 
         <div className="bg-gray-800 rounded-lg p-8 shadow-xl">
@@ -66,7 +66,7 @@ export default function SignIn({ providers }: SignInProps) {
 
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
-              登录后即可访问社区功能和虚拟空间
+              登录后即可访问模型和论坛
             </p>
           </div>
         </div>

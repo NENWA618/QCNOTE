@@ -1,6 +1,19 @@
 import { RedisClientType } from 'redis';
-import { CommunityNote, RecommendationItem } from '../types/ugc-types';
+import { RecommendationItem } from '../types/ugc-types';
 import { UGCService } from './ugc-service';
+
+interface NoteData {
+  id: string;
+  userId: string;
+  title: string;
+  content: string;
+  category: string;
+  tags: string[];
+  publishedAt: number;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+}
 
 export class RecommendationService {
   private redis: RedisClientType;
@@ -12,21 +25,21 @@ export class RecommendationService {
   }
 
   /**
-   * 多维度创意相似度推荐算法 (增强版)
-   * 最终推荐分数 = (热度分 × 0.20) + (内容相似度 × 0.25) + (作者影响力 × 0.15) + (新鲜度 × 0.10) + (用户互动 × 0.10) + (社区热度 × 0.10) + (多样性探索 × 0.10)
+   * 多维度内容相似度推荐算法
+   * 最终推荐分数 = (热度分 × 0.20) + (内容相似度 × 0.25) + (作者影响力 × 0.15) + (新鲜度 × 0.10) + (用户互动 × 0.10) + (标签相关性 × 0.10) + (多样性探索 × 0.10)
    */
   async recommendNotesForUser(
     userId: string,
     limit: number = 20
   ): Promise<RecommendationItem[]> {
-    // 1. 获取用户已阅读和点赞的笔记（以确定兴趣）
+    // 1. 获取用户兴趣标签和分类
     const userInterests = await this.getUserInterests(userId);
 
     // 2. 获取用户行为数据
     const userBehavior = await this.getUserBehaviorData(userId);
 
-    // 3. 获取所有社区笔记
-    const allNoteIds = await this.redis.lRange('community:notes:all', 0, -1);
+    // 3. 获取所有可用笔记
+    const allNoteIds = await this.redis.lRange('notes:all', 0, -1);
 
     // 4. 计算每个笔记的推荐分数
     const scores: Array<{ noteId: string; score: number; reason: string }> = [];
@@ -43,7 +56,7 @@ export class RecommendationService {
       });
     }
 
-    // 5. 多样性探索：12% 随机推荐未探索领域
+    // 5. 多样性探索：12% 随机推荐新领域
     const explorationRate = 0.12;
     const explorationCount = Math.ceil(limit * explorationRate);
     const result = scores
@@ -67,7 +80,7 @@ export class RecommendationService {
    */
   private async calculateEnhancedRecommendationScore(
     userId: string,
-    note: CommunityNote,
+    note: NoteData,
     userInterests: {
       tags: string[];
       categories: string[];
@@ -94,8 +107,8 @@ export class RecommendationService {
     // 5. 用户互动历史 (10%)
     const userInteractionScore = await this.calculateUserInteractionScore(userId, note);
 
-    // 6. 社区热度趋势 (10%)
-    const communityTrendScore = await this.calculateCommunityTrendScore(note);
+    // 6. 标签相关性 (10%)
+    const tagRelevanceScore = this.calculateTagRelevance(note.tags, userInterests.tags);
 
     // 7. 多样性探索 (10%)
     const diversityBonus = this.calculateDiversityBonus(note.category, userInterests.categories);
@@ -106,7 +119,7 @@ export class RecommendationService {
       authorInfluence * 0.15 +
       freshnessScore * 0.10 +
       userInteractionScore * 0.10 +
-      communityTrendScore * 0.10 +
+      tagRelevanceScore * 0.10 +
       diversityBonus * 0.10;
 
     const reason = this.generateEnhancedReason(
@@ -115,7 +128,7 @@ export class RecommendationService {
       authorInfluence,
       freshnessScore,
       userInteractionScore,
-      communityTrendScore,
+      tagRelevanceScore,
       diversityBonus
     );
 
@@ -125,7 +138,7 @@ export class RecommendationService {
   /**
    * 计算用户互动历史分数
    */
-  private async calculateUserInteractionScore(userId: string, note: CommunityNote): Promise<number> {
+  private async calculateUserInteractionScore(userId: string, note: NoteData): Promise<number> {
     // 检查用户是否关注了作者
     const isFollowing = await this.redis.sIsMember(`user:${userId}:following`, note.userId);
     if (isFollowing) return 100;
@@ -136,15 +149,13 @@ export class RecommendationService {
   }
 
   /**
-   * 计算社区热度趋势分数
+   * 计算标签相关性分数
    */
-  private async calculateCommunityTrendScore(note: CommunityNote): Promise<number> {
-    const now = Date.now();
-    const oneDayAgo = now - 24 * 60 * 60 * 1000;
-    const recentInteractions = await this.redis.zCount(`note:${note.communityId}:interactions`, oneDayAgo, now);
-
-    // 基于最近24小时的互动计算趋势
-    return Math.min(recentInteractions * 10, 100);
+  private calculateTagRelevance(noteTags: string[], userTags: string[]): number {
+    if (!noteTags.length || !userTags.length) return 50;
+    
+    const matches = noteTags.filter(tag => userTags.includes(tag)).length;
+    return Math.min((matches / noteTags.length) * 100, 100);
   }
 
   /**
@@ -172,7 +183,7 @@ export class RecommendationService {
    * = 标签相似度 × 0.4 + 文本语义相似度 × 0.4 + 分类相似度 × 0.2
    */
   private async calculateContentSimilarity(
-    note: CommunityNote,
+    note: NoteData,
     userInterests: { tags: string[]; categories: string[] }
   ): Promise<number> {
     // 标签相似度
@@ -182,7 +193,7 @@ export class RecommendationService {
     const categorySimilarity = userInterests.categories.includes(note.category) ? 100 : 0;
 
     // 文本相似度（简化版：使用关键词匹配）
-    const textSimilarity = this.calculateTextSimilarity(note.preview, userInterests.tags);
+    const textSimilarity = this.calculateTextSimilarity(note.content, userInterests.tags);
 
     return tagSimilarity * 0.4 + textSimilarity * 0.4 + categorySimilarity * 0.2;
   }
@@ -192,7 +203,7 @@ export class RecommendationService {
    */
   private async calculateAuthorInfluence(authorId: string): Promise<number> {
     const followers = await this.redis.sCard(`user:${authorId}:followers`);
-    const notes = await this.redis.lLen(`community:notes:user:${authorId}`);
+    const notes = await this.redis.lLen(`notes:user:${authorId}`);
 
     // 基础分 + 粉丝加权 + 活跃度加权
     const influenceScore = 10 + Math.log(followers + 1) * 5 + Math.log(notes + 1) * 3;
@@ -203,12 +214,12 @@ export class RecommendationService {
   /**
    * 计算热度分
    */
-  private async calculatePopularityScore(note: CommunityNote): Promise<number> {
-    const likes = note.likes || 0;
-    const shares = note.shares || 0;
-    const views = note.views || 0;
+  private async calculatePopularityScore(note: NoteData): Promise<number> {
+    const likes = note.likeCount || 0;
+    const comments = note.commentCount || 0;
+    const views = note.viewCount || 0;
 
-    const score = likes * 0.4 + shares * 0.3 + Math.min(views, 100) * 0.3;
+    const score = likes * 0.4 + comments * 0.3 + Math.min(views, 100) * 0.3;
     return Math.min(Math.round(score), 100);
   }
 
@@ -320,7 +331,7 @@ export class RecommendationService {
     influence: number,
     freshness: number,
     interaction: number,
-    trend: number,
+    tagRelevance: number,
     diversity: number
   ): string {
     const reasons = [];
@@ -328,7 +339,7 @@ export class RecommendationService {
     if (similarity > 70) reasons.push('内容匹配您的兴趣');
     if (interaction > 80) reasons.push('基于您的互动历史');
     if (popularity > 70) reasons.push('热门内容');
-    if (trend > 60) reasons.push('社区正在热议');
+    if (tagRelevance > 60) reasons.push('标签相关');
     if (influence > 70) reasons.push('来自有影响力的作者');
     if (freshness > 0.7) reasons.push('最新发布');
     if (diversity > 80) reasons.push('探索新领域');
@@ -336,8 +347,8 @@ export class RecommendationService {
     return reasons.length > 0 ? reasons.slice(0, 2).join(' · ') : '为您推荐';
   }
 
-  private async getNoteData(noteId: string): Promise<CommunityNote | null> {
-    const data = await this.redis.get(`community:note:${noteId}`);
+  private async getNoteData(noteId: string): Promise<NoteData | null> {
+    const data = await this.redis.get(`note:${noteId}`);
     return data ? JSON.parse(data) : null;
   }
 }
