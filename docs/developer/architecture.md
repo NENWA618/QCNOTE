@@ -17,6 +17,14 @@ NOTE/
 │   ├── _app.tsx            # 应用入口
 │   ├── index.tsx           # 首页
 │   ├── dashboard.tsx       # 仪表板
+│   ├── forum.tsx           # 社区论坛
+│   ├── forum-create.tsx    # 发布帖子
+│   ├── leaderboard.tsx     # 排行榜
+│   ├── models.tsx          # Live2D 模型
+│   ├── signin.tsx          # 登录
+│   ├── contact.tsx         # 联系我们
+│   ├── privacy.tsx         # 隐私政策
+│   ├── terms.tsx           # 使用条款
 │   └── api/                # API 路由
 ├── lib/                     # 核心业务逻辑
 │   ├── storage.ts          # 存储管理（IndexedDB）

@@ -14,7 +14,7 @@ QCNOTE 是一个**离线优先、隐私第一**的个人笔记管理系统。采
 │                               ↓                                      │
 │                      User Interface Layer                             │
 ├─────────────────────────────────────────────────────────────────────┤
-│  Pages: dashboard.tsx, index.tsx, contact.tsx                         │
+│  Pages: index.tsx, dashboard.tsx, contact.tsx, forum.tsx, forum-create.tsx, leaderboard.tsx, models.tsx, signin.tsx, privacy.tsx, terms.tsx │
 │  Components: NoteEditor, NoteList, Calendar, KnowledgeGraph, etc.     │
 │  State Management: React Context (NoteEditorContext)                  │
 │  Styling: Tailwind CSS + Custom Design System                         │
@@ -70,7 +70,7 @@ QCNOTE 是一个**离线优先、隐私第一**的个人笔记管理系统。采
 │  │  │  - Note sync (/syncNote)                │   │                  │
 │  │  │  - Character reply (/reply)             │   │                  │
 │  │  │  - Forum operations (/forum/*)          │   │                  │
-│  │  │  - UGC and marketplace (/ugc/*)         │   │                  │
+│  │  │  - UGC and marketplace pages (/models, /leaderboard) │   │                  │
 │  │  └─────────────────────────────────────────┘   │                  │
 │  └────────────────────────────────────────────────┘                  │
 └─────────────────────────────────────────────────────────────────────┘

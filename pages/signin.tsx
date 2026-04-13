@@ -1,4 +1,5 @@
 import React from 'react';
+import Head from 'next/head';
 import { getProviders, signIn, getSession } from 'next-auth/react';
 import { GetServerSideProps } from 'next';
 import Link from 'next/link';
@@ -10,7 +11,12 @@ interface SignInProps {
 
 export default function SignIn({ providers }: SignInProps) {
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
+    <>
+      <Head>
+        <title>登录 - QCNOTE</title>
+        <meta name="description" content="登录 QCNOTE 访问你的笔记、Live2D 模型和社区论坛。" />
+      </Head>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <Link href="/" className="flex items-center justify-center gap-3 mb-8">
@@ -78,6 +84,7 @@ export default function SignIn({ providers }: SignInProps) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

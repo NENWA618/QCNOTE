@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
-import Leaderboard from '../../components/Leaderboard';
+import Head from 'next/head';
+import Leaderboard from '../components/Leaderboard';
 
 export default function LeaderboardPage() {
   const [type, setType] = useState<'creative' | 'activity' | 'influence'>('creative');
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <>
+      <Head>
+        <title>排行榜 - QCNOTE</title>
+        <meta name="description" content="QCNOTE 排行榜页面，查看创意、活跃度和影响力排行榜。" />
+      </Head>
+      <div className="min-h-screen bg-gray-900">
       {/* 类型切换 */}
       <div className="bg-gray-800 border-b border-gray-700 p-6">
         <div className="max-w-2xl mx-auto flex gap-4">
@@ -29,5 +35,6 @@ export default function LeaderboardPage() {
 
       <Leaderboard type={type} />
     </div>
+    </>
   );
 }

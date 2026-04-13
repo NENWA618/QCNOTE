@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import Image from 'next/image';
 import type { LeaderboardEntry } from '../types/ugc-types';
 
 interface LeaderboardProps {
@@ -10,11 +11,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchLeaderboard();
-  }, [type]);
-
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get(`/api/ugc/leaderboard/${type}?limit=50`);
@@ -27,7 +24,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [type]);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
 
   const typeConfig = {
     creative: {
@@ -88,9 +89,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
 
               {/* 用户信息 */}
               <div className="flex items-center gap-4 flex-1">
-                <img
+                <Image
                   src={entry.avatar}
                   alt={entry.username}
+                  width={48}
+                  height={48}
                   className="w-12 h-12 rounded-full border-2 border-white dark:border-dark-border"
                 />
                 <div>

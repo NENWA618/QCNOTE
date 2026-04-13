@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import axios from 'axios';
 
@@ -38,16 +38,7 @@ const Models: React.FC<ModelsProps> = ({ userId }) => {
   const [userCredit, setUserCredit] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchAvailableModels();
-    fetchMarketModels();
-    if (sessionUserId) {
-      fetchUserCredit();
-    }
-    setLoading(false);
-  }, [userId, sessionUserId]);
-
-  const fetchAvailableModels = async () => {
+  const fetchAvailableModels = useCallback(async () => {
     try {
       const systemModels: Live2DModel[] = [
         {
@@ -88,9 +79,9 @@ const Models: React.FC<ModelsProps> = ({ userId }) => {
         description: '系统自带的默认Live2D模型'
       }]);
     }
-  };
+  }, [sessionUserId]);
 
-  const fetchMarketModels = async () => {
+  const fetchMarketModels = useCallback(async () => {
     try {
       const response = await axios.get('/api/ugc/models/market');
       if (response.data.success) {
@@ -99,9 +90,9 @@ const Models: React.FC<ModelsProps> = ({ userId }) => {
     } catch (error) {
       console.error('Failed to fetch market models:', error);
     }
-  };
+  }, []);
 
-  const fetchUserCredit = async () => {
+  const fetchUserCredit = useCallback(async () => {
     try {
       const response = await axios.get('/api/ugc/user/credit');
       if (response.data.success) {
@@ -110,7 +101,16 @@ const Models: React.FC<ModelsProps> = ({ userId }) => {
     } catch (error) {
       console.error('Failed to fetch user credit:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAvailableModels();
+    fetchMarketModels();
+    if (sessionUserId) {
+      fetchUserCredit();
+    }
+    setLoading(false);
+  }, [fetchAvailableModels, fetchMarketModels, fetchUserCredit, sessionUserId]);
 
   const handleModelChange = async (model: Live2DModel) => {
     try {

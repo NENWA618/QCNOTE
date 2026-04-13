@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../../auth/[...nextauth]';
+import { authOptions } from '../../auth/authConfig';
 import { UGCService } from '../../../../server/ugc-service';
 import { getRedisClient } from '../../../../server/redis-client';
 import { getPostgresClient } from '../../../../server/postgres-client';

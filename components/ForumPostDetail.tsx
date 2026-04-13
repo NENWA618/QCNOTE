@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import { ForumPost, ForumReply } from '../types/ugc-types';
 
 interface ForumPostDetailProps {
@@ -102,11 +103,13 @@ export default function ForumPostDetail({ post, replies, totalReplies }: ForumPo
         <div key={reply.id} className={`border-l-2 border-gray-200 dark:border-gray-700 pl-4 ${level > 0 ? 'ml-4' : ''}`}>
           <div className="flex items-start space-x-3 py-3">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center overflow-hidden">
                 {reply.authorAvatar ? (
-                  <img
+                  <Image
                     src={reply.authorAvatar}
                     alt={reply.authorName}
+                    width={32}
+                    height={32}
                     className="w-8 h-8 rounded-full"
                   />
                 ) : (
@@ -147,7 +150,7 @@ export default function ForumPostDetail({ post, replies, totalReplies }: ForumPo
                     value={newReply}
                     onChange={(e) => setNewReply(e.target.value)}
                     placeholder="写下你的回复..."
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-slate-50 dark:bg-dark-surface text-gray-900 dark:text-white"
                     rows={3}
                   />
                   <div className="mt-2 flex space-x-2">
@@ -178,17 +181,19 @@ export default function ForumPostDetail({ post, replies, totalReplies }: ForumPo
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 帖子内容 */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-8">
+        <div className="bg-slate-50/80 dark:bg-dark-surface rounded-lg shadow-sm p-6 mb-8 border border-primary-light/30 dark:border-dark-border">
           <div className="flex items-start space-x-4">
             <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
+              <div className="w-12 h-12 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center overflow-hidden">
                 {post.authorAvatar ? (
-                  <img
+                  <Image
                     src={post.authorAvatar}
                     alt={post.authorName}
+                    width={48}
+                    height={48}
                     className="w-12 h-12 rounded-full"
                   />
                 ) : (
@@ -246,8 +251,8 @@ export default function ForumPostDetail({ post, replies, totalReplies }: ForumPo
         </div>
 
         {/* 回复列表 */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <div className="bg-slate-50/80 dark:bg-dark-surface rounded-lg shadow-sm p-6 mb-8 border border-primary-light/30 dark:border-dark-border">
+          <h2 className="text-lg font-semibold text-primary-dark dark:text-dark-text mb-4">
             回复 ({totalReplies})
           </h2>
 
@@ -262,15 +267,15 @@ export default function ForumPostDetail({ post, replies, totalReplies }: ForumPo
 
         {/* 发表回复 */}
         {session?.user && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-slate-50/80 dark:bg-dark-surface rounded-lg shadow-sm p-6 border border-primary-light/30 dark:border-dark-border">
+            <h3 className="text-lg font-semibold text-primary-dark dark:text-dark-text mb-4">
               {replyingTo === 'main' ? '回复帖子' : '发表回复'}
             </h3>
             <textarea
               value={newReply}
               onChange={(e) => setNewReply(e.target.value)}
               placeholder="写下你的回复..."
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-slate-50 dark:bg-dark-surface text-gray-900 dark:text-white"
               rows={4}
             />
             <div className="mt-3 flex space-x-2">

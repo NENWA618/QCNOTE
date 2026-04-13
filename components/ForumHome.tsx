@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ForumPost, ForumCategory, ForumStats } from '../types/ugc-types';
 
 interface ForumHomeProps {
@@ -66,11 +67,11 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 头部统计信息 */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">社区论坛</h1>
+        <div className="bg-slate-50/80 dark:bg-dark-surface rounded-lg shadow-sm p-6 mb-8 border border-primary-light/30 dark:border-dark-border">
+          <h1 className="text-3xl font-bold text-primary-dark dark:text-dark-text mb-4">社区论坛</h1>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">{stats.totalPosts}</div>
@@ -94,7 +95,7 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* 侧边栏 - 分类 */}
           <div className="lg:col-span-1">
-            <div className="card dark:bg-dark-surface dark:border-dark-border">
+            <div className="card bg-slate-50/80 dark:bg-dark-surface dark:border-dark-border border border-primary-light/30">
               <h2 className="text-lg font-semibold text-primary-dark dark:text-dark-text mb-4">分类</h2>
               <div className="space-y-2">
                 <button
@@ -144,7 +145,7 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
           {/* 主内容区 - 帖子列表 */}
           <div className="lg:col-span-3">
             {/* 搜索和排序栏 */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-4 border border-gray-200 dark:border-gray-700">
+            <div className="bg-slate-50/80 dark:bg-dark-surface rounded-lg shadow-sm p-4 mb-4 border border-primary-light/30 dark:border-dark-border">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <input
@@ -169,7 +170,7 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+            <div className="bg-slate-50/80 dark:bg-dark-surface rounded-lg shadow-sm border border-primary-light/30 dark:border-dark-border">
               {loading ? (
                 <div className="p-8 text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -190,14 +191,16 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
               ) : (
                 <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   {posts.map((post) => (
-                    <div key={post.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <div key={post.id} className="p-6 bg-slate-50/80 dark:bg-dark-surface rounded-xl transition-colors hover:bg-primary-light/80 dark:hover:bg-dark-surface-light">
                       <div className="flex items-start space-x-4">
                         <div className="flex-shrink-0">
-                          <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
+                          <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center overflow-hidden">
                             {post.authorAvatar ? (
-                              <img
+                              <Image
                                 src={post.authorAvatar}
                                 alt={post.authorName}
+                                width={40}
+                                height={40}
                                 className="w-10 h-10 rounded-full"
                               />
                             ) : (
@@ -209,7 +212,7 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
                         </div>
                         <div className="flex-1 min-w-0">
                           <Link href={`/forum/post/${post.id}`}>
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
+                            <h3 className="text-lg font-medium text-primary-dark dark:text-dark-text hover:text-primary-medium dark:hover:text-accent-pink cursor-pointer">
                               {post.title}
                             </h3>
                           </Link>
