@@ -1,9 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../auth/authConfig';
-import { UGCService } from '../../../../../server/ugc-service';
-import { getRedisClient } from '../../../../../server/redis-client';
-import { getPostgresClient } from '../../../../../server/postgres-client';
+import { initRedisClient } from '../../../../../server/redis-client';
+import { initPostgresClient } from '../../../../../server/postgres-client';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { userId } = req.query;
@@ -14,26 +13,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     if (req.method === 'GET') {
+      await initRedisClient();
+      await initPostgresClient();
+
       const session = await getServerSession(req, res, authOptions);
-      const ugcService = new UGCService(getRedisClient(), getPostgresClient());
-
-      const space = await ugcService.getUserSpace(userId);
-
-      if (!space) {
-        return res.status(404).json({ error: 'User space not found' });
+      if (!(session?.user as any)?.id) {
+        return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      // 只有拥有者或管理员可以查看完整信息
-      if ((session?.user as any)?.id !== userId) {
+      if ((session.user as any).id !== userId) {
         return res.status(403).json({ error: 'Forbidden' });
       }
 
-      res.status(200).json({ success: true, space });
+      const ownedModels = [
+        {
+          id: 'owned_model_1',
+          name: '专属Live2D模型',
+          path: '/live2d/owned/model_1/',
+          isCustom: true,
+          uploadedBy: userId,
+          uploaderName: '我的模型',
+          price: 0,
+          downloads: 0,
+          rating: 5.0,
+          tags: ['专属', '用户'],
+          description: '这是用户拥有的自定义Live2D模型'
+        }
+      ];
+
+      res.status(200).json({ success: true, models: ownedModels });
     } else {
       res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Get user space error:', error);
+    console.error('Get user models error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

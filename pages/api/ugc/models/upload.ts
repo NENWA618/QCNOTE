@@ -2,8 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../auth/authConfig';
 import { UGCService } from '../../../../server/ugc-service';
-import { getRedisClient } from '../../../../server/redis-client';
-import { getPostgresClient } from '../../../../server/postgres-client';
+import { initRedisClient, getRedisClient } from '../../../../server/redis-client';
+import { initPostgresClient, getPostgresClient } from '../../../../server/postgres-client';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -11,6 +11,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    await initRedisClient();
+    await initPostgresClient();
+
     const session = await getServerSession(req, res, authOptions);
     if (!(session?.user as any)?.id) {
       return res.status(401).json({ error: 'Unauthorized' });

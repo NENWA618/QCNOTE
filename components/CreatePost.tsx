@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { ForumCategory } from '../types/ugc-types';
+import { withApiBaseUrl } from '../lib/api-client';
 
 interface CreatePostProps {
   categories: ForumCategory[];
@@ -72,7 +73,7 @@ export default function CreatePost({ categories }: CreatePostProps) {
         .filter(tag => tag.length > 0)
         .slice(0, 5); // 最多5个标签
 
-      const response = await fetch('/api/forum/posts', {
+      const response = await fetch(withApiBaseUrl('/api/forum/posts'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

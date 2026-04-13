@@ -1,7 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { UGCService } from '../../../../server/ugc-service';
-import { getRedisClient } from '../../../../server/redis-client';
-import { getPostgresClient } from '../../../../server/postgres-client';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -9,8 +6,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const ugcService = new UGCService(getRedisClient(), getPostgresClient());
-
     // 获取市场上的模型（用户分享的自定义模型）
     const marketModels = [
       {

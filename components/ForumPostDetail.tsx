@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 import { ForumPost, ForumReply } from '../types/ugc-types';
+import { withApiBaseUrl } from '../lib/api-client';
 
 interface ForumPostDetailProps {
   post: ForumPost;
@@ -20,7 +21,7 @@ export default function ForumPostDetail({ post, replies, totalReplies }: ForumPo
 
   useEffect(() => {
     // 增加浏览数
-    fetch(`/api/forum/posts/${post.id}/view`, { method: 'POST' });
+    fetch(withApiBaseUrl(`/api/forum/posts/${post.id}/view`), { method: 'POST' });
   }, [post.id]);
 
   const handleLike = async (targetId: string, isReply = false) => {
@@ -30,7 +31,7 @@ export default function ForumPostDetail({ post, replies, totalReplies }: ForumPo
     }
 
     try {
-      const response = await fetch('/api/forum/likes', {
+      const response = await fetch(withApiBaseUrl('/api/forum/likes'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(isReply ? { replyId: targetId } : { postId: targetId })
@@ -60,7 +61,7 @@ export default function ForumPostDetail({ post, replies, totalReplies }: ForumPo
 
     setLoading(true);
     try {
-      const response = await fetch('/api/forum/replies', {
+      const response = await fetch(withApiBaseUrl('/api/forum/replies'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

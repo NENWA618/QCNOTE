@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import axios from 'axios';
+import { withApiBaseUrl } from '../lib/api-client';
 
 type SessionUserWithId = {
   id?: string;
@@ -57,7 +58,7 @@ const Models: React.FC<ModelsProps> = ({ userId }) => {
       ];
 
       if (sessionUserId) {
-        const ownedResponse = await axios.get(`/api/ugc/models/owned/${sessionUserId}`);
+        const ownedResponse = await axios.get(withApiBaseUrl(`/api/ugc/models/owned/${sessionUserId}`));
         const ownedModels: Live2DModel[] = ownedResponse.data.success ? ownedResponse.data.models : [];
         setAvailableModels([...systemModels, ...ownedModels]);
       } else {
@@ -83,7 +84,7 @@ const Models: React.FC<ModelsProps> = ({ userId }) => {
 
   const fetchMarketModels = useCallback(async () => {
     try {
-      const response = await axios.get('/api/ugc/models/market');
+      const response = await axios.get(withApiBaseUrl('/api/ugc/models/market'));
       if (response.data.success) {
         setMarketModels(response.data.models);
       }
@@ -94,7 +95,7 @@ const Models: React.FC<ModelsProps> = ({ userId }) => {
 
   const fetchUserCredit = useCallback(async () => {
     try {
-      const response = await axios.get('/api/ugc/user/credit');
+      const response = await axios.get(withApiBaseUrl('/api/ugc/user/credit'));
       if (response.data.success) {
         setUserCredit(response.data.credit);
       }
@@ -127,7 +128,7 @@ const Models: React.FC<ModelsProps> = ({ userId }) => {
     }
 
     try {
-      const response = await axios.post('/api/ugc/models/purchase', {
+      const response = await axios.post(withApiBaseUrl('/api/ugc/models/purchase'), {
         modelId: model.id,
         userId: sessionUserId,
       });
@@ -156,7 +157,7 @@ const Models: React.FC<ModelsProps> = ({ userId }) => {
       formData.append('tags', JSON.stringify(['自定义']));
       formData.append('shareToCommunity', shareToCommunity.toString());
 
-      const response = await axios.post('/api/ugc/models/upload', formData, {
+      const response = await axios.post(withApiBaseUrl('/api/ugc/models/upload'), formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
