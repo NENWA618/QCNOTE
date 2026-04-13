@@ -41,12 +41,25 @@ export class RecommendationService {
     // 3. 获取所有可用笔记
     const allNoteIds = await this.redis.lRange('notes:all', 0, -1);
 
-    // 4. 计算每个笔记的推荐分数
+    if (allNoteIds.length === 0) {
+      return [];
+    }
+
+    // 4. 批量获取笔记数据，避免 N+1 查询
+    const noteKeys = allNoteIds.map(id => `note:${id}`);
+    const noteDataList = await this.redis.mGet(noteKeys);
+
+    // 5. 计算每个笔记的推荐分数
     const scores: Array<{ noteId: string; score: number; reason: string }> = [];
 
-    for (const noteId of allNoteIds) {
-      const note = await this.getNoteData(noteId);
-      if (!note || note.userId === userId) continue; // 排除用户自己的笔记
+    for (let i = 0; i < allNoteIds.length; i++) {
+      const noteId = allNoteIds[i];
+      const noteData = noteDataList[i];
+
+      if (!noteData) continue;
+
+      const note = JSON.parse(noteData) as NoteData;
+      if (note.userId === userId) continue; // 排除用户自己的笔记
 
       const score = await this.calculateEnhancedRecommendationScore(userId, note, userInterests, userBehavior);
       scores.push({
@@ -286,11 +299,24 @@ export class RecommendationService {
     // 简化：获取用户最近的活动
     const recentActivity = await this.redis.lRange(`user:${userId}:interactions`, 0, 20);
 
+    // 收集需要获取的笔记ID
+    const noteIds: string[] = [];
     for (const activity of recentActivity) {
       const parsed = JSON.parse(activity);
       if (parsed.type === 'like' && parsed.noteId) {
-        const note = await this.getNoteData(parsed.noteId);
-        if (note) {
+        noteIds.push(parsed.noteId);
+      }
+    }
+
+    // 批量获取笔记数据
+    if (noteIds.length > 0) {
+      const noteKeys = noteIds.map(id => `note:${id}`);
+      const noteDataList = await this.redis.mGet(noteKeys);
+
+      for (let i = 0; i < noteIds.length; i++) {
+        const noteData = noteDataList[i];
+        if (noteData) {
+          const note = JSON.parse(noteData) as NoteData;
           note.tags.forEach((tag) => tags.add(tag));
           categories.add(note.category);
         }
@@ -345,10 +371,5 @@ export class RecommendationService {
     if (diversity > 80) reasons.push('探索新领域');
 
     return reasons.length > 0 ? reasons.slice(0, 2).join(' · ') : '为您推荐';
-  }
-
-  private async getNoteData(noteId: string): Promise<NoteData | null> {
-    const data = await this.redis.get(`note:${noteId}`);
-    return data ? JSON.parse(data) : null;
   }
 }

@@ -39,6 +39,19 @@ function registerRoutes(app: any) {
   if (app.__routesRegistered) return;
   app.__routesRegistered = true;
 
+  // 请求监控中间件
+  app.addHook('onRequest', (request: any, reply: any, done: any) => {
+    request.startTime = Date.now();
+    logger.info(`${request.method} ${request.url} - Start`);
+    done();
+  });
+
+  app.addHook('onResponse', (request: any, reply: any, done: any) => {
+    const duration = Date.now() - (request.startTime || 0);
+    logger.info(`${request.method} ${request.url} - ${reply.statusCode} - ${duration}ms`);
+    done();
+  });
+
   // ==================== 原有路由 ====================
   app.post('/syncNote', async (request: any, reply: any) => {
     const note = request.body as Note | undefined;
@@ -66,12 +79,34 @@ function registerRoutes(app: any) {
   });
 
   app.get('/api/health', async (request: any, reply: any) => {
-    return reply.code(200).send({
-      status: 'healthy',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-      notes: serverNotes.length,
-    });
+    try {
+      // 检查数据库连接
+      const dbClient = await initPostgresClient();
+      await dbClient.query('SELECT 1');
+
+      // 检查Redis连接
+      const redisClient = await initRedisClient();
+      await redisClient.ping();
+
+      return reply.code(200).send({
+        status: 'healthy',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+        services: {
+          database: 'ok',
+          redis: 'ok',
+          notes: serverNotes.length
+        }
+      });
+    } catch (error) {
+      logger.error('Health check failed:', error);
+      return reply.code(503).send({
+        status: 'unhealthy',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
   });
 
   // ==================== UGC 用户路由 ====================

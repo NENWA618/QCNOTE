@@ -1,5 +1,23 @@
 import React, { useState, useRef } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Block {
   id: string;
@@ -33,15 +51,24 @@ const BlockEditor: React.FC<BlockEditorProps> = ({ content, onChange }) => {
     return 'text';
   }
 
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-    const newBlocks = Array.from(blocks);
-    const [reorderedBlock] = newBlocks.splice(result.source.index, 1);
-    newBlocks.splice(result.destination.index, 0, reorderedBlock);
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    setBlocks(newBlocks);
-    updateContent(newBlocks);
+    if (over && active.id !== over.id) {
+      const oldIndex = blocks.findIndex((block) => block.id === active.id);
+      const newIndex = blocks.findIndex((block) => block.id === over.id);
+
+      const newBlocks = arrayMove(blocks, oldIndex, newIndex);
+      setBlocks(newBlocks);
+      updateContent(newBlocks);
+    }
   };
 
   const updateContent = (newBlocks: Block[]) => {
@@ -81,104 +108,129 @@ const BlockEditor: React.FC<BlockEditorProps> = ({ content, onChange }) => {
     updateContent(newBlocks);
   };
 
-  const renderBlock = (block: Block, index: number) => {
-    const getPlaceholder = (type: Block['type']) => {
-      switch (type) {
-        case 'heading': return '输入标题...';
-        case 'list': return '输入列表项...';
-        case 'code': return '输入代码...';
-        case 'quote': return '输入引用...';
-        default: return '输入文本...';
-      }
-    };
+interface SortableBlockProps {
+  block: Block;
+  index: number;
+  onChange: (blockId: string, content: string) => void;
+  onAdd: (index: number, type: Block['type']) => void;
+  onDelete: (blockId: string) => void;
+}
 
-    return (
-      <Draggable key={block.id} draggableId={block.id} index={index}>
-        {(provided, snapshot) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.draggableProps}
-            className={`group relative p-3 border rounded mb-2 ${
-              snapshot.isDragging ? 'shadow-lg bg-blue-50' : 'hover:bg-gray-50'
-            }`}
-          >
-            {/* 拖拽手柄 */}
-            <div
-              {...provided.dragHandleProps}
-              className="absolute left-2 top-3 w-4 h-4 cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              ⋮⋮
-            </div>
+const SortableBlock: React.FC<SortableBlockProps> = ({ block, index, onChange, onAdd, onDelete }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: block.id });
 
-            {/* 块类型指示器 */}
-            <div className="absolute right-2 top-2 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-              {block.type}
-            </div>
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
-            {/* 块内容 */}
-            <div className="ml-6">
-              {block.type === 'code' ? (
-                <textarea
-                  value={block.content}
-                  onChange={(e) => handleBlockChange(block.id, e.target.value)}
-                  placeholder={getPlaceholder(block.type)}
-                  className="w-full p-2 font-mono text-sm border-0 bg-transparent resize-none focus:outline-none"
-                  rows={Math.max(3, block.content.split('\n').length)}
-                />
-              ) : (
-                <div
-                  contentEditable
-                  suppressContentEditableWarning
-                  onBlur={(e) => handleBlockChange(block.id, e.currentTarget.textContent || '')}
-                  className={`w-full p-2 border-0 bg-transparent focus:outline-none ${
-                    block.type === 'heading' ? 'text-xl font-bold' :
-                    block.type === 'quote' ? 'border-l-4 border-gray-300 pl-4 italic' :
-                    ''
-                  }`}
-                  data-placeholder={getPlaceholder(block.type)}
-                >
-                  {block.content}
-                </div>
-              )}
-            </div>
-
-            {/* 操作按钮 */}
-            <div className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-              <button
-                onClick={() => addBlock(index)}
-                className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-              >
-                +
-              </button>
-              <button
-                onClick={() => deleteBlock(block.id)}
-                className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
-      </Draggable>
-    );
+  const getPlaceholder = (type: Block['type']) => {
+    switch (type) {
+      case 'heading': return '输入标题...';
+      case 'list': return '输入列表项...';
+      case 'code': return '输入代码...';
+      case 'quote': return '输入引用...';
+      default: return '输入文本...';
+    }
   };
 
   return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      className={`group relative p-3 border rounded mb-2 ${
+        isDragging ? 'shadow-lg bg-blue-50 z-10' : 'hover:bg-gray-50'
+      }`}
+    >
+      {/* 拖拽手柄 */}
+      <div
+        {...listeners}
+        className="absolute left-2 top-3 w-4 h-4 cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        ⋮⋮
+      </div>
+
+      {/* 块类型指示器 */}
+      <div className="absolute right-2 top-2 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+        {block.type}
+      </div>
+
+      {/* 块内容 */}
+      <div className="ml-6">
+        {block.type === 'code' ? (
+          <textarea
+            value={block.content}
+            onChange={(e) => onChange(block.id, e.target.value)}
+            placeholder={getPlaceholder(block.type)}
+            className="w-full p-2 font-mono text-sm border-0 bg-transparent resize-none focus:outline-none"
+            rows={Math.max(3, block.content.split('\n').length)}
+          />
+        ) : (
+          <div
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e) => onChange(block.id, e.currentTarget.textContent || '')}
+            className={`w-full p-2 border-0 bg-transparent focus:outline-none ${
+              block.type === 'heading' ? 'text-xl font-bold' :
+              block.type === 'quote' ? 'border-l-4 border-gray-300 pl-4 italic' :
+              ''
+            }`}
+            data-placeholder={getPlaceholder(block.type)}
+          >
+            {block.content}
+          </div>
+        )}
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <button
+          onClick={() => onAdd(index, 'text')}
+          className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+        >
+          +
+        </button>
+        <button
+          onClick={() => onDelete(block.id)}
+          className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+};
+
+  return (
     <div className="block-editor">
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="blocks">
-          {(provided) => (
-            <div
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              className="min-h-96"
-            >
-              {blocks.map((block, index) => renderBlock(block, index))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+          <div className="min-h-96">
+            {blocks.map((block, index) => (
+              <SortableBlock
+                key={block.id}
+                block={block}
+                index={index}
+                onChange={handleBlockChange}
+                onAdd={addBlock}
+                onDelete={deleteBlock}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {blocks.length === 0 && (
         <div className="text-center py-8 text-gray-500">

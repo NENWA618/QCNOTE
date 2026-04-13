@@ -586,21 +586,30 @@ export class UGCService {
   async getLeaderboard(leaderboardKey: string, limit: number = 50): Promise<LeaderboardEntry[]> {
     const entries = await this.redis.zRangeWithScores(leaderboardKey, 0, limit - 1, { REV: true });
 
-    return Promise.all(
-      entries.map(async (entry, index) => {
-        const info = await this.redis.get(`leaderboard:${leaderboardKey}:${entry.value}:info`);
-        const parsed = info ? JSON.parse(info) : {};
+    if (entries.length === 0) {
+      return [];
+    }
 
-        return {
-          userId: entry.value as string,
-          username: parsed.username || 'Unknown',
-          avatar: parsed.avatar || '',
-          score: entry.score,
-          rank: index + 1,
-          badge: this.getBadgeByRank(index + 1),
-        };
-      })
-    );
+    // 批量获取用户信息，避免 N+1 查询
+    const userIds = entries.map(entry => entry.value as string);
+    const infoKeys = userIds.map(userId => `leaderboard:${leaderboardKey}:${userId}:info`);
+
+    const userInfos = await this.redis.mGet(infoKeys);
+
+    return entries.map((entry, index) => {
+      const userId = entry.value as string;
+      const info = userInfos[index];
+      const parsed = info ? JSON.parse(info) : {};
+
+      return {
+        userId,
+        username: parsed.username || 'Unknown',
+        avatar: parsed.avatar || '',
+        score: entry.score,
+        rank: index + 1,
+        badge: this.getBadgeByRank(index + 1),
+      };
+    });
   }
 
   // ==================== 关注系统 ====================
