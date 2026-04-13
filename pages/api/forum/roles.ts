@@ -1,0 +1,71 @@
+import { NextApiRequest, NextApiResponse } from 'next';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]';
+import { ForumService } from '../../../server/forum-service';
+import { getRedisClient } from '../../../server/redis-client';
+import { getPostgresClient } from '../../../server/postgres-client';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'GET') {
+    try {
+      const session = await getServerSession(req, res, authOptions);
+      const userId = (session?.user as any)?.id as string | undefined;
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const forumService = new ForumService(getRedisClient(), getPostgresClient());
+      const role = await forumService.getUserRole(userId);
+
+      res.status(200).json({
+        success: true,
+        role
+      });
+    } catch (error) {
+      console.error('Get user role error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  } else if (req.method === 'PUT') {
+    try {
+      const session = await getServerSession(req, res, authOptions);
+      const userId = (session?.user as any)?.id as string | undefined;
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // 只有管理员可以修改用户角色
+      const forumService = new ForumService(getRedisClient(), getPostgresClient());
+      const currentUserRole = await forumService.getUserRole(userId);
+
+      if (currentUserRole !== 'admin') {
+        return res.status(403).json({ error: 'Permission denied' });
+      }
+
+      const { userId: targetUserId, role } = req.body;
+
+      if (!targetUserId || !role) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      if (!['user', 'moderator', 'admin'].includes(role)) {
+        return res.status(400).json({ error: 'Invalid role' });
+      }
+
+      if (!(session?.user as any)?.id) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      await forumService.setUserRole(targetUserId, role as 'user' | 'moderator' | 'admin', (session!.user as any).id);
+
+      res.status(200).json({
+        success: true,
+        message: 'User role updated successfully'
+      });
+    } catch (error) {
+      console.error('Update user role error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  } else {
+    res.status(405).json({ error: 'Method not allowed' });
+  }
+}

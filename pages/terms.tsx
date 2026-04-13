@@ -9,6 +9,7 @@ export default function Terms() {
     <>
       <Head>
         <title>使用条款 - QCNOTE</title>
+        <meta name="description" content="QCNOTE 的使用条款和服务协议。了解使用本应用的规则、责任和知识产权声明。" />
       </Head>
 
       <Header />

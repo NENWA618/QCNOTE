@@ -150,6 +150,256 @@ export interface HeatmapData {
   longestStreak: number;
 }
 
+// ==================== 论坛系统类型 ====================
+
+// 用户角色
+export type UserRole = 'user' | 'moderator' | 'admin';
+
+// 用户角色信息
+export interface UserRoleInfo {
+  userId: string;
+  role: UserRole;
+  assignedAt: number;
+  assignedBy: string;
+  permissions: string[];
+}
+
+// 论坛帖子
+export interface ForumPost {
+  id: string;
+  postId?: string;
+  title: string;
+  content: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar?: string;
+  categoryId: string;
+  category?: string;
+  tags: string[];
+  likeCount: number;
+  dislikeCount?: number;
+  likes?: number;
+  dislikes?: number;
+  replyCount: number;
+  viewCount: number;
+  isPinned?: boolean;
+  isLocked?: boolean;
+  createdAt: string | number;
+  updatedAt: string | number;
+  lastReplyAt?: number;
+  likedBy?: string[]; // 点赞用户ID列表
+  dislikedBy?: string[]; // 踩用户ID列表
+}
+
+// 论坛回复
+export interface ForumReply {
+  id: string;
+  replyId?: string;
+  postId: string;
+  content: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar?: string;
+  likeCount: number;
+  likes?: number;
+  dislikeCount?: number;
+  dislikes?: number;
+  createdAt: string | number;
+  updatedAt?: string | number;
+  parentReplyId?: string; // 回复其他回复时使用
+  likedBy?: string[];
+  dislikedBy?: string[];
+}
+
+// 论坛分类
+export interface ForumCategory {
+  id: string;
+  categoryId?: string;
+  name: string;
+  description: string;
+  icon?: string;
+  postCount: number;
+  lastPostAt?: number;
+  lastPostTitle?: string;
+  lastPostAuthor?: string;
+  order?: number;
+  isActive?: boolean;
+  createdAt?: string | number;
+}
+
+// 论坛统计
+export interface ForumStats {
+  totalPosts: number;
+  totalReplies: number;
+  totalUsers: number;
+  totalCategories?: number;
+  activeUsersToday?: number;
+  activeUsersWeek?: number;
+  activeUsersMonth?: number;
+  topCategories?: ForumCategory[];
+}
+
+// ==================== Live2D模型系统类型 ====================
+
+// Live2D模型
+export interface Live2DModel {
+  modelId: string;
+  name: string;
+  description: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  fileUrl: string;
+  previewImageUrl?: string;
+  thumbnailUrl?: string;
+  fileSize: number;
+  format: string;
+  price: number;
+  category: string;
+  tags: string[];
+  rating: number;
+  ratingCount: number;
+  downloadCount: number;
+  viewCount: number;
+  isPublic: boolean;
+  isApproved: boolean;
+  approvedAt?: number;
+  approvedBy?: string;
+  createdAt: number;
+  updatedAt: number;
+  reviews: ModelReview[];
+}
+
+// 模型评价
+export interface ModelReview {
+  reviewId: string;
+  modelId: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  rating: number;
+  content: string;
+  createdAt: number;
+  likes: number;
+  likedBy: string[];
+}
+
+// 模型购买记录
+export interface ModelPurchase {
+  purchaseId: string;
+  modelId: string;
+  buyerId: string;
+  sellerId: string;
+  price: number;
+  purchaseDate: number;
+  transactionId: string;
+}
+
+// 模型租赁记录
+export interface ModelRental {
+  rentalId: string;
+  modelId: string;
+  renterId: string;
+  ownerId: string;
+  rentalPrice: number;
+  duration: number; // 租赁时长（天）
+  startDate: number;
+  endDate: number;
+  status: 'active' | 'expired' | 'cancelled';
+}
+
+// ==================== 商业化功能类型 ====================
+
+// 会员等级
+export type MembershipLevel = 'free' | 'basic' | 'premium' | 'vip';
+
+// 会员信息
+export interface MembershipInfo {
+  userId: string;
+  level: MembershipLevel;
+  startDate: number;
+  endDate: number;
+  autoRenew: boolean;
+  benefits: MembershipBenefit[];
+}
+
+// 会员权益
+export interface MembershipBenefit {
+  benefitId: string;
+  name: string;
+  description: string;
+  type: 'discount' | 'feature' | 'priority' | 'limit';
+  value: number | string | boolean;
+}
+
+// 创作者分成记录
+export interface CreatorRoyalty {
+  royaltyId: string;
+  creatorId: string;
+  modelId: string;
+  purchaseId: string;
+  amount: number;
+  percentage: number;
+  calculatedAt: number;
+  paidAt?: number;
+  status: 'pending' | 'paid' | 'cancelled';
+}
+
+// ==================== 分析和统计类型 ====================
+
+// 用户行为分析
+export interface UserAnalytics {
+  userId: string;
+  sessionCount: number;
+  totalTimeSpent: number; // 分钟
+  pageViews: Record<string, number>;
+  actions: Record<string, number>; // 各种操作的计数
+  lastActivity: number;
+  deviceInfo: {
+    browser: string;
+    os: string;
+    device: string;
+  };
+}
+
+// 模型热度统计
+export interface ModelPopularity {
+  modelId: string;
+  dailyViews: number[];
+  weeklyDownloads: number[];
+  monthlyRevenue: number[];
+  trendingScore: number;
+  rank: number;
+  lastUpdated: number;
+}
+
+// 运营数据面板
+export interface OperationalDashboard {
+  totalUsers: number;
+  activeUsers: {
+    daily: number;
+    weekly: number;
+    monthly: number;
+  };
+  revenue: {
+    total: number;
+    monthly: number[];
+    byCategory: Record<string, number>;
+  };
+  content: {
+    totalModels: number;
+    approvedModels: number;
+    pendingModels: number;
+    forumPosts: number;
+    forumReplies: number;
+  };
+  engagement: {
+    averageSessionTime: number;
+    bounceRate: number;
+    conversionRate: number;
+  };
+}
+
 // 故事链接
 export interface StoryLink {
   linkId: string;

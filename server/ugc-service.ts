@@ -304,7 +304,29 @@ export class UGCService {
     await this.cacheUserSpace(space);
   }
 
-  // ==================== 虚拟货币管理 ====================
+  // ==================== 增强版虚拟货币管理 ====================
+
+  /**
+   * 货币赚取途径：
+   * - 发布社区笔记：+5 积分
+   * - 笔记被点赞：+1 积分
+   * - 笔记被分享：+2 积分
+   * - 每日登录：+2 积分
+   * - 参与论坛讨论：+1 积分
+   * - 分享Live2D模型：+10 积分
+   * - 模型被其他用户使用：+3 积分
+   * - 完成创意挑战：+15 积分
+   * - 连续7天活跃：+20 积分
+   */
+
+  /**
+   * 货币消费途径：
+   * - 购买装饰品：-5 到 -50 积分（根据稀有度）
+   * - 定制虚拟空间主题：-10 积分
+   * - 发送打赏：-1 到 -100 积分
+   * - 置顶论坛帖子：-5 积分
+   * - 高级推荐权重：-20 积分
+   */
 
   async addCredit(userId: string, amount: number, reason: string): Promise<number> {
     const result = await this.db.query(
@@ -319,8 +341,200 @@ export class UGCService {
     const credit = Number(result.rows[0].credit);
     await this.redis.set(`user:${userId}:credit`, credit.toString());
     await this.addUserCreditHistory(userId, amount, reason, credit);
+
+    // 检查成就解锁
+    await this.checkCreditAchievements(userId, credit);
+
     await this.invalidateUserProfileCache(userId);
     return credit;
+  }
+
+  /**
+   * 批量货币操作（用于复杂奖励）
+   */
+  async addCreditBatch(operations: Array<{ userId: string; amount: number; reason: string }>): Promise<void> {
+    for (const op of operations) {
+      await this.addCredit(op.userId, op.amount, op.reason);
+    }
+  }
+
+  /**
+   * 货币消费验证
+   */
+  async spendCredit(userId: string, amount: number, reason: string, itemId?: string): Promise<number> {
+    const currentCredit = await this.getCredit(userId);
+    if (currentCredit < amount) {
+      throw new Error('Insufficient credit');
+    }
+
+    // 记录消费
+    await this.addCredit(userId, -amount, reason);
+
+    // 如果是购买物品，记录到用户资产
+    if (itemId) {
+      await this.addUserAsset(userId, itemId, reason);
+    }
+
+    return currentCredit - amount;
+  }
+
+  /**
+   * 每日登录奖励
+   */
+  async processDailyLoginReward(userId: string): Promise<{ reward: number; streak: number }> {
+    const today = new Date().toDateString();
+    const lastLogin = await this.redis.get(`user:${userId}:last_login`);
+
+    if (lastLogin === today) {
+      return { reward: 0, streak: 0 }; // 今日已领取
+    }
+
+    // 计算连续登录天数
+    const streak = await this.calculateLoginStreak(userId);
+    const reward = this.calculateDailyReward(streak);
+
+    await this.addCredit(userId, reward, `每日登录奖励 (连续${streak}天)`);
+    await this.redis.set(`user:${userId}:last_login`, today);
+
+    return { reward, streak };
+  }
+
+  /**
+   * 分享Live2D模型奖励
+   */
+  async rewardModelShare(userId: string, modelId: string, shareToCommunity: boolean): Promise<void> {
+    let reward = 5; // 基础奖励
+
+    if (shareToCommunity) {
+      reward += 5; // 社区分享额外奖励
+      await this.addCredit(userId, reward, '分享Live2D模型到社区');
+    } else {
+      await this.addCredit(userId, reward, '上传自定义Live2D模型');
+    }
+
+    // 记录模型分享统计
+    await this.redis.hIncrBy(`model:${modelId}:stats`, 'shares', 1);
+  }
+
+  /**
+   * 模型被使用奖励
+   */
+  async rewardModelUsage(originalAuthorId: string, modelId: string, userId: string): Promise<void> {
+    if (originalAuthorId === userId) return; // 不奖励自己使用自己的模型
+
+    const usageCount = await this.redis.hIncrBy(`model:${modelId}:stats`, 'usages', 1);
+
+    // 每10次使用给作者奖励一次
+    if (usageCount % 10 === 0) {
+      await this.addCredit(originalAuthorId, 3, '模型被其他用户使用');
+    }
+  }
+
+  /**
+   * 论坛活动奖励
+   */
+  async rewardForumActivity(userId: string, activityType: 'post' | 'reply' | 'like' | 'helpful'): Promise<void> {
+    const rewards = {
+      post: 2,    // 发帖
+      reply: 1,   // 回复
+      like: 0,    // 点赞（不给积分）
+      helpful: 3, // 被标记为有帮助
+    };
+
+    const reward = rewards[activityType];
+    if (reward > 0) {
+      await this.addCredit(userId, reward, `论坛${activityType === 'post' ? '发帖' : activityType === 'reply' ? '回复' : '回答被赞'}奖励`);
+    }
+  }
+
+  /**
+   * 获取用户积分
+   */
+  async getUserCredit(userId: string): Promise<number> {
+    const cached = await this.redis.get(`user:${userId}:credit`);
+    if (cached) {
+      return Number(cached);
+    }
+
+    const result = await this.db.query('SELECT credit FROM users WHERE id = $1', [userId]);
+    if (!result.rowCount) {
+      throw new Error('User not found');
+    }
+
+    const credit = Number(result.rows[0].credit);
+    await this.redis.set(`user:${userId}:credit`, credit.toString());
+    return credit;
+  }
+
+  /**
+   * 记录模型购买
+   */
+  async recordModelPurchase(modelId: string, userId: string): Promise<void> {
+    await this.redis.hIncrBy(`model:${modelId}:stats`, 'purchases', 1);
+    await this.redis.sAdd(`user:${userId}:purchased_models`, modelId);
+  }
+
+  /**
+   * 创意挑战奖励
+   */
+  async rewardChallengeCompletion(userId: string, challengeId: string, rank: number): Promise<void> {
+    const baseReward = 15;
+    const rankBonus = Math.max(0, 5 - rank); // 前5名额外奖励
+
+    const totalReward = baseReward + rankBonus;
+    await this.addCredit(userId, totalReward, `完成创意挑战 (排名第${rank}名)`);
+  }
+
+  // ==================== 私有辅助方法 ====================
+
+  private async calculateLoginStreak(userId: string): Promise<number> {
+    // 简化实现：检查最近7天的登录记录
+    let streak = 0;
+    const now = new Date();
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toDateString();
+      const loginRecord = await this.redis.get(`user:${userId}:login:${dateStr}`);
+
+      if (loginRecord) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  }
+
+  private calculateDailyReward(streak: number): number {
+    const baseReward = 2;
+    const streakBonus = Math.floor(streak / 7) * 2; // 每7天额外+2
+    return baseReward + streakBonus;
+  }
+
+  private async checkCreditAchievements(userId: string, currentCredit: number): Promise<void> {
+    const achievements = [
+      { threshold: 100, name: '初入社区', reward: 5 },
+      { threshold: 500, name: '活跃创作者', reward: 10 },
+      { threshold: 1000, name: '社区明星', reward: 20 },
+      { threshold: 5000, name: '创意大师', reward: 50 },
+    ];
+
+    for (const achievement of achievements) {
+      const achieved = await this.redis.get(`user:${userId}:achievement:${achievement.name}`);
+      if (!achieved && currentCredit >= achievement.threshold) {
+        await this.addCredit(userId, achievement.reward, `解锁成就：${achievement.name}`);
+        await this.redis.set(`user:${userId}:achievement:${achievement.name}`, 'true');
+      }
+    }
+  }
+
+  private async addUserAsset(userId: string, itemId: string, reason: string): Promise<void> {
+    await this.redis.sAdd(`user:${userId}:assets`, itemId);
+    await this.redis.set(`user:${userId}:asset:${itemId}:reason`, reason);
+    await this.redis.set(`user:${userId}:asset:${itemId}:acquired_at`, Date.now().toString());
   }
 
   async deductCredit(userId: string, amount: number, reason: string): Promise<number> {

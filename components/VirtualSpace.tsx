@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import axios from 'axios';
-import type { UserSpace, Decoration } from '../types/ugc-types';
+import type { UserSpace } from '../types/ugc-types';
 
 type SessionUserWithId = {
   id?: string;
@@ -11,26 +11,52 @@ interface VirtualSpaceProps {
   userId: string;
 }
 
+interface Live2DModel {
+  id: string;
+  name: string;
+  path: string;
+  isCustom: boolean;
+  uploadedBy: string;
+  uploaderName: string;
+  price: number;
+  downloads: number;
+  rating: number;
+  tags: string[];
+  description: string;
+  previewImage?: string;
+}
+
 const VirtualSpace: React.FC<VirtualSpaceProps> = ({ userId }) => {
   const { data: session } = useSession();
   const sessionUserId = (session?.user as SessionUserWithId | undefined)?.id;
   const [space, setSpace] = useState<UserSpace | null>(null);
-  const [theme, setTheme] = useState<string>('minimalist');
-  const [decorations, setDecorations] = useState<Decoration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
+  const [currentModel, setCurrentModel] = useState<Live2DModel | null>(null);
+  const [availableModels, setAvailableModels] = useState<Live2DModel[]>([]);
+  const [marketModels, setMarketModels] = useState<Live2DModel[]>([]);
+  const [uploadingModel, setUploadingModel] = useState(false);
+  const [shareToCommunity, setShareToCommunity] = useState(false);
+  const [modelPrice, setModelPrice] = useState(10);
+  const [userCredit, setUserCredit] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchUserSpace();
-  }, [userId]);
+    fetchAvailableModels();
+    fetchMarketModels();
+    if (sessionUserId) {
+      fetchUserCredit();
+    }
+  }, [userId, sessionUserId]);
 
   const fetchUserSpace = async () => {
     try {
       const response = await axios.get(`/api/ugc/space/${userId}`);
       if (response.data.success) {
         setSpace(response.data.space);
-        setTheme(response.data.space.theme);
-        setDecorations(response.data.space.decorations);
+        if (response.data.space.live2dModel) {
+          setCurrentModel(response.data.space.live2dModel);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch user space:', error);
@@ -39,119 +65,299 @@ const VirtualSpace: React.FC<VirtualSpaceProps> = ({ userId }) => {
     }
   };
 
-  const handleThemeChange = async (newTheme: string) => {
+  const fetchAvailableModels = async () => {
+    try {
+      const systemModels: Live2DModel[] = [
+        {
+          id: 'koharu',
+          name: '小春',
+          path: '/live2d/koharu/',
+          isCustom: false,
+          uploadedBy: 'system',
+          uploaderName: '系统',
+          price: 0,
+          downloads: 0,
+          rating: 5.0,
+          tags: ['默认', '可爱'],
+          description: '系统自带的默认Live2D模型'
+        }
+      ];
+
+      if (sessionUserId) {
+        const ownedResponse = await axios.get(`/api/ugc/models/owned/${sessionUserId}`);
+        const ownedModels: Live2DModel[] = ownedResponse.data.success ? ownedResponse.data.models : [];
+        setAvailableModels([...systemModels, ...ownedModels]);
+      } else {
+        setAvailableModels(systemModels);
+      }
+    } catch (error) {
+      console.error('Failed to fetch models:', error);
+      setAvailableModels([{
+        id: 'koharu',
+        name: '小春',
+        path: '/live2d/koharu/',
+        isCustom: false,
+        uploadedBy: 'system',
+        uploaderName: '系统',
+        price: 0,
+        downloads: 0,
+        rating: 5.0,
+        tags: ['默认', '可爱'],
+        description: '系统自带的默认Live2D模型'
+      }]);
+    }
+  };
+
+  const fetchMarketModels = async () => {
+    try {
+      const response = await axios.get('/api/ugc/models/market');
+      if (response.data.success) {
+        setMarketModels(response.data.models);
+      }
+    } catch (error) {
+      console.error('Failed to fetch market models:', error);
+    }
+  };
+
+  const fetchUserCredit = async () => {
+    try {
+      const response = await axios.get('/api/ugc/user/credit');
+      if (response.data.success) {
+        setUserCredit(response.data.credit);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user credit:', error);
+    }
+  };
+
+  const handleModelChange = async (model: Live2DModel) => {
     try {
       const response = await axios.put(`/api/ugc/space/${userId}`, {
-        theme: newTheme,
+        live2dModel: model,
       });
 
       if (response.data.success) {
-        setTheme(newTheme);
+        setCurrentModel(model);
         setSpace(response.data.space);
       }
     } catch (error) {
-      console.error('Failed to update theme:', error);
+      console.error('Failed to update model:', error);
     }
   };
 
-  const handleAddDecoration = async (decoration: Decoration) => {
+  const handleModelPurchase = async (model: Live2DModel) => {
+    if (userCredit < model.price) {
+      alert('积分不足！');
+      return;
+    }
+
     try {
-      await axios.post(`/api/ugc/space/${userId}/decoration`, decoration);
-      setDecorations([...decorations, decoration]);
-    } catch (error) {
-      console.error('Failed to add decoration:', error);
+      const response = await axios.post('/api/ugc/models/purchase', {
+        modelId: model.id,
+        userId: sessionUserId,
+      });
+
+      if (response.data.success) {
+        alert('购买成功！');
+        setUserCredit(response.data.newCredit);
+        await fetchAvailableModels();
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.error || '购买失败');
     }
   };
 
-  if (loading) return <div className="p-8 text-center">加载中...</div>;
+  const handleModelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const themeStyles = {
-    minimalist: 'bg-gray-50 text-gray-900',
-    vibrant: 'bg-gradient-to-br from-purple-400 via-pink-500 to-red-500 text-white',
-    elegant: 'bg-gradient-to-br from-blue-900 via-blue-700 to-purple-900 text-white',
-    gaming: 'bg-gradient-to-br from-indigo-900 via-purple-900 to-black text-cyan-400',
-    cyberpunk: 'bg-black text-cyan-400 border-2 border-cyan-500',
+    setUploadingModel(true);
+    try {
+      const formData = new FormData();
+      formData.append('model', file);
+      formData.append('name', `自定义模型 ${Date.now()}`);
+      formData.append('description', '用户上传的Live2D模型');
+      formData.append('price', modelPrice.toString());
+      formData.append('tags', JSON.stringify(['自定义']));
+      formData.append('shareToCommunity', shareToCommunity.toString());
+
+      const response = await axios.post('/api/ugc/models/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response.data.success) {
+        await fetchMarketModels();
+        alert('模型上传成功！');
+      }
+    } catch (error) {
+      console.error('Failed to upload model:', error);
+      alert('上传失败，请重试');
+    } finally {
+      setUploadingModel(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
+
+  if (loading) return <div className="p-8 text-center text-primary-dark dark:text-dark-text">加载中...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-900 p-8">
+    <div className="min-h-screen bg-white dark:bg-dark-bg p-8">
       <div className="max-w-6xl mx-auto">
         {/* 虚拟空间主体 */}
-        <div
-          className={`rounded-lg p-12 mb-8 min-h-96 relative overflow-hidden ${
-            themeStyles[theme as keyof typeof themeStyles] || themeStyles.minimalist
-          }`}
-        >
+        <div className="card dark:bg-dark-surface dark:border-dark-border mb-8 min-h-96 relative">
           <div className="absolute inset-0 opacity-10">
-            {/* 背景装饰 */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+            <div className="absolute top-0 right-0 w-96 h-96 bg-primary-light dark:bg-dark-surface rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary-light dark:bg-dark-surface rounded-full blur-3xl"></div>
           </div>
 
           <div className="relative z-10">
-            <h1 className="text-4xl font-bold mb-4">{space?.spaceName}</h1>
-            <p className="text-lg opacity-75">欢迎来到我的创意空间</p>
+            <h1 className="text-4xl font-bold mb-4 text-primary-dark dark:text-dark-text">{space?.spaceName}</h1>
+            <p className="text-lg opacity-75 text-primary-dark dark:text-dark-text">欢迎来到我的创意空间</p>
 
-            {/* 装饰品展示 */}
-            <div className="mt-8 grid grid-cols-3 gap-4">
-              {decorations.slice(0, 9).map((decoration) => (
-                <div
-                  key={decoration.decorId}
-                  className="bg-white bg-opacity-10 rounded-lg p-4 text-center hover:bg-opacity-20 transition"
-                  style={{
-                    width: `${decoration.size.width}px`,
-                    height: `${decoration.size.height}px`,
-                  }}
-                >
-                  <img
-                    src={decoration.imageUrl}
-                    alt={decoration.name}
-                    className="w-full h-full object-contain"
-                  />
-                  <p className="text-sm mt-2">{decoration.name}</p>
+            {currentModel && (
+              <div className="mt-8 flex justify-center">
+                <div className="w-64 h-64 bg-primary-light dark:bg-dark-surface rounded-lg overflow-hidden shadow-light">
+                  <div className="w-full h-full flex items-center justify-center text-primary-dark dark:text-dark-text">
+                    <div className="text-center">
+                      <div className="text-6xl mb-2">🎭</div>
+                      <p className="text-sm">{currentModel.name}</p>
+                      <p className="text-xs text-text-light dark:text-dark-text-secondary">
+                        {currentModel.isCustom ? '自定义模型' : '系统模型'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 控制面板 */}
         {sessionUserId === userId && (
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-white mb-6">
-              {editing ? '编辑虚拟空间' : '虚拟空间设置'}
-            </h2>
-
-            {/* 主题选择 */}
-            <div className="mb-6">
-              <label className="block text-white mb-3">选择主题:</label>
-              <div className="grid grid-cols-5 gap-2">
-                {['minimalist', 'vibrant', 'elegant', 'gaming', 'cyberpunk'].map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => handleThemeChange(t)}
-                    className={`px-4 py-2 rounded text-white font-medium transition ${
-                      theme === t ? 'bg-cyan-500' : 'bg-gray-700 hover:bg-gray-600'
+          <div className="space-y-6">
+            {/* 我的模型 */}
+            <div className="card dark:bg-dark-surface dark:border-dark-border">
+              <h2 className="text-2xl font-bold text-primary-dark dark:text-dark-text mb-6">我的Live2D模型</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {availableModels.map((model) => (
+                  <div
+                    key={model.id}
+                    className={`p-4 rounded-lg border-2 transition cursor-pointer ${
+                      currentModel?.id === model.id
+                        ? 'border-accent-pink bg-accent-pink bg-opacity-10'
+                        : 'border-primary-medium dark:border-dark-border hover:border-accent-pink'
                     }`}
+                    onClick={() => handleModelChange(model)}
                   >
-                    {t === 'minimalist' && '极简'}
-                    {t === 'vibrant' && '炫彩'}
-                    {t === 'elegant' && '优雅'}
-                    {t === 'gaming' && '游戏'}
-                    {t === 'cyberpunk' && '赛博'}
-                  </button>
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">🎭</div>
+                      <p className="text-sm font-medium text-primary-dark dark:text-dark-text">{model.name}</p>
+                      <p className="text-xs text-text-light dark:text-dark-text-secondary">
+                        {model.price === 0 ? '免费' : `${model.price}积分`}
+                      </p>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
 
-            {/* 装饰品建议 */}
-            <div>
-              <label className="block text-white mb-3">推荐的装饰品:</label>
-              <div className="grid grid-cols-3 gap-4">
-                {/* 这里可以添加推荐的装饰品 */}
-                <button className="bg-gray-700 hover:bg-gray-600 text-white p-4 rounded transition">
-                  + 浏览装饰品
-                </button>
+            {/* 模型市场 */}
+            <div className="card dark:bg-dark-surface dark:border-dark-border">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-primary-dark dark:text-dark-text">Live2D模型市场</h2>
+                <div className="text-primary-dark dark:text-dark-text">
+                  我的积分: <span className="font-bold text-accent-pink">{userCredit}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                {marketModels.map((model) => (
+                  <div key={model.id} className="border border-primary-medium dark:border-dark-border rounded-lg p-4 hover:shadow-medium transition">
+                    <div className="text-center mb-4">
+                      <div className="text-4xl mb-2">🎭</div>
+                      <h3 className="font-bold text-primary-dark dark:text-dark-text">{model.name}</h3>
+                      <p className="text-sm text-text-light dark:text-dark-text-secondary">{model.description}</p>
+                    </div>
+
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-sm text-text-light dark:text-dark-text-secondary">
+                        上传者: {model.uploaderName}
+                      </span>
+                      <span className="text-accent-pink font-bold">{model.price} 积分</span>
+                    </div>
+
+                    <div className="flex justify-between text-xs text-text-light dark:text-dark-text-secondary mb-4">
+                      <span>下载: {model.downloads}</span>
+                      <span>评分: {model.rating.toFixed(1)}</span>
+                    </div>
+
+                    <button
+                      onClick={() => handleModelPurchase(model)}
+                      disabled={userCredit < model.price}
+                      className="w-full btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {userCredit >= model.price ? '购买' : '积分不足'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {marketModels.length === 0 && (
+                <p className="text-center text-text-light dark:text-dark-text-secondary py-8">
+                  暂无模型上架，快来上传你的作品吧！
+                </p>
+              )}
+            </div>
+
+            {/* 上传模型 */}
+            <div className="card dark:bg-dark-surface dark:border-dark-border">
+              <h2 className="text-2xl font-bold text-primary-dark dark:text-dark-text mb-6">上传Live2D模型</h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-primary-dark dark:text-dark-text mb-2">设置价格 (积分)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={modelPrice}
+                    onChange={(e) => setModelPrice(Number(e.target.value))}
+                    className="form-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-primary-dark dark:text-dark-text">
+                    <input
+                      type="checkbox"
+                      checked={shareToCommunity}
+                      onChange={(e) => setShareToCommunity(e.target.checked)}
+                      className="rounded"
+                    />
+                    上传到社区市场供其他玩家购买
+                  </label>
+                </div>
+
+                <div>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="btn btn-secondary mr-4"
+                    disabled={uploadingModel}
+                  >
+                    {uploadingModel ? '上传中...' : '选择模型文件'}
+                  </button>
+                  <span className="text-sm text-text-light dark:text-dark-text-secondary">
+                    支持 .zip 格式的Live2D模型文件
+                  </span>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".zip,.rar"
+                  onChange={handleModelUpload}
+                  className="hidden"
+                />
               </div>
             </div>
           </div>

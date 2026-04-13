@@ -307,7 +307,6 @@ QCNOTE 的开发离不开众多优秀开源项目的支持：
 - **Tailwind CSS** - 实用优先的 CSS 框架
 - **Lunr.js** - 轻量级搜索引擎
 - **Pixi.js & Live2D** - 动画和交互技术
-- **OpenAI** - AI 能力支持
 
 ### 社区贡献
 特别感谢所有贡献者、测试者和用户的支持！
@@ -315,53 +314,6 @@ QCNOTE 的开发离不开众多优秀开源项目的支持：
 <a href="https://github.com/your-org/qcnote/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=your-org/qcnote" />
 </a>
-
----
-
-## 📞 联系我们
-
-<div align="center">
-
-### 💬 社区交流
-- **📧 邮箱**: support@qcnote.app
-- **💬 论坛**: [GitHub Discussions](https://github.com/your-org/qcnote/discussions)
-- **🐛 Issues**: [问题反馈](https://github.com/your-org/qcnote/issues)
-
-### 🌐 社交媒体
-- **🌍 官网**: [qcnote.com](https://qcnote.com)
-- **📺 YouTube**: [youtube.com/qcnote](https://youtube.com/qcnote)
-- **📘 博客**: [blog.qcnote.app](https://blog.qcnote.app)
-
-### 💼 商业合作
-- **📧 商务**: business@qcnote.app
-- **📧 媒体**: press@qcnote.app
-
-</div>
-
----
-
-## 🎉 更新日志
-
-### v2.1.0 (最新) - 2024年1月
-- 🏠 **本地优先** - 所有数据存储在本地浏览器
-- 🎨 **暗黑模式优化** - 改进夜间使用体验
-- 🔍 **搜索性能提升** - 更快的搜索响应
-- 🐛 **稳定性改进** - 修复多个已知问题
-- 📱 **移动端优化** - 更好的移动设备支持
-
-### v2.0.0 - 2023年12月
-- 🚀 **全新架构** - 基于 Next.js 14 重构
-- 🤖 **AI 深度集成** - 全面的 AI 功能支持
-- 🎨 **现代化 UI** - 重新设计用户界面
-- 🔒 **安全增强** - 全面的安全加固
-
-### v1.0.0 - 2023年6月
-- ✅ **核心功能** - 基础笔记管理功能
-- 🔍 **智能搜索** - 全文搜索和标签系统
-- ☁️ **云同步** - 多平台数据同步
-- 🎭 **Live2D 集成** - 可爱的交互助手
-
-[📋 查看完整更新日志](docs/changelog.md)
 
 ---
 

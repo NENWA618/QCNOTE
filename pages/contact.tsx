@@ -9,6 +9,7 @@ const Contact: React.FC = () => {
     <>
       <Head>
         <title>支持我们 - QCNOTE</title>
+        <meta name="description" content="支持 QCNOTE 项目的开发与维护。了解如何通过捐赠和反馈帮助我们改进这个隐私优先的个人笔记应用。" />
       </Head>
 
       <header>

@@ -52,18 +52,18 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-pink"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 p-8">
+    <div className="min-h-screen bg-white dark:bg-dark-bg p-8">
       <div className="max-w-2xl mx-auto">
         {/* 头部 */}
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-white mb-2">{config.title}</h1>
-          <p className="text-gray-400">{config.subtitle}</p>
+          <h1 className="text-4xl font-bold text-primary-dark dark:text-dark-text mb-2">{config.title}</h1>
+          <p className="text-text-light dark:text-dark-text-secondary">{config.subtitle}</p>
         </div>
 
         {/* 排行榜 */}
@@ -78,11 +78,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
                   ? 'bg-gradient-to-r from-gray-400 to-gray-500'
                   : index === 2
                   ? 'bg-gradient-to-r from-orange-600 to-orange-700'
-                  : 'bg-gray-800 hover:bg-gray-700'
+                  : 'card dark:bg-dark-surface dark:border-dark-border hover:shadow-medium'
               }`}
             >
               {/* 排名 */}
-              <div className={`text-3xl font-bold w-16 text-center ${index < 3 ? 'text-white' : 'text-gray-300'}`}>
+              <div className={`text-3xl font-bold w-16 text-center ${index < 3 ? 'text-white' : 'text-primary-dark dark:text-dark-text'}`}>
                 {entry.badge ? entry.badge : `#${entry.rank}`}
               </div>
 
@@ -91,22 +91,22 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
                 <img
                   src={entry.avatar}
                   alt={entry.username}
-                  className="w-12 h-12 rounded-full border-2 border-white"
+                  className="w-12 h-12 rounded-full border-2 border-white dark:border-dark-border"
                 />
                 <div>
-                  <p className={`font-bold text-lg ${index < 3 ? 'text-white' : 'text-gray-100'}`}>
+                  <p className={`font-bold text-lg ${index < 3 ? 'text-white' : 'text-primary-dark dark:text-dark-text'}`}>
                     {entry.username}
                   </p>
-                  <p className={`text-sm ${index < 3 ? 'text-gray-100' : 'text-gray-400'}`}>
+                  <p className={`text-sm ${index < 3 ? 'text-gray-100' : 'text-text-light dark:text-dark-text-secondary'}`}>
                     排名 #{entry.rank}
                   </p>
                 </div>
               </div>
 
               {/* 分数 */}
-              <div className={`text-right ${index < 3 ? 'text-white' : 'text-cyan-400'}`}>
+              <div className={`text-right ${index < 3 ? 'text-white' : 'text-accent-pink dark:text-accent-purple'}`}>
                 <p className="text-2xl font-bold">{entry.score.toFixed(0)}</p>
-                <p className={`text-xs ${index < 3 ? 'text-gray-100' : 'text-gray-400'}`}>积分</p>
+                <p className={`text-xs ${index < 3 ? 'text-gray-100' : 'text-text-light dark:text-dark-text-secondary'}`}>积分</p>
               </div>
             </div>
           ))}
@@ -114,7 +114,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
 
         {entries.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">暂无排行数据</p>
+            <p className="text-text-light dark:text-dark-text-secondary text-lg">暂无排行数据</p>
           </div>
         )}
       </div>

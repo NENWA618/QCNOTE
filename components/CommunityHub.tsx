@@ -80,18 +80,18 @@ const CommunityHub: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-pink"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 p-8">
+    <div className="min-h-screen bg-white dark:bg-dark-bg p-8">
       <div className="max-w-4xl mx-auto">
         {/* 头部 */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4">🌍 创意社区</h1>
-          <p className="text-gray-400">发现、分享、创意不断</p>
+          <h1 className="text-4xl font-bold text-primary-dark dark:text-dark-text mb-4">🌍 创意社区</h1>
+          <p className="text-text-light dark:text-dark-text-secondary">发现、分享、创意不断</p>
         </div>
 
         {/* 筛选按钮 */}
@@ -102,8 +102,8 @@ const CommunityHub: React.FC = () => {
               onClick={() => setFilter(f)}
               className={`px-6 py-2 rounded-lg font-medium transition ${
                 filter === f
-                  ? 'bg-cyan-500 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  ? 'bg-gradient-to-r from-accent-pink to-accent-purple text-white'
+                  : 'bg-primary-light dark:bg-dark-surface text-primary-dark dark:text-dark-text hover:bg-primary-medium dark:hover:bg-dark-surface-light'
               }`}
             >
               {f === 'recommended' && '🎯 为你推荐'}
@@ -122,7 +122,7 @@ const CommunityHub: React.FC = () => {
             return (
               <div
                 key={rec.itemId}
-                className="bg-gray-800 rounded-lg overflow-hidden hover:shadow-xl transition transform hover:scale-105 cursor-pointer"
+                className="card dark:bg-dark-surface dark:border-dark-border"
               >
                 {/* 卡片内容 */}
                 <div className="p-6">
@@ -135,58 +135,58 @@ const CommunityHub: React.FC = () => {
                         className="w-10 h-10 rounded-full"
                       />
                       <div>
-                        <p className="text-white font-medium">{note.username}</p>
-                        <p className="text-gray-400 text-sm">
+                        <p className="text-primary-dark dark:text-dark-text font-medium">{note.username}</p>
+                        <p className="text-text-light dark:text-dark-text-secondary text-sm">
                           {new Date(note.publishedAt).toLocaleDateString('zh-CN')}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-cyan-400 font-medium">{rec.score.toFixed(0)} 分</p>
-                      <p className="text-gray-400 text-xs">{rec.reason}</p>
+                      <p className="text-accent-pink dark:text-accent-purple font-medium">{rec.score.toFixed(0)} 分</p>
+                      <p className="text-text-light dark:text-dark-text-secondary text-xs">{rec.reason}</p>
                     </div>
                   </div>
 
                   {/* 内容 */}
-                  <h2 className="text-2xl font-bold text-white mb-2">{note.title}</h2>
-                  <p className="text-gray-300 mb-4 line-clamp-3">{note.preview}</p>
+                  <h2 className="text-2xl font-bold text-primary-dark dark:text-dark-text mb-2">{note.title}</h2>
+                  <p className="text-text-light dark:text-dark-text-secondary mb-4 line-clamp-3">{note.preview}</p>
 
                   {/* 分类标签 */}
                   <div className="flex gap-2 mb-4 flex-wrap">
-                    <span className="bg-gray-700 text-gray-200 px-3 py-1 rounded-full text-sm">
+                    <span className="bg-primary-light dark:bg-dark-surface text-accent-pink dark:text-accent-purple px-3 py-1 rounded-full text-sm">
                       {note.category}
                     </span>
                     {note.tags.slice(0, 3).map((tag) => (
-                      <span key={tag} className="bg-gray-700 text-gray-200 px-3 py-1 rounded-full text-sm">
+                      <span key={tag} className="bg-primary-light dark:bg-dark-surface text-accent-pink dark:text-accent-purple px-3 py-1 rounded-full text-sm">
                         #{tag}
                       </span>
                     ))}
                   </div>
 
                   {/* 互动按钮 */}
-                  <div className="flex gap-4 pt-4 border-t border-gray-700">
+                  <div className="flex gap-4 pt-4 border-t border-gray-200 dark:border-dark-border">
                     <button
                       onClick={() => handleLike(note.communityId)}
-                      className="flex items-center gap-2 text-gray-400 hover:text-red-500 transition flex-1"
+                      className="flex items-center gap-2 text-text-light dark:text-dark-text-secondary hover:text-red-500 transition flex-1"
                     >
                       <span>❤️</span>
                       <span>{note.likes}</span>
                     </button>
 
-                    <button className="flex items-center gap-2 text-gray-400 hover:text-blue-500 transition flex-1">
+                    <button className="flex items-center gap-2 text-text-light dark:text-dark-text-secondary hover:text-blue-500 transition flex-1">
                       <span>💬</span>
                       <span>{note.comments}</span>
                     </button>
 
                     <button
                       onClick={() => handleShare(note.communityId)}
-                      className="flex items-center gap-2 text-gray-400 hover:text-green-500 transition flex-1"
+                      className="flex items-center gap-2 text-text-light dark:text-dark-text-secondary hover:text-green-500 transition flex-1"
                     >
                       <span>🔗</span>
                       <span>{note.shares}</span>
                     </button>
 
-                    <button className="flex items-center gap-2 text-gray-400 hover:text-cyan-500 transition flex-1">
+                    <button className="flex items-center gap-2 text-text-light dark:text-dark-text-secondary hover:text-cyan-500 transition flex-1">
                       <span>👁️</span>
                       <span>{note.views}</span>
                     </button>
@@ -199,7 +199,7 @@ const CommunityHub: React.FC = () => {
 
         {recommendations.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">暂无内容，快去分享你的创意吧！</p>
+            <p className="text-text-light dark:text-dark-text-secondary text-lg">暂无内容，快去分享你的创意吧！</p>
           </div>
         )}
       </div>

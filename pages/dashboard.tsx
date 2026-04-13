@@ -447,6 +447,7 @@ const Dashboard: React.FC = () => {
     <>
       <Head>
         <title>笔记管理 - QCNOTE</title>
+        <meta name="description" content="QCNOTE 笔记管理面板。创建、编辑和组织您的个人笔记，支持分类、搜索和多视图显示。" />
       </Head>
 
       <Header />

@@ -29,14 +29,15 @@ QCNOTE 是一个**离线优先、隐私第一**的个人笔记管理系统。采
 │  │  - Link graph sync   │  │  - Vector search     │                 │
 │  │  - Version history   │  │  - Caching (dirty)   │                 │
 │  └──────────────────────┘  └──────────────────────┘                 │
-│         ↓                           ↓                                 │
-│  ┌──────────────────────┐  ┌──────────────────────┐                 │
-│  │  Sync Managers       │  │  AI Service          │                 │
-│  │  - WebDAV            │  │  - Backend proxy     │                 │
-│  │  - OneDrive          │  │  - Tag generation    │                 │
-│  │  - Conflict resolve  │  │  - Summarization     │                 │
-│  └──────────────────────┘  └──────────────────────┘                 │
-│                                  ↓                                    │
+│         ↓                                                             │
+│  ┌──────────────────────────────────────────────────┐                │
+│  │  Sync Managers                                   │                │
+│  │  - WebDAV synchronization                        │                │
+│  │  - OneDrive integration                          │                │
+│  │  - Conflict resolution strategy                  │                │
+│  │  - Version control and history tracking          │                │
+│  └──────────────────────────────────────────────────┘                │
+│                           ↓                                           │
 │  ┌──────────────────────────────────────────────────┐                │
 │  │  Graph Optimization (lib/graphOptimization.ts)   │                │
 │  │  - Node clustering & LOD filtering               │                │
@@ -66,9 +67,10 @@ QCNOTE 是一个**离线优先、隐私第一**的个人笔记管理系统。采
 │  │     ↓                                          │                  │
 │  │  ┌─────────────────────────────────────────┐   │                  │
 │  │  │  Route Handlers (server/index.ts)       │   │                  │
-│  │  │  - AI endpoints (/api/ai/*)             │   │                  │
 │  │  │  - Note sync (/syncNote)                │   │                  │
 │  │  │  - Character reply (/reply)             │   │                  │
+│  │  │  - Forum operations (/forum/*)          │   │                  │
+│  │  │  - UGC and marketplace (/ugc/*)         │   │                  │
 │  │  └─────────────────────────────────────────┘   │                  │
 │  └────────────────────────────────────────────────┘                  │
 └─────────────────────────────────────────────────────────────────────┘
@@ -77,8 +79,8 @@ QCNOTE 是一个**离线优先、隐私第一**的个人笔记管理系统。采
 │                     External Services                                │
 ├─────────────────────────────────────────────────────────────────────┤
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │
-│  │   OpenAI     │  │   OneDrive   │  │   WebDAV     │               │
-│  │  (via proxy) │  │  (OAuth 2.0) │  │  (encrypted) │               │
+│  │   OneDrive   │  │   WebDAV     │  │  PostgreSQL  │               │
+│  │  (OAuth 2.0) │  │  (encrypted) │  │  (backend)   │               │
 │  └──────────────┘  └──────────────┘  └──────────────┘               │
 └─────────────────────────────────────────────────────────────────────┘
 ```

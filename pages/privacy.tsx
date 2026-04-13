@@ -9,6 +9,7 @@ export default function Privacy() {
     <>
       <Head>
         <title>隐私政策 - QCNOTE</title>
+        <meta name="description" content="QCNOTE 的隐私政策。了解我们如何保护您的个人数据和笔记内容，强调本地存储和隐私优先的设计理念。" />
       </Head>
 
       <Header />

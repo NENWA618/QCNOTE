@@ -12,8 +12,8 @@ export class RecommendationService {
   }
 
   /**
-   * 多维度创意相似度推荐算法
-   * 最终推荐分数 = (热度分 × 0.25) + (内容相似度 × 0.35) + (作者影响力 × 0.15) + (新鲜度 × 0.15) + (多样性探索 × 0.10)
+   * 多维度创意相似度推荐算法 (增强版)
+   * 最终推荐分数 = (热度分 × 0.20) + (内容相似度 × 0.25) + (作者影响力 × 0.15) + (新鲜度 × 0.10) + (用户互动 × 0.10) + (社区热度 × 0.10) + (多样性探索 × 0.10)
    */
   async recommendNotesForUser(
     userId: string,
@@ -22,17 +22,20 @@ export class RecommendationService {
     // 1. 获取用户已阅读和点赞的笔记（以确定兴趣）
     const userInterests = await this.getUserInterests(userId);
 
-    // 2. 获取所有社区笔记
+    // 2. 获取用户行为数据
+    const userBehavior = await this.getUserBehaviorData(userId);
+
+    // 3. 获取所有社区笔记
     const allNoteIds = await this.redis.lRange('community:notes:all', 0, -1);
 
-    // 3. 计算每个笔记的推荐分数
+    // 4. 计算每个笔记的推荐分数
     const scores: Array<{ noteId: string; score: number; reason: string }> = [];
 
     for (const noteId of allNoteIds) {
       const note = await this.getNoteData(noteId);
       if (!note || note.userId === userId) continue; // 排除用户自己的笔记
 
-      const score = await this.calculateRecommendationScore(userId, note, userInterests);
+      const score = await this.calculateEnhancedRecommendationScore(userId, note, userInterests, userBehavior);
       scores.push({
         noteId,
         score: score.total,
@@ -40,8 +43,8 @@ export class RecommendationService {
       });
     }
 
-    // 4. 多样性探索：15% 随机推荐未探索领域
-    const explorationRate = 0.15;
+    // 5. 多样性探索：12% 随机推荐未探索领域
+    const explorationRate = 0.12;
     const explorationCount = Math.ceil(limit * explorationRate);
     const result = scores
       .sort((a, b) => b.score - a.score)
@@ -60,60 +63,108 @@ export class RecommendationService {
   }
 
   /**
-   * 计算推荐分数（复杂算法）
+   * 计算增强版推荐分数
    */
-  private async calculateRecommendationScore(
+  private async calculateEnhancedRecommendationScore(
     userId: string,
     note: CommunityNote,
     userInterests: {
       tags: string[];
       categories: string[];
       followingAuthors: string[];
+    },
+    userBehavior: {
+      avgSessionTime: number;
+      preferredTimeOfDay: number;
+      interactionFrequency: number;
     }
   ): Promise<{ total: number; reason: string }> {
-    // 1. 热度分 (25%)
+    // 1. 热度分 (20%)
     const popularityScore = await this.calculatePopularityScore(note);
 
-    // 2. 内容相似度 (35%)
+    // 2. 内容相似度 (25%)
     const contentSimilarity = await this.calculateContentSimilarity(note, userInterests);
 
     // 3. 作者影响力 (15%)
     const authorInfluence = await this.calculateAuthorInfluence(note.userId);
 
-    // 4. 新鲜度 (15%)
+    // 4. 新鲜度 (10%)
     const freshnessScore = this.calculateFreshnessScore(note.publishedAt);
 
-    // 5. 多样性探索 (10%)
+    // 5. 用户互动历史 (10%)
+    const userInteractionScore = await this.calculateUserInteractionScore(userId, note);
+
+    // 6. 社区热度趋势 (10%)
+    const communityTrendScore = await this.calculateCommunityTrendScore(note);
+
+    // 7. 多样性探索 (10%)
     const diversityBonus = this.calculateDiversityBonus(note.category, userInterests.categories);
 
     const totalScore =
-      popularityScore * 0.25 +
-      contentSimilarity * 0.35 +
+      popularityScore * 0.20 +
+      contentSimilarity * 0.25 +
       authorInfluence * 0.15 +
-      freshnessScore * 0.15 +
-      diversityBonus * 0.1;
+      freshnessScore * 0.10 +
+      userInteractionScore * 0.10 +
+      communityTrendScore * 0.10 +
+      diversityBonus * 0.10;
 
-    const reason = this.generateReason(
+    const reason = this.generateEnhancedReason(
       popularityScore,
       contentSimilarity,
       authorInfluence,
-      freshnessScore
+      freshnessScore,
+      userInteractionScore,
+      communityTrendScore,
+      diversityBonus
     );
 
     return { total: totalScore, reason };
   }
 
   /**
-   * 计算热度分
-   * = (点赞数 × 1.2) + (评论数 × 0.8) + (分享数 × 1.5) + (阅读时长 × 0.3)
+   * 计算用户互动历史分数
    */
-  private async calculatePopularityScore(note: CommunityNote): Promise<number> {
-    const engagement =
-      note.likes * 1.2 + note.comments * 0.8 + note.shares * 1.5 + note.views * 0.1;
+  private async calculateUserInteractionScore(userId: string, note: CommunityNote): Promise<number> {
+    // 检查用户是否关注了作者
+    const isFollowing = await this.redis.sIsMember(`user:${userId}:following`, note.userId);
+    if (isFollowing) return 100;
 
-    // 归一化到 0-100
-    const normalized = Math.min(engagement / 10, 100);
-    return normalized;
+    // 检查用户是否点赞过类似内容
+    const similarLikes = await this.redis.sCard(`user:${userId}:liked_categories:${note.category}`);
+    return Math.min(similarLikes * 20, 80);
+  }
+
+  /**
+   * 计算社区热度趋势分数
+   */
+  private async calculateCommunityTrendScore(note: CommunityNote): Promise<number> {
+    const now = Date.now();
+    const oneDayAgo = now - 24 * 60 * 60 * 1000;
+    const recentInteractions = await this.redis.zCount(`note:${note.communityId}:interactions`, oneDayAgo, now);
+
+    // 基于最近24小时的互动计算趋势
+    return Math.min(recentInteractions * 10, 100);
+  }
+
+  /**
+   * 获取用户行为数据
+   */
+  private async getUserBehaviorData(userId: string): Promise<{
+    avgSessionTime: number;
+    preferredTimeOfDay: number;
+    interactionFrequency: number;
+  }> {
+    // 从Redis获取用户行为统计
+    const sessionTime = await this.redis.get(`user:${userId}:avg_session_time`) || '30';
+    const preferredTime = await this.redis.get(`user:${userId}:preferred_time`) || '12';
+    const frequency = await this.redis.get(`user:${userId}:interaction_freq`) || '5';
+
+    return {
+      avgSessionTime: Number(sessionTime),
+      preferredTimeOfDay: Number(preferredTime),
+      interactionFrequency: Number(frequency),
+    };
   }
 
   /**
@@ -249,22 +300,28 @@ export class RecommendationService {
   }
 
   /**
-   * 生成推荐原因文本
+   * 生成增强版推荐原因文本
    */
-  private generateReason(
+  private generateEnhancedReason(
     popularity: number,
     similarity: number,
     influence: number,
-    freshness: number
+    freshness: number,
+    interaction: number,
+    trend: number,
+    diversity: number
   ): string {
     const reasons = [];
 
     if (similarity > 70) reasons.push('内容匹配您的兴趣');
+    if (interaction > 80) reasons.push('基于您的互动历史');
     if (popularity > 70) reasons.push('热门内容');
+    if (trend > 60) reasons.push('社区正在热议');
     if (influence > 70) reasons.push('来自有影响力的作者');
     if (freshness > 0.7) reasons.push('最新发布');
+    if (diversity > 80) reasons.push('探索新领域');
 
-    return reasons.length > 0 ? reasons.join(' · ') : '为您推荐';
+    return reasons.length > 0 ? reasons.slice(0, 2).join(' · ') : '为您推荐';
   }
 
   private async getNoteData(noteId: string): Promise<CommunityNote | null> {

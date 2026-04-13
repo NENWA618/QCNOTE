@@ -101,11 +101,11 @@ const Header: React.FC = () => {
               </li>
               <li>
                 <Link
-                  href="/ugc/leaderboard"
+                  href="/ugc/forum"
                   className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
                   onClick={() => setMenuOpen(false)}
                 >
-                  排行榜
+                  论坛
                 </Link>
               </li>
               <li>
