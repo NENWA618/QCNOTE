@@ -83,7 +83,7 @@ const Header: React.FC = () => {
             <>
               <li>
                 <Link
-                  href="/ugc/models"
+                  href="/models"
                   className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
                   onClick={() => setMenuOpen(false)}
                 >
