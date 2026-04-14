@@ -23,7 +23,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 检查当前用户是否为管理员
     const forumService = new ForumService(getRedisClient(), getPostgresClient());
-    const currentUserRole = await forumService.getUserRole((session.user as any).id);
+    const sessionUser = session.user as any;
+    const currentUserId = sessionUser.id as string | undefined;
+    const currentUserEmail = sessionUser.email as string | undefined;
+
+    let currentUserRole = 'user';
+    if (currentUserId) {
+      currentUserRole = await forumService.getUserRole(currentUserId);
+    }
+    if (currentUserRole !== 'admin' && currentUserEmail) {
+      currentUserRole = await forumService.getUserRoleByEmail(currentUserEmail);
+    }
 
     if (currentUserRole !== 'admin') {
       return res.status(403).json({ error: 'Permission denied' });

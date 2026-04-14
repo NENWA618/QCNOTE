@@ -54,7 +54,20 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     await initRedisClient();
     await initPostgresClient();
     const forumService = new ForumService(getRedisClient(), getPostgresClient());
-    const userRole = await forumService.getUserRole((session.user as any).id);
+    const sessionUser = session.user as any;
+    const userId = sessionUser.id as string | undefined;
+    const userEmail = sessionUser.email as string | undefined;
+
+    let userRole = 'user';
+    if (userId) {
+      userRole = await forumService.getUserRole(userId);
+    }
+    if (userRole !== 'admin' && userEmail) {
+      const emailRole = await forumService.getUserRoleByEmail(userEmail);
+      if (emailRole === 'admin') {
+        userRole = emailRole;
+      }
+    }
 
     return {
       props: {

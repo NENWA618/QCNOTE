@@ -40,6 +40,25 @@ export class ForumService {
     return role as UserRole;
   }
 
+  async getUserRoleByEmail(email: string): Promise<UserRole> {
+    const result = await this.postgres.query(
+      `SELECT u.id, ur.role
+       FROM users u
+       LEFT JOIN user_roles ur ON u.id = ur.user_id
+       WHERE LOWER(u.email) = LOWER($1)
+       LIMIT 1`,
+      [email]
+    );
+
+    const role = result.rows[0]?.role || 'user';
+    const userId = result.rows[0]?.id;
+    if (userId) {
+      await this.redis.setEx(`user_role:${userId}`, 3600, role);
+    }
+
+    return role as UserRole;
+  }
+
   async setUserRole(userId: string, role: UserRole, updatedBy: string): Promise<void> {
     await this.postgres.query(
       `INSERT INTO user_roles (user_id, role, updated_by, updated_at)

@@ -19,13 +19,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const session = await getServerSession(req, res, authOptions);
       const userId = (session?.user as any)?.id as string | undefined;
-      if (!userId) {
+      const userEmail = (session?.user as any)?.email as string | undefined;
+      if (!userId && !userEmail) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
       // 检查用户是否为管理员
       const forumService = new ForumService(getRedisClient(), getPostgresClient());
-      const userRole = await forumService.getUserRole(userId);
+      let userRole = 'user';
+      if (userId) {
+        userRole = await forumService.getUserRole(userId);
+      }
+      if (userRole !== 'admin' && userEmail) {
+        userRole = await forumService.getUserRoleByEmail(userEmail);
+      }
 
       if (userRole !== 'admin') {
         return res.status(403).json({ error: 'Permission denied' });

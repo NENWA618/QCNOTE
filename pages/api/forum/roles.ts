@@ -31,11 +31,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 查询当前用户的角色
         const session = await getServerSession(req, res, authOptions);
         const currentUserId = (session?.user as any)?.id as string | undefined;
-        if (!currentUserId) {
+        const currentUserEmail = (session?.user as any)?.email as string | undefined;
+
+        if (!currentUserId && !currentUserEmail) {
           return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        const role = await forumService.getUserRole(currentUserId);
+        let role: string = 'user';
+        if (currentUserId) {
+          role = await forumService.getUserRole(currentUserId);
+        }
+
+        if (role !== 'admin' && currentUserEmail) {
+          const emailRole = await forumService.getUserRoleByEmail(currentUserEmail);
+          if (emailRole === 'admin') {
+            role = emailRole;
+          }
+        }
+
         return res.status(200).json({
           success: true,
           role
