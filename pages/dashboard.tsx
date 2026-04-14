@@ -452,7 +452,9 @@ const Dashboard: React.FC = () => {
 
       <Header />
 
-      <div className="flex min-h-screen">
+      <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex min-h-screen">
         {/* Sidebar */}
         <Sidebar
           isOpen={sidebarOpen}
@@ -640,6 +642,9 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </main>
+      </div>
+
+      </div>
       </div>
 
       {/* Note Editor Modal */}

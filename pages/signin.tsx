@@ -16,7 +16,7 @@ export default function SignIn({ providers }: SignInProps) {
         <title>登录 - QCNOTE</title>
         <meta name="description" content="登录 QCNOTE 访问你的笔记、Live2D 模型和社区论坛。" />
       </Head>
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg flex items-center justify-center px-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <Link href="/" className="flex items-center justify-center gap-3 mb-8">
@@ -28,19 +28,19 @@ export default function SignIn({ providers }: SignInProps) {
               quality={75}
               className="rounded-lg shadow-light"
             />
-            <span className="text-3xl font-bold text-white">QCNOTE</span>
+            <span className="text-3xl font-bold text-primary-dark dark:text-white">QCNOTE</span>
           </Link>
-          <h2 className="text-3xl font-bold text-white mb-2">欢迎回来</h2>
-          <p className="text-gray-400">登录您的账户以访问模型和论坛</p>
+          <h2 className="text-3xl font-bold text-primary-dark dark:text-white mb-2">欢迎回来</h2>
+          <p className="text-text-light">登录您的账户以访问模型和论坛</p>
         </div>
 
-        <div className="bg-gray-800 rounded-lg p-8 shadow-xl">
+        <div className="card p-8">
           <div className="space-y-4">
             {Object.values(providers).map((provider: any) => (
               <button
                 key={provider.name}
                 onClick={() => signIn(provider.id, { callbackUrl: '/dashboard' })}
-                className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-medium"
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-primary-light hover:bg-primary-medium text-primary-dark rounded-lg transition-colors font-medium"
               >
                 {provider.name === 'Google' && (
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -71,14 +71,14 @@ export default function SignIn({ providers }: SignInProps) {
           </div>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-400 text-sm">
+            <p className="text-text-light text-sm">
               登录后即可访问模型和论坛
             </p>
           </div>
         </div>
 
         <div className="text-center">
-          <Link href="/" className="text-cyan-400 hover:underline text-sm">
+          <Link href="/" className="text-accent-pink hover:underline text-sm">
             返回首页
           </Link>
         </div>

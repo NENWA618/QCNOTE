@@ -101,22 +101,22 @@ export default function CreatePost({ categories }: CreatePostProps) {
 
   if (!session?.user) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 text-primary-dark dark:bg-dark-bg flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">正在加载...</p>
+          <p className="text-primary-dark dark:text-dark-text">正在加载...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 text-primary-dark dark:bg-dark-bg">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+        <div className="card">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">发布新帖子</h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
+            <h1 className="text-2xl font-bold text-primary-dark dark:text-white">发布新帖子</h1>
+            <p className="mt-2 text-text-light dark:text-dark-text-secondary">
               分享你的想法和经验，与社区成员交流
             </p>
           </div>

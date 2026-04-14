@@ -12,45 +12,47 @@ const Contact: React.FC = () => {
         <meta name="description" content="支持 QCNOTE 项目的开发与维护。了解如何通过捐赠和反馈帮助我们改进这个隐私优先的个人笔记应用。" />
       </Head>
 
-      <header>
-        <nav className="max-w-6xl mx-auto flex justify-between items-center px-8 py-4">
-          <Link
-            href="/"
-            className="flex gap-3 items-center text-2xl font-bold text-primary-dark hover:text-accent-pink transition-colors"
-          >
-            <Image
-              src="/images/icons/note_icon.png"
-              alt="QCNOTE logo"
-              width={48}
-              height={48}
-              quality={75}
-              className="rounded-lg shadow-light"
-              priority
-            />
-            <span>QCNOTE</span>
-          </Link>
-          <ul className="flex gap-8 list-none">
-            <li>
+      <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <header>
+            <nav className="max-w-6xl mx-auto flex justify-between items-center px-8 py-4">
               <Link
                 href="/"
-                className="text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                className="flex gap-3 items-center text-2xl font-bold text-primary-dark hover:text-accent-pink transition-colors"
               >
-                首页
+                <Image
+                  src="/images/icons/note_icon.png"
+                  alt="QCNOTE logo"
+                  width={48}
+                  height={48}
+                  quality={75}
+                  className="rounded-lg shadow-light"
+                  priority
+                />
+                <span>QCNOTE</span>
               </Link>
-            </li>
-            <li>
-              <Link
-                href="/dashboard"
-                className="text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-              >
-                笔记
-              </Link>
-            </li>
-          </ul>
-        </nav>
-      </header>
+              <ul className="flex gap-8 list-none">
+                <li>
+                  <Link
+                    href="/"
+                    className="text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                  >
+                    首页
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/dashboard"
+                    className="text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                  >
+                    笔记
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+          </header>
 
-      <div className="container">
+          <div className="container">
         <section className="text-center py-12">
           <h1 className="text-5xl font-bold text-primary-dark mb-4">💰 支持 QCNOTE</h1>
           <p className="text-xl text-text-light">感谢你对 QCNOTE 的支持和信任</p>
@@ -170,6 +172,9 @@ const Contact: React.FC = () => {
             前往笔记 →
           </Link>
         </section>
+      </div>
+
+      </div>
       </div>
 
       <Footer

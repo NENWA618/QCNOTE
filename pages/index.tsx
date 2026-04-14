@@ -82,45 +82,47 @@ export default function Home() {
         />
       </Head>
 
-      <header>
-        <nav className="max-w-6xl mx-auto flex justify-between items-center px-8 py-4">
-          <Link
-            href="/"
-            className="flex gap-3 items-center text-2xl font-bold text-primary-dark hover:text-accent-pink transition-colors hover:scale-105"
-          >
-            <Image
-              src="/images/icons/note_icon.png"
-              alt="QCNOTE logo"
-              width={48}
-              height={48}
-              quality={75}
-              className="rounded-lg shadow-light"
-              priority
-            />
-            <span>QCNOTE</span>
-          </Link>
-          <ul className="flex gap-8 list-none">
-            <li>
-              <a
-                href="#features"
-                className="text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-              >
-                功能
-              </a>
-            </li>
-            <li>
+      <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <header>
+            <nav className="max-w-6xl mx-auto flex justify-between items-center px-8 py-4">
               <Link
-                href="/dashboard"
-                className="text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                href="/"
+                className="flex gap-3 items-center text-2xl font-bold text-primary-dark hover:text-accent-pink transition-colors hover:scale-105"
               >
-                开始使用
+                <Image
+                  src="/images/icons/note_icon.png"
+                  alt="QCNOTE logo"
+                  width={48}
+                  height={48}
+                  quality={75}
+                  className="rounded-lg shadow-light"
+                  priority
+                />
+                <span>QCNOTE</span>
               </Link>
-            </li>
-          </ul>
-        </nav>
-      </header>
+              <ul className="flex gap-8 list-none">
+                <li>
+                  <a
+                    href="#features"
+                    className="text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                  >
+                    功能
+                  </a>
+                </li>
+                <li>
+                  <Link
+                    href="/dashboard"
+                    className="text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                  >
+                    开始使用
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+          </header>
 
-      <div className="container">
+          <div className="container">
         <section className="text-center py-12 md:py-20">
           <div className="mb-8 inline-block">
             <div className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-6 bg-gradient-to-br from-accent-pink to-accent-purple rounded-2xl flex items-center justify-center shadow-medium transform hover:scale-110 transition-transform">
@@ -275,6 +277,8 @@ export default function Home() {
             </Link>
           </div>
         </section>
+          </div>
+        </div>
       </div>
 
       <Footer layout="minimal" />

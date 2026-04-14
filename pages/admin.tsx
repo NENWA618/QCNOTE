@@ -12,11 +12,11 @@ interface AdminPageProps {
 export default function AdminPage({ userRole }: AdminPageProps) {
   if (userRole !== 'admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-4">访问被拒绝</h1>
-          <p className="text-gray-400 mb-4">您没有管理员权限</p>
-          <Link href="/" className="text-cyan-400 hover:underline">
+          <h1 className="text-3xl font-bold text-primary-dark dark:text-white mb-4">访问被拒绝</h1>
+          <p className="text-text-light dark:text-dark-text-secondary mb-4">您没有管理员权限</p>
+          <Link href="/" className="text-accent-pink hover:underline">
             返回首页
           </Link>
         </div>
@@ -30,7 +30,11 @@ export default function AdminPage({ userRole }: AdminPageProps) {
         <title>管理员面板 - QCNOTE</title>
         <meta name="description" content="QCNOTE 管理员控制面板" />
       </Head>
-      <AdminPanel />
+      <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <AdminPanel />
+        </div>
+      </div>
     </>
   );
 }

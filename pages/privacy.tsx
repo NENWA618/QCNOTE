@@ -14,7 +14,9 @@ export default function Privacy() {
 
       <Header />
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
+      <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <main className="max-w-4xl mx-auto px-6 py-12">
         <h1 className="text-3xl md:text-4xl font-bold text-primary-dark mb-4">隐私政策</h1>
 
         <div className="card">
@@ -50,6 +52,9 @@ export default function Privacy() {
           <p className="text-text-light text-sm mt-6">最后更新：2026 年 2 月 26 日</p>
         </div>
       </main>
+
+      </div>
+      </div>
 
       <Footer />
     </>

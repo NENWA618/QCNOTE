@@ -11,30 +11,32 @@ export default function LeaderboardPage() {
         <title>排行榜 - QCNOTE</title>
         <meta name="description" content="QCNOTE 排行榜页面，查看创意、活跃度和影响力排行榜。" />
       </Head>
-      <div className="min-h-screen bg-gray-900">
-      {/* 类型切换 */}
-      <div className="bg-gray-800 border-b border-gray-700 p-6">
-        <div className="max-w-2xl mx-auto flex gap-4">
-          {(['creative', 'activity', 'influence'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setType(t)}
-              className={`px-6 py-2 rounded-lg font-medium transition ${
-                type === t
-                  ? 'bg-cyan-500 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              {t === 'creative' && '🎨 创意'}
-              {t === 'activity' && '⚡ 活跃度'}
-              {t === 'influence' && '👑 影响力'}
-            </button>
-          ))}
+      <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* 类型切换 */}
+          <div className="card mb-8">
+            <div className="max-w-2xl mx-auto flex gap-4">
+              {(['creative', 'activity', 'influence'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setType(t)}
+                  className={`px-6 py-2 rounded-lg font-medium transition ${
+                    type === t
+                      ? 'bg-accent-pink text-white'
+                      : 'bg-primary-light text-primary-dark hover:bg-primary-medium dark:bg-dark-surface-light dark:text-dark-text dark:hover:bg-dark-surface'
+                  }`}
+                >
+                  {t === 'creative' && '🎨 创意'}
+                  {t === 'activity' && '⚡ 活跃度'}
+                  {t === 'influence' && '👑 影响力'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Leaderboard type={type} />
         </div>
       </div>
-
-      <Leaderboard type={type} />
-    </div>
     </>
   );
 }

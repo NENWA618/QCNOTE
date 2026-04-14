@@ -28,8 +28,10 @@ export default function ModelsPage() {
           </div>
         </div>
       ) : (
-        <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 text-primary-dark dark:bg-dark-bg p-8">
-          <Models userId={userId} />
+        <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 text-primary-dark dark:bg-dark-bg">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <Models userId={userId} />
+          </div>
         </div>
       )}
     </>
