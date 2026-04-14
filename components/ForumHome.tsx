@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { withApiBaseUrl } from '../lib/api-client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ForumPost, ForumCategory, ForumStats } from '../types/ugc-types';
