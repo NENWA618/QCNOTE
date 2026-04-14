@@ -28,7 +28,7 @@ export default function AdminPage({ userRole }: AdminPageProps) {
     <>
       <Head>
         <title>管理员面板 - QCNOTE</title>
-        <meta name="description" content="QCNOTE 管理员控制面板" />
+        <meta name="description" content="QCNOTE管理员控制面板 - 管理系统统计、用户管理和社区内容。仅限授权管理员访问。" />
       </Head>
       <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

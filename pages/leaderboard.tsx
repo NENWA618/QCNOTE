@@ -9,7 +9,7 @@ export default function LeaderboardPage() {
     <>
       <Head>
         <title>排行榜 - QCNOTE</title>
-        <meta name="description" content="QCNOTE 排行榜页面，查看创意、活跃度和影响力排行榜。" />
+        <meta name="description" content="探索QCNOTE社区排行榜，发现最有创意的笔记作者、最活跃的贡献者和最具影响力的用户。加入排行榜，提升你的笔记影响力。" />
       </Head>
       <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

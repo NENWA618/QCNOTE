@@ -24,7 +24,7 @@ export const FOOTER_CONFIG = {
   // 其他依赖
   other: [
     { name: 'remark-gfm', url: 'https://github.com/remarkjs/remark-gfm', license: 'MIT License' },
-    { name: 'react-beautiful-dnd', url: 'https://github.com/react-beautiful-dnd', license: 'Apache-2.0' },
+    { name: '@dnd-kit/core', url: 'https://github.com/clauderic/dnd-kit', license: 'MIT License' },
   ],
   
   // Live2D 特殊声明

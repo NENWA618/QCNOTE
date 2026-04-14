@@ -25,7 +25,17 @@ export async function initRedisClient(): Promise<RedisClientType> {
     return redisClient!;
   }
 
-  redisClient = createClient({ url: redisUrl });
+  redisClient = createClient({
+    url: redisUrl,
+    // Connection settings
+    socket: {
+      connectTimeout: 5000,
+      keepAlive: true,
+    },
+    // Performance settings
+    commandsQueueMaxLength: 1000,
+    disableOfflineQueue: false
+  });
 
   redisClient.on('error', (err) => {
     console.error('[Redis] Error:', err);

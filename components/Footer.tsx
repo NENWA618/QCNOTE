@@ -66,7 +66,7 @@ const Footer: React.FC<FooterProps> = ({
   // 如果是 minimal 模式，跳过所有可选内容
   if (layout === 'minimal') {
     return (
-      <footer className="bg-primary-dark text-white py-8 px-6">
+      <footer role="contentinfo" aria-label="Site footer" className="bg-primary-dark text-white py-8 px-6">
         <div className="max-w-6xl mx-auto">
           <p className="text-center">{FOOTER_CONFIG.copyright}</p>
         </div>
@@ -190,7 +190,7 @@ const Footer: React.FC<FooterProps> = ({
     const links = customLinks || defaultLinks;
 
     return (
-      <footer className="bg-primary-dark text-white py-12 px-6">
+      <footer role="contentinfo" aria-label="Site footer" className="bg-primary-dark text-white py-12 px-6">
         <div className="max-w-6xl mx-auto">
           {/* 三列网格部分 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
@@ -206,7 +206,7 @@ const Footer: React.FC<FooterProps> = ({
 
             {/* 快速链接部分 */}
             {showLinks && (
-              <div>
+              <nav aria-label="Footer links">
                 <h4 className="text-white mb-4">🔗 快速链接</h4>
                 <p className="text-sm space-y-2">
                   {links.map((link) => (
@@ -219,7 +219,7 @@ const Footer: React.FC<FooterProps> = ({
                     </Link>
                   ))}
                 </p>
-              </div>
+              </nav>
             )}
 
             {/* 联系我们部分 */}

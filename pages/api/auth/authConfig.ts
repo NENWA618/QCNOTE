@@ -4,6 +4,7 @@ import GitHubProvider from "next-auth/providers/github";
 import DiscordProvider from "next-auth/providers/discord";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { v4 as uuidv4 } from "uuid";
+import { env } from "../../../lib/env-config";
 
 type SessionUserWithId = {
   id?: string;
@@ -23,25 +24,22 @@ type ExtendedJWT = {
   exp?: number;
 };
 
-const NEXTAUTH_URL = process.env.NEXTAUTH_URL || "https://www.qcnote.com";
-const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "your-secret-key-change-in-production";
+const NEXTAUTH_URL = env.NEXTAUTH_URL;
+const NEXTAUTH_SECRET = env.NEXTAUTH_SECRET;
 
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      allowDangerousEmailAccountLinking: true,
+      clientId: env.GOOGLE_CLIENT_ID || "",
+      clientSecret: env.GOOGLE_CLIENT_SECRET || "",
     }),
     GitHubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID || "",
-      clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
-      allowDangerousEmailAccountLinking: true,
+      clientId: env.GITHUB_CLIENT_ID || "",
+      clientSecret: env.GITHUB_CLIENT_SECRET || "",
     }),
     DiscordProvider({
-      clientId: process.env.DISCORD_CLIENT_ID || "",
-      clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
-      allowDangerousEmailAccountLinking: true,
+      clientId: env.DISCORD_CLIENT_ID || "",
+      clientSecret: env.DISCORD_CLIENT_SECRET || "",
     }),
     CredentialsProvider({
       // 允许本地开发测试

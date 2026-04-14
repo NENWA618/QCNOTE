@@ -4,6 +4,7 @@ import { authOptions } from '../auth/authConfig';
 import { ForumService } from '../../../server/forum-service';
 import { getRedisClient, initRedisClient } from '../../../server/redis-client';
 import { getPostgresClient, initPostgresClient } from '../../../server/postgres-client';
+import { adminStatsQuerySchema } from '../../../lib/validation/schemas';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Initialize clients if not already initialized
@@ -17,6 +18,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
+      // Validate query parameters
+      const queryValidation = adminStatsQuerySchema.safeParse(req.query);
+      if (!queryValidation.success) {
+        return res.status(400).json({ error: 'Invalid query parameters', details: queryValidation.error.issues });
+      }
+
       const session = await getServerSession(req, res, authOptions);
       const userId = (session?.user as any)?.id as string | undefined;
       const userEmail = (session?.user as any)?.email as string | undefined;

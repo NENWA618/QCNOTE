@@ -1,5 +1,6 @@
 import { RedisClientType } from 'redis';
 import { Pool } from 'pg';
+import { CacheManager, createCacheManager } from '../lib/cache-manager';
 import {
   ForumPost,
   ForumReply,
@@ -14,30 +15,27 @@ import {
 export class ForumService {
   private redis: RedisClientType;
   private postgres: Pool;
+  private cache: CacheManager;
 
   constructor(redis: RedisClientType, postgres: Pool) {
     this.redis = redis;
     this.postgres = postgres;
+    this.cache = createCacheManager(redis, { keyPrefix: 'forum:', ttl: 1800 });
   }
 
   // 用户角色管理
   async getUserRole(userId: string): Promise<UserRole> {
-    const cacheKey = `user_role:${userId}`;
-    const cached = await this.redis.get(cacheKey);
-
-    if (cached) {
-      return cached as UserRole;
-    }
-
-    const result = await this.postgres.query(
-      'SELECT role FROM user_roles WHERE user_id = $1',
-      [userId]
+    return this.cache.getOrSet(
+      `user_role:${userId}`,
+      async () => {
+        const result = await this.postgres.query(
+          'SELECT role FROM user_roles WHERE user_id = $1',
+          [userId]
+        );
+        return (result.rows[0]?.role || 'user') as UserRole;
+      },
+      3600 // 1 hour TTL for user roles
     );
-
-    const role = result.rows[0]?.role || 'user';
-    await this.redis.setEx(cacheKey, 3600, role); // 缓存1小时
-
-    return role as UserRole;
   }
 
   async getUserRoleByEmail(email: string): Promise<UserRole> {
@@ -430,47 +428,44 @@ export class ForumService {
       throw new Error('Either postId or replyId must be provided');
     }
 
-    // 检查是否已点赞
-    const existingLike = await this.postgres.query(
-      'SELECT id FROM forum_likes WHERE user_id = $1 AND target_type = $2 AND target_id = $3',
-      [userId, targetType, targetId]
-    );
-
-    let liked: boolean;
-    let likeCount: number;
-
-    if (existingLike.rows.length > 0) {
-      // 取消点赞
-      await this.postgres.query(
-        'DELETE FROM forum_likes WHERE user_id = $1 AND target_type = $2 AND target_id = $3',
-        [userId, targetType, targetId]
-      );
-      liked = false;
-      likeCount = -1;
-    } else {
-      // 添加点赞
-      await this.postgres.query(
-        'INSERT INTO forum_likes (user_id, target_type, target_id, created_at) VALUES ($1, $2, $3, NOW())',
-        [userId, targetType, targetId]
-      );
-      liked = true;
-      likeCount = 1;
-    }
-
-    // 更新目标的点赞数
     const table = targetType === 'post' ? 'forum_posts' : 'forum_replies';
-    await this.postgres.query(
-      `UPDATE ${table} SET like_count = like_count + $1 WHERE id = $2`,
-      [likeCount, targetId]
-    );
+    const targetColumn = postId ? 'post_id' : 'reply_id';
 
-    // 获取更新后的点赞数
-    const countResult = await this.postgres.query(
-      `SELECT like_count FROM ${table} WHERE id = $1`,
-      [targetId]
-    );
+    // 使用UPSERT来toggle点赞状态，并更新计数
+    const result = await this.postgres.query(`
+      WITH toggle_like AS (
+        INSERT INTO forum_likes (user_id, ${targetColumn}, created_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (user_id, ${targetColumn})
+        DO NOTHING
+        RETURNING 'inserted' as action
+      ),
+      delete_like AS (
+        DELETE FROM forum_likes
+        WHERE user_id = $1 AND ${targetColumn} = $2
+        AND NOT EXISTS (SELECT 1 FROM toggle_like)
+        RETURNING 'deleted' as action
+      ),
+      update_count AS (
+        UPDATE ${table}
+        SET like_count = CASE
+          WHEN EXISTS (SELECT 1 FROM toggle_like) THEN like_count + 1
+          WHEN EXISTS (SELECT 1 FROM delete_like) THEN GREATEST(like_count - 1, 0)
+          ELSE like_count
+        END
+        WHERE id = $2
+        RETURNING like_count
+      )
+      SELECT
+        CASE
+          WHEN EXISTS (SELECT 1 FROM toggle_like) THEN true
+          WHEN EXISTS (SELECT 1 FROM delete_like) THEN false
+          ELSE EXISTS (SELECT 1 FROM forum_likes WHERE user_id = $1 AND ${targetColumn} = $2)
+        END as liked,
+        (SELECT like_count FROM update_count) as like_count
+    `, [userId, targetId]);
 
-    const finalLikeCount = countResult.rows[0].like_count;
+    const { liked, like_count } = result.rows[0];
 
     // 清除相关缓存
     if (postId) {
@@ -479,7 +474,7 @@ export class ForumService {
       await this.redis.del(`forum_replies:${replyId}`);
     }
 
-    return { liked, likeCount: finalLikeCount };
+    return { liked: Boolean(liked), likeCount: Number(like_count) };
   }
 
   // 分类管理
@@ -566,30 +561,25 @@ export class ForumService {
   // 统计信息
   async getForumStats(): Promise<ForumStats> {
     try {
-      const cacheKey = 'forum_stats';
-      const cached = await this.redis.get(cacheKey);
+      return this.cache.getOrSet(
+        'forum_stats',
+        async () => {
+          const [postsResult, repliesResult, usersResult, categoriesResult] = await Promise.all([
+            this.postgres.query('SELECT COUNT(*) as count FROM forum_posts WHERE is_deleted = false'),
+            this.postgres.query('SELECT COUNT(*) as count FROM forum_replies WHERE is_deleted = false'),
+            this.postgres.query('SELECT COUNT(DISTINCT author_id) as count FROM forum_posts WHERE is_deleted = false'),
+            this.postgres.query('SELECT COUNT(*) as count FROM forum_categories')
+          ]);
 
-      if (cached) {
-        return JSON.parse(cached);
-      }
-
-      const [postsResult, repliesResult, usersResult, categoriesResult] = await Promise.all([
-        this.postgres.query('SELECT COUNT(*) as count FROM forum_posts WHERE is_deleted = false'),
-        this.postgres.query('SELECT COUNT(*) as count FROM forum_replies WHERE is_deleted = false'),
-        this.postgres.query('SELECT COUNT(DISTINCT author_id) as count FROM forum_posts WHERE is_deleted = false'),
-        this.postgres.query('SELECT COUNT(*) as count FROM forum_categories')
-      ]);
-
-      const stats = {
-        totalPosts: parseInt(postsResult.rows[0].count),
-        totalReplies: parseInt(repliesResult.rows[0].count),
-        totalUsers: parseInt(usersResult.rows[0].count),
-        totalCategories: parseInt(categoriesResult.rows[0].count)
-      };
-
-      await this.redis.setEx(cacheKey, 1800, JSON.stringify(stats)); // 缓存30分钟
-
-      return stats;
+          return {
+            totalPosts: parseInt(postsResult.rows[0].count),
+            totalReplies: parseInt(repliesResult.rows[0].count),
+            totalUsers: parseInt(usersResult.rows[0].count),
+            totalCategories: parseInt(categoriesResult.rows[0].count)
+          };
+        },
+        1800 // 30 minutes TTL
+      );
     } catch (error) {
       console.warn('Database not available, returning mock forum stats:', error);
       // Return mock stats for development

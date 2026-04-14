@@ -17,7 +17,9 @@ Allow: /
 Disallow: /api/
 Disallow: /dashboard
 
-# Crawl delay for other bots
+# Sitemap
+Sitemap: https://www.qcnote.com/api/sitemap.xml
+Sitemap: https://www.qcnote.com/api/sitemap.xml
 User-agent: *
 Crawl-delay: 1
 
