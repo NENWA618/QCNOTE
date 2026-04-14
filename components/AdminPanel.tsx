@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import axios from 'axios';
+import { withApiBaseUrl } from '../lib/api-client';
 
 interface User {
   id: string;
@@ -42,11 +43,11 @@ export default function AdminPanel() {
       setLoading(true);
 
       // 加载用户列表
-      const usersResponse = await axios.get('/api/admin/users');
+      const usersResponse = await axios.get(withApiBaseUrl('/api/admin/users'));
       setUsers(usersResponse.data.users);
 
       // 加载统计数据
-      const statsResponse = await axios.get('/api/admin/stats');
+      const statsResponse = await axios.get(withApiBaseUrl('/api/admin/stats'));
       setStats(statsResponse.data.stats);
 
     } catch (error) {
@@ -58,7 +59,7 @@ export default function AdminPanel() {
 
   const updateUserRole = async (userId: string, role: 'user' | 'moderator' | 'admin') => {
     try {
-      await axios.put('/api/forum/roles', {
+      await axios.put(withApiBaseUrl('/api/forum/roles'), {
         userId,
         role,
       });
@@ -79,7 +80,7 @@ export default function AdminPanel() {
     }
 
     try {
-      const response = await axios.post('/api/admin/set-admin', {
+      const response = await axios.post(withApiBaseUrl('/api/admin/set-admin'), {
         email: adminEmail.trim(),
         username: adminUsername.trim() || adminEmail.split('@')[0],
       });

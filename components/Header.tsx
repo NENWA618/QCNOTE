@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import { withApiBaseUrl } from '../lib/api-client';
 import DarkModeToggle from './DarkModeToggle';
 
 const Header: React.FC = () => {
@@ -12,7 +13,7 @@ const Header: React.FC = () => {
   useEffect(() => {
     if (session?.user) {
       // 获取用户角色
-      fetch('/api/forum/roles')
+      fetch(withApiBaseUrl('/api/forum/roles'))
         .then(res => res.json())
         .then(data => {
           if (data.success) {

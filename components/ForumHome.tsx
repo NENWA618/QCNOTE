@@ -28,7 +28,7 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
       const postsWithRoles = await Promise.all(
         initialPosts.map(async (post) => {
           try {
-            const response = await fetch(`/api/forum/roles?userId=${post.authorId}`);
+            const response = await fetch(withApiBaseUrl(`/api/forum/roles?userId=${post.authorId}`));
             const data = await response.json();
             return {
               ...post,
@@ -58,7 +58,7 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
       if (search) params.set('q', search);
       params.set('sort', sort);
 
-      const response = await fetch(`/api/forum/posts?${params}`);
+      const response = await fetch(withApiBaseUrl(`/api/forum/posts?${params}`));
       const data = await response.json();
 
       if (data.success) {
@@ -66,7 +66,7 @@ export default function ForumHome({ initialPosts, categories, stats }: ForumHome
         const postsWithRoles = await Promise.all(
           data.posts.map(async (post: ForumPost) => {
             try {
-              const roleResponse = await fetch(`/api/forum/roles?userId=${post.authorId}`);
+              const roleResponse = await fetch(withApiBaseUrl(`/api/forum/roles?userId=${post.authorId}`));
               const roleData = await roleResponse.json();
               return {
                 ...post,
