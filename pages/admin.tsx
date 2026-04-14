@@ -4,9 +4,6 @@ import Link from 'next/link';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from './api/auth/authConfig';
 import AdminPanel from '../components/AdminPanel';
-import { ForumService } from '../server/forum-service';
-import { getRedisClient, initRedisClient } from '../server/redis-client';
-import { getPostgresClient, initPostgresClient } from '../server/postgres-client';
 
 interface AdminPageProps {
   userRole: string;
@@ -50,28 +47,46 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
-  try {
-    await initRedisClient();
-    await initPostgresClient();
-    const forumService = new ForumService(getRedisClient(), getPostgresClient());
-    const sessionUser = session.user as any;
-    const userId = sessionUser.id as string | undefined;
-    const userEmail = sessionUser.email as string | undefined;
+  const sessionUser = session.user as any;
+  const userEmail = sessionUser.email as string | undefined;
 
-    let userRole = 'user';
-    if (userId) {
-      userRole = await forumService.getUserRole(userId);
-    }
-    if (userRole !== 'admin' && userEmail) {
-      const emailRole = await forumService.getUserRoleByEmail(userEmail);
-      if (emailRole === 'admin') {
-        userRole = emailRole;
-      }
-    }
-
+  if (!userEmail) {
     return {
       props: {
-        userRole,
+        userRole: 'user',
+      },
+    };
+  }
+
+  try {
+    const baseUrl = process.env.NEXTAUTH_URL
+      ? process.env.NEXTAUTH_URL
+      : `http://${context.req.headers.host}`;
+    const roleUrl = new URL(
+      `/api/forum/roles?email=${encodeURIComponent(userEmail)}`,
+      baseUrl
+    ).toString();
+
+    const response = await fetch(roleUrl, {
+      method: 'GET',
+      headers: {
+        cookie: context.req.headers.cookie || '',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch user role during SSR:', response.status, response.statusText);
+      return {
+        props: {
+          userRole: 'user',
+        },
+      };
+    }
+
+    const data = await response.json();
+    return {
+      props: {
+        userRole: data?.role || 'user',
       },
     };
   } catch (error) {
