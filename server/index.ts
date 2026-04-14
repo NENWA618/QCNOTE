@@ -264,25 +264,29 @@ function registerRoutes(app: any) {
   // 获取用户角色
   app.get('/api/forum/roles', async (request: any, reply: any) => {
     try {
-      const { userId } = request.query;
+      const { userId, email } = request.query;
       const forumService = new (require('./forum-service').ForumService)(
         await initRedisClient(),
         await initPostgresClient()
       );
 
-      if (userId && typeof userId === 'string') {
-        // 查询特定用户的角色
+      // 优先使用 email，因为它比 userId 更可靠
+      if (email && typeof email === 'string') {
+        const role = await forumService.getUserRoleByEmail(email);
+        return reply.send({
+          success: true,
+          role
+        });
+      } else if (userId && typeof userId === 'string') {
+        // 备用：用户可以通过 userId 查询
         const role = await forumService.getUserRole(userId);
         return reply.send({
           success: true,
           role
         });
       } else {
-        // 对于无userId的请求，返回默认角色
-        // 注意：这通常应该从请求头或会话中获取userId
-        // 但由于这是代理路由，前端应该已经处理了认证
         return reply.status(400).send({ 
-          error: 'Missing userId parameter' 
+          error: 'Missing email or userId parameter' 
         });
       }
     } catch (error) {

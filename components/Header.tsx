@@ -12,16 +12,16 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     if (session?.user) {
-      // 获取用户角色 - 从 session 中获取 userId 并作为查询参数传递
+      // 获取用户角色 - 优先使用邮箱（最可靠的标识）
       const sessionUser = session.user as any;
-      const userId = sessionUser.id || sessionUser.email;
+      const userEmail = sessionUser.email;
       
-      if (!userId) {
-        console.warn('No userId found in session');
+      if (!userEmail) {
+        console.warn('No email found in session');
         return;
       }
 
-      fetch(withApiBaseUrl(`/api/forum/roles?userId=${encodeURIComponent(userId)}`))
+      fetch(withApiBaseUrl(`/api/forum/roles?email=${encodeURIComponent(userEmail)}`))
         .then(res => res.json())
         .then(data => {
           if (data.success) {
