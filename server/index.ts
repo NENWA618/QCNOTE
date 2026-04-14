@@ -259,6 +259,79 @@ function registerRoutes(app: any) {
     }
   });
 
+  // ==================== 论坛路由 ====================
+
+  // 获取用户角色
+  app.get('/api/forum/roles', async (request: any, reply: any) => {
+    try {
+      const { userId } = request.query;
+      const forumService = new (require('./forum-service').ForumService)(
+        await initRedisClient(),
+        await initPostgresClient()
+      );
+
+      if (userId && typeof userId === 'string') {
+        // 查询特定用户的角色
+        const role = await forumService.getUserRole(userId);
+        return reply.send({
+          success: true,
+          role
+        });
+      } else {
+        // 对于无userId的请求，返回默认角色
+        // 注意：这通常应该从请求头或会话中获取userId
+        // 但由于这是代理路由，前端应该已经处理了认证
+        return reply.status(400).send({ 
+          error: 'Missing userId parameter' 
+        });
+      }
+    } catch (error) {
+      logger.error('Get user role error:', error);
+      reply.status(500).send({ 
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // 修改用户角色
+  app.put('/api/forum/roles', async (request: any, reply: any) => {
+    try {
+      const { userId, role } = request.body;
+
+      if (!userId || !role) {
+        return reply.status(400).send({ 
+          error: 'Missing required fields' 
+        });
+      }
+
+      if (!['user', 'moderator', 'admin'].includes(role)) {
+        return reply.status(400).send({ 
+          error: 'Invalid role' 
+        });
+      }
+
+      const forumService = new (require('./forum-service').ForumService)(
+        await initRedisClient(),
+        await initPostgresClient()
+      );
+
+      // 设置用户角色（updatedBy 使用userId本身，因为这是代理调用）
+      await forumService.setUserRole(userId, role, userId);
+
+      reply.send({
+        success: true,
+        message: 'User role updated successfully'
+      });
+    } catch (error) {
+      logger.error('Update user role error:', error);
+      reply.status(500).send({ 
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // ==================== UGC 推荐路由 ====================
 
   // 获取个性化推荐

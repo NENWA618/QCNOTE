@@ -12,12 +12,22 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     if (session?.user) {
-      // 获取用户角色
-      fetch(withApiBaseUrl('/api/forum/roles'))
+      // 获取用户角色 - 从 session 中获取 userId 并作为查询参数传递
+      const sessionUser = session.user as any;
+      const userId = sessionUser.id || sessionUser.email;
+      
+      if (!userId) {
+        console.warn('No userId found in session');
+        return;
+      }
+
+      fetch(withApiBaseUrl(`/api/forum/roles?userId=${encodeURIComponent(userId)}`))
         .then(res => res.json())
         .then(data => {
           if (data.success) {
             setUserRole(data.role);
+          } else {
+            console.error('Failed to fetch user role:', data.error);
           }
         })
         .catch(err => console.error('Failed to fetch user role:', err));

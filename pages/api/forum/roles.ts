@@ -1,104 +1,85 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/authConfig';
-import { ForumService } from '../../../server/forum-service';
-import { getRedisClient, initRedisClient } from '../../../server/redis-client';
-import { getPostgresClient, initPostgresClient } from '../../../server/postgres-client';
 
+/**
+ * 代理路由：转发 /api/forum/roles 请求到后端
+ * 
+ * 注意：此路由不能在前端处理数据库查询，必须转发到后端
+ * 前端（Vercel）无法访问后端数据库
+ */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Initialize clients if not already initialized
-  try {
-    await initRedisClient();
-    await initPostgresClient();
-  } catch (error) {
-    console.error('Client initialization error:', error);
-    return res.status(500).json({ error: 'Database connection failed' });
+  const backendUrl = process.env.BACKEND_URL;
+  
+  if (!backendUrl) {
+    console.warn('[Forum Roles Proxy] BACKEND_URL not configured');
+    return res.status(503).json({ 
+      error: 'Backend service unavailable',
+      message: 'BACKEND_URL environment variable is not set'
+    });
   }
 
-  if (req.method === 'GET') {
-    try {
-      const { userId } = req.query;
-      const forumService = new ForumService(getRedisClient(), getPostgresClient());
-
-      if (userId && typeof userId === 'string') {
-        // 查询特定用户的角色
-        const role = await forumService.getUserRole(userId);
-        return res.status(200).json({
-          success: true,
-          role
-        });
-      } else {
-        // 查询当前用户的角色
-        const session = await getServerSession(req, res, authOptions);
-        const currentUserId = (session?.user as any)?.id as string | undefined;
-        const currentUserEmail = (session?.user as any)?.email as string | undefined;
-
-        if (!currentUserId && !currentUserEmail) {
-          return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        let role: string = 'user';
-        if (currentUserId) {
-          role = await forumService.getUserRole(currentUserId);
-        }
-
-        if (role !== 'admin' && currentUserEmail) {
-          const emailRole = await forumService.getUserRoleByEmail(currentUserEmail);
-          if (emailRole === 'admin') {
-            role = emailRole;
-          }
-        }
-
-        return res.status(200).json({
-          success: true,
-          role
-        });
-      }
-    } catch (error) {
-      console.error('Get user role error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+  try {
+    // 构建后端 URL
+    const targetUrl = new URL(`${backendUrl}/api/forum/roles`);
+    
+    // 转发查询参数
+    if (req.url?.includes('?')) {
+      const queryString = req.url.substring(req.url.indexOf('?'));
+      targetUrl.search = queryString;
     }
-  } else if (req.method === 'PUT') {
-    try {
-      const session = await getServerSession(req, res, authOptions);
-      const userId = (session?.user as any)?.id as string | undefined;
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
 
-      // 只有管理员可以修改用户角色
-      const forumService = new ForumService(getRedisClient(), getPostgresClient());
-      const currentUserRole = await forumService.getUserRole(userId);
+    console.log(`[Forum Roles] ${req.method} ${req.url} -> ${targetUrl.toString()}`);
 
-      if (currentUserRole !== 'admin') {
-        return res.status(403).json({ error: 'Permission denied' });
-      }
+    // 准备转发请求
+    const fetchOptions: RequestInit = {
+      method: req.method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(req.headers.authorization && { 
+          authorization: req.headers.authorization 
+        }),
+        ...(req.headers.cookie && { 
+          cookie: req.headers.cookie 
+        }),
+      },
+    };
 
-      const { userId: targetUserId, role } = req.body;
-
-      if (!targetUserId || !role) {
-        return res.status(400).json({ error: 'Missing required fields' });
-      }
-
-      if (!['user', 'moderator', 'admin'].includes(role)) {
-        return res.status(400).json({ error: 'Invalid role' });
-      }
-
-      if (!(session?.user as any)?.id) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-
-      await forumService.setUserRole(targetUserId, role as 'user' | 'moderator' | 'admin', (session!.user as any).id);
-
-      res.status(200).json({
-        success: true,
-        message: 'User role updated successfully'
-      });
-    } catch (error) {
-      console.error('Update user role error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+    // 转发请求体
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
+      fetchOptions.body = JSON.stringify(req.body);
     }
-  } else {
-    res.status(405).json({ error: 'Method not allowed' });
+
+    // 发送请求到后端
+    const response = await fetch(targetUrl.toString(), fetchOptions);
+    const responseData = await response.text();
+
+    // 转发响应头
+    const headersToForward = [
+      'content-type',
+      'content-length',
+      'cache-control',
+      'etag',
+    ];
+
+    headersToForward.forEach(header => {
+      const value = response.headers.get(header);
+      if (value) {
+        res.setHeader(header, value);
+      }
+    });
+
+    res.status(response.status);
+    
+    try {
+      const jsonData = JSON.parse(responseData);
+      return res.json(jsonData);
+    } catch {
+      return res.send(responseData);
+    }
+  } catch (error) {
+    console.error('[Forum Roles] Error:', error);
+    res.status(502).json({ 
+      error: 'Bad Gateway',
+      message: error instanceof Error ? error.message : 'Failed to reach backend'
+    });
   }
 }
