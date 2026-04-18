@@ -13,8 +13,6 @@ export default function Home() {
         <meta name="title" content="QCNOTE - 私有本地优先的个人笔记平台" />
         <meta name="description" content="本地优先、隐私优先的个人笔记应用，支持Markdown、搜索、分类和离线保存。安全的个人知识库管理系统。" />
         <meta name="keywords" content="笔记应用,知识管理,个人日记,笔记管理,跨平台,离线优先" />
-        <meta name="gridinsoft-key" content="u96d6ujbp6vlwimrk5etqc6zudk6dnhfnvpp18nrqgf21dc76n2eh8nhum348dk3" />
-        <meta name="360-site-verification" content="dce2998aeb65ee729d8ee59905965822" />
 
         {/* Open Graph Meta Tags */}
         <meta property="og:type" content="website" />
