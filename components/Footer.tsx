@@ -91,7 +91,7 @@ const Footer: React.FC<FooterProps> = ({
           {FOOTER_CONFIG.live2d.name}
         </a>
         开源项目（{FOOTER_CONFIG.live2d.license}），
-        {FOOTER_CONFIG.live2d.description}。
+        {FOOTER_CONFIG.live2d.description}
       </p>
 
       {/* 技术栈声明 */}
