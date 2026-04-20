@@ -124,7 +124,14 @@ export default function Home() {
         <section className="text-center py-12 md:py-20">
           <div className="mb-8 inline-block">
             <div className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-6 bg-gradient-to-br from-accent-pink to-accent-purple rounded-2xl flex items-center justify-center shadow-medium transform hover:scale-110 transition-transform">
-              <span className="text-3xl md:text-4xl emoji">📝</span>
+              <Image
+                src="/images/icons/note_icon.png"
+                alt="QCNOTE note icon"
+                width={64}
+                height={64}
+                quality={90}
+                className="drop-shadow-lg"
+              />
             </div>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary-dark mb-4 md:mb-6">
