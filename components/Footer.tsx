@@ -69,6 +69,16 @@ const Footer: React.FC<FooterProps> = ({
       <footer role="contentinfo" aria-label="Site footer" className="bg-primary-dark text-white py-8 px-6">
         <div className="max-w-6xl mx-auto">
           <p className="text-center">{FOOTER_CONFIG.copyright}</p>
+          <p className="text-center text-xs text-gray-400 mt-2">
+            <a
+              href={FOOTER_CONFIG.icp.url}
+              className="text-primary-light no-underline hover:text-white transition-colors"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {FOOTER_CONFIG.icp.number}
+            </a>
+          </p>
         </div>
       </footer>
     );
@@ -161,7 +171,7 @@ const Footer: React.FC<FooterProps> = ({
         </>
       )}
 
-      {/* 政策链接 */}
+      {/* 政策链接和 ICP 备案号 */}
       {showPolicies && (
         <p className="mt-4 text-sm">
           {FOOTER_CONFIG.policies.map((policy, idx) => (
@@ -175,6 +185,15 @@ const Footer: React.FC<FooterProps> = ({
               </Link>
             </React.Fragment>
           ))}
+          {FOOTER_CONFIG.policies.length > 0 && ' | '}
+          <a
+            href={FOOTER_CONFIG.icp.url}
+            className="text-primary-light no-underline hover:text-white transition-colors"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {FOOTER_CONFIG.icp.number}
+          </a>
         </p>
       )}
     </>

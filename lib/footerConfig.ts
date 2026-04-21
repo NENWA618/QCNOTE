@@ -40,6 +40,12 @@ export const FOOTER_CONFIG = {
     { name: '隐私政策', url: '/privacy' },
     { name: '使用条款', url: '/terms' },
   ],
+  
+  // ICP 备案号
+  icp: {
+    number: '萌ICP备20260133号',
+    url: 'https://icp.gov.moe/?keyword=20260133',
+  },
 };
 
 /**
