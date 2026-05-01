@@ -16,7 +16,7 @@ const Header: React.FC = () => {
       // 获取用户角色 - 优先使用邮箱（最可靠的标识）
       const sessionUser = session.user as any;
       const userEmail = sessionUser.email;
-      
+
       if (!userEmail) {
         console.warn('No email found in session');
         return;
@@ -149,26 +149,8 @@ const Header: React.FC = () => {
               首页
             </Link>
           </li>
-          <li>
-            <Link
-              href="/#about"
-              className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-              onClick={() => setMenuOpen(false)}
-            >
-              帮助
-            </Link>
-          </li>
           {session && (
             <>
-              <li>
-                <Link
-                  href="/models"
-                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  模型
-                </Link>
-              </li>
               <li>
                 <Link
                   href="/forum"
@@ -176,15 +158,6 @@ const Header: React.FC = () => {
                   onClick={() => setMenuOpen(false)}
                 >
                   论坛
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/dashboard"
-                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  控制台
                 </Link>
               </li>
               {userRole === 'admin' && (
