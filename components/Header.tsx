@@ -155,26 +155,6 @@ const Header: React.FC = () => {
               className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
               onClick={() => setMenuOpen(false)}
             >
-              帮助
-            </Link>
-          </li>
-          {session && (
-            <>
-              <li>
-                <Link
-                  href="/models"
-                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  模型
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/forum"
-                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-                  onClick={() => setMenuOpen(false)}
-                >
                   论坛
                 </Link>
               </li>
@@ -184,16 +164,6 @@ const Header: React.FC = () => {
                   className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
                   onClick={() => setMenuOpen(false)}
                 >
-                  控制台
-                </Link>
-              </li>
-              {userRole === 'admin' && (
-                <li>
-                  <Link
-                    href="/admin"
-                    className="block py-2 md:py-0 text-red-600 font-medium no-underline transition-colors hover:text-red-800"
-                    onClick={() => setMenuOpen(false)}
-                  >
                     管理员
                   </Link>
                 </li>
