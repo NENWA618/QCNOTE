@@ -155,20 +155,18 @@ const Header: React.FC = () => {
               className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
               onClick={() => setMenuOpen(false)}
             >
-                  论坛
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/dashboard"
-                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-                  onClick={() => setMenuOpen(false)}
-                >
-                    管理员
-                  </Link>
-                </li>
-              )}
-            </>
+              论坛
+            </Link>
+          </li>
+            <li>
+             <Link
+               href="/dashboard"
+               className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+               onClick={() => setMenuOpen(false)}
+             >
+               管理员
+             </Link>
+           </li>
           )}
           {!session && (
             <li>
