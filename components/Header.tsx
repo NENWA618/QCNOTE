@@ -158,6 +158,7 @@ const Header: React.FC = () => {
               论坛
             </Link>
           </li>
+          {userRole === 'admin' && (
             <li>
              <Link
                href="/dashboard"
