@@ -18,8 +18,16 @@
     @apply bg-gradient-to-r from-accent-pink to-accent-purple text-white hover:-translate-y-2;
   }
 
-  .btn-secondary {
-    @apply bg-primary-light text-accent-pink border-2 border-accent-pink hover:-translate-y-2 hover:bg-opacity-80;
+  .btn-danger {
+    @apply bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700;
+  }
+
+  .btn-success {
+    @apply bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-primary-dark border border-primary-dark hover:bg-primary-light;
   }
 
   .btn-icon {
@@ -36,7 +44,15 @@
 
   /* Card component */
   .card {
-    @apply bg-white bg-opacity-95 rounded-2xl p-6 shadow-light transition-all backdrop-blur-sm border border-white border-opacity-50 hover:-translate-y-2 hover:shadow-dark;
+    @apply bg-white bg-opacity-95 rounded-2xl p-6 shadow-light transition-all backdrop-blur-sm border border-white border-opacity-50 hover:-translate-y-2 hover:shadow-dark relative overflow-hidden;
+    box-shadow: 
+      0 1px 3px rgba(0,0,0,0.08),
+      0 4px 12px rgba(220,150,180,0.12),
+      0 8px 24px rgba(220,150,180,0.16);
+  }
+
+  .card::before {
+    @apply absolute inset-0 bg-gradient-to-br from-transparent via-primary-light to-accent-purple opacity-5 pointer-events-none;
   }
 
   /* Note card */

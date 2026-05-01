@@ -48,30 +48,37 @@ const NoteList: React.FC<NoteListProps> = ({
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {notes.map((note) => (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {notes.map((note, index) => (
         <div
           key={note.id}
-          className={`card cursor-pointer transition-all hover:shadow-lg ${
+          className={`card group cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] animate-fade-in-up ${
             note.isArchived ? 'opacity-60' : ''
           }`}
+          style={{ animationDelay: `${index * 0.1}s` }}
           onClick={() => onEdit(note)}
         >
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="font-semibold text-lg truncate flex-1 mr-2">
-              {note.title || '无标题'}
-            </h3>
-            <div className="flex gap-2 items-center text-xs text-gray-500 mr-2">
-              <span>🔗{note.links?.length || 0}</span>
-              <span>↩️{note.backlinks?.length || 0}</span>
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-primary-dark group-hover:text-accent-pink transition-colors truncate">
+                {note.title || '无标题'}
+              </h3>
+              <div className="flex gap-2 items-center mt-2 text-xs text-gray-500">
+                <span>{formatDate(note.updatedAt)}</span>
+                {note.category && (
+                  <span className={`px-2 py-1 rounded-full text-xs ${getCategoryColor(note.category)}`}>
+                    {note.category}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex gap-1 flex-shrink-0">
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleFavorite(note.id);
                 }}
-                className={`text-sm ${note.isFavorite ? 'text-yellow-500' : 'text-gray-400'}`}
+                className={`text-sm hover:scale-110 transition-transform ${note.isFavorite ? 'text-yellow-500' : 'text-gray-400'}`}
               >
                 {note.isFavorite ? '⭐' : '☆'}
               </button>
@@ -80,55 +87,43 @@ const NoteList: React.FC<NoteListProps> = ({
                   e.stopPropagation();
                   onToggleArchive(note.id);
                 }}
-                className={`text-sm ${note.isArchived ? 'text-blue-500' : 'text-gray-400'}`}
+                className={`text-sm hover:scale-110 transition-transform ${note.isArchived ? 'text-blue-500' : 'text-gray-400'}`}
               >
                 {note.isArchived ? '📦' : '📄'}
               </button>
             </div>
           </div>
 
-          <div className="text-sm text-gray-600 mb-2 line-clamp-3">
+          <p className="text-sm text-gray-600 line-clamp-2 mb-3 leading-relaxed">
             {note.content.replace(/[#*`]/g, '').substring(0, 100)}...
-          </div>
+          </p>
 
-          <div className="flex justify-between items-center text-xs text-gray-500">
-            <div className="flex gap-2">
-              {note.category && (
-                <span className={`px-2 py-1 rounded-full text-xs ${getCategoryColor(note.category)}`}>
-                  {note.category}
-                </span>
-              )}
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1">
               {note.tags.length > 0 && (
-                <span className="text-gray-400">
-                  🏷️ {note.tags.slice(0, 2).join(', ')}
-                  {note.tags.length > 2 && '...'}
-                </span>
+                <div className="flex gap-1 flex-wrap">
+                  {note.tags.slice(0, 2).map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2 py-1 bg-accent-purple bg-opacity-10 text-accent-purple text-xs rounded-full hover:bg-opacity-20 transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTagClick(tag);
+                      }}
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                  {note.tags.length > 2 && (
+                    <span className="text-xs text-gray-400">+{note.tags.length - 2}</span>
+                  )}
+                </div>
               )}
             </div>
-            <span>{formatDate(note.updatedAt)}</span>
-          </div>
-
-          <div className="mt-3 flex gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(note);
-              }}
-              className="btn-secondary text-xs px-3 py-1"
-            >
-              编辑
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (confirm('确定要删除这条笔记吗？')) {
-                  onDelete(note.id);
-                }
-              }}
-              className="btn-danger text-xs px-3 py-1"
-            >
-              删除
-            </button>
+            <div className="flex gap-2 text-xs text-gray-400">
+              <span>🔗{note.links?.length || 0}</span>
+              <span>↩️{note.backlinks?.length || 0}</span>
+            </div>
           </div>
         </div>
       ))}

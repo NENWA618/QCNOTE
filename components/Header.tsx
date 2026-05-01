@@ -8,6 +8,7 @@ import DarkModeToggle from './DarkModeToggle';
 const Header: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>('user');
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -32,7 +33,16 @@ const Header: React.FC = () => {
         })
         .catch(err => console.error('Failed to fetch user role:', err));
     }
-  }, [session]);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuOpen && !(event.target as Element).closest('.user-menu')) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userMenuOpen]);
 
   return (
     <header>
@@ -56,6 +66,47 @@ const Header: React.FC = () => {
         {/* Mobile menu button */}
         <div className="flex items-center gap-2">
           <DarkModeToggle />
+          {session && (
+            <div className="relative user-menu">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="w-8 h-8 bg-gradient-to-br from-accent-pink to-accent-purple rounded-full flex items-center justify-center text-white text-sm font-semibold hover:scale-110 transition-transform"
+              >
+                {session.user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </button>
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">{session.user?.name || '用户'}</p>
+                    <p className="text-xs text-gray-500">{session.user?.email}</p>
+                  </div>
+                  <Link
+                    href="/dashboard"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    控制台
+                  </Link>
+                  <Link
+                    href="/models"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    模型
+                  </Link>
+                  <button
+                    onClick={() => {
+                      signOut();
+                      setUserMenuOpen(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    登出
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <button
             className="md:hidden p-2 text-primary-dark hover:bg-primary-light rounded-lg transition-colors dark:text-dark-text dark:hover:bg-dark-surface-light"
             onClick={() => setMenuOpen(!menuOpen)}
@@ -147,23 +198,16 @@ const Header: React.FC = () => {
               )}
             </>
           )}
-          <li>
-            {session ? (
-              <button
-                onClick={() => signOut()}
-                className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink bg-transparent border-none cursor-pointer"
-              >
-                登出
-              </button>
-            ) : (
+          {!session && (
+            <li>
               <button
                 onClick={() => signIn()}
                 className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink bg-transparent border-none cursor-pointer"
               >
                 登录
               </button>
-            )}
-          </li>
+            </li>
+          )}
         </ul>
       </nav>
     </header>

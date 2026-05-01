@@ -149,43 +149,67 @@ export default function Home() {
           <h2 className="text-center text-primary-dark mb-8 md:mb-12 text-2xl md:text-4xl font-bold">
             核心功能
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
-            <div className="card">
-              <h3 className="text-accent-pink text-4xl mb-2">📝</h3>
-              <h4 className="text-primary-dark mb-4 text-lg font-semibold">轻量化编辑</h4>
-              <p className="text-text-light m-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            <div className="card group animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
+                  <span className="text-2xl">📝</span>
+                </div>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">轻量化编辑</h4>
+              </div>
+              <p className="text-text-light leading-relaxed">
                 简洁的编辑界面，让你专注于内容本身，无需复杂的操作。
               </p>
             </div>
 
-            <div className="card" style={{ background: 'rgba(220, 150, 180, 0.08)' }}>
-              <h3 className="text-accent-pink text-4xl mb-2">🏷️</h3>
-              <h4 className="text-primary-dark mb-4 text-lg font-semibold">便捷分类</h4>
-              <p className="text-text-light m-0">按分类和标签组织笔记，快速找到你需要的内容。</p>
+            <div className="card group" style={{ background: 'rgba(220, 150, 180, 0.08)' }}>
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
+                  <span className="text-2xl">🏷️</span>
+                </div>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">便捷分类</h4>
+              </div>
+              <p className="text-text-light leading-relaxed">按分类和标签组织笔记，快速找到你需要的内容。</p>
             </div>
 
-            <div className="card">
-              <h3 className="text-accent-pink text-4xl mb-2">🔍</h3>
-              <h4 className="text-primary-dark mb-4 text-lg font-semibold">全文搜索</h4>
-              <p className="text-text-light m-0">强大的搜索功能，瞬间定位任何笔记或关键字。</p>
+            <div className="card group">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
+                  <span className="text-2xl">🔍</span>
+                </div>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">全文搜索</h4>
+              </div>
+              <p className="text-text-light leading-relaxed">强大的搜索功能，瞬间定位任何笔记或关键字。</p>
             </div>
 
-            <div className="card" style={{ background: 'rgba(176, 168, 192, 0.08)' }}>
-              <h3 className="text-accent-pink text-4xl mb-2">❤️</h3>
-              <h4 className="text-primary-dark mb-4 text-lg font-semibold">收藏管理</h4>
-              <p className="text-text-light m-0">标记重要笔记，随时查看你最关心的内容。</p>
+            <div className="card group" style={{ background: 'rgba(176, 168, 192, 0.08)' }}>
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
+                  <span className="text-2xl">❤️</span>
+                </div>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">收藏管理</h4>
+              </div>
+              <p className="text-text-light leading-relaxed">标记重要笔记，随时查看你最关心的内容。</p>
             </div>
 
-            <div className="card">
-              <h3 className="text-accent-pink text-4xl mb-2">💾</h3>
-              <h4 className="text-primary-dark mb-4 text-lg font-semibold">自动保存</h4>
-              <p className="text-text-light m-0">无需手动保存，实时保存你的笔记到本地。</p>
+            <div className="card group">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
+                  <span className="text-2xl">💾</span>
+                </div>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">自动保存</h4>
+              </div>
+              <p className="text-text-light leading-relaxed">无需手动保存，实时保存你的笔记到本地。</p>
             </div>
 
-            <div className="card" style={{ background: 'rgba(220, 150, 180, 0.06)' }}>
-              <h3 className="text-accent-pink text-4xl mb-2">📊</h3>
-              <h4 className="text-primary-dark mb-4 text-lg font-semibold">数据统计</h4>
-              <p className="text-text-light m-0">可视化统计笔记数据，了解你的写作习惯。</p>
+            <div className="card group" style={{ background: 'rgba(220, 150, 180, 0.06)' }}>
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
+                  <span className="text-2xl">📊</span>
+                </div>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">数据统计</h4>
+              </div>
+              <p className="text-text-light leading-relaxed">可视化统计笔记数据，了解你的写作习惯。</p>
             </div>
           </div>
         </section>
