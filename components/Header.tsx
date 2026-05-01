@@ -16,7 +16,7 @@ const Header: React.FC = () => {
       // 获取用户角色 - 优先使用邮箱（最可靠的标识）
       const sessionUser = session.user as any;
       const userEmail = sessionUser.email;
-      
+
       if (!userEmail) {
         console.warn('No email found in session');
         return;
@@ -149,25 +149,29 @@ const Header: React.FC = () => {
               首页
             </Link>
           </li>
-          <li>
-            <Link
-              href="/#about"
-              className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-              onClick={() => setMenuOpen(false)}
-            >
-              论坛
-            </Link>
-          </li>
-          {userRole === 'admin' && (
-            <li>
-             <Link
-               href="/dashboard"
-               className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
-               onClick={() => setMenuOpen(false)}
-             >
-               管理员
-             </Link>
-           </li>
+          {session && (
+            <>
+              <li>
+                <Link
+                  href="/forum"
+                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  论坛
+                </Link>
+              </li>
+              {userRole === 'admin' && (
+                <li>
+                  <Link
+                    href="/admin"
+                    className="block py-2 md:py-0 text-red-600 font-medium no-underline transition-colors hover:text-red-800"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    管理员
+                  </Link>
+                </li>
+              )}
+            </>
           )}
           {!session && (
             <li>
