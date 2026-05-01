@@ -33,6 +33,8 @@ const Header: React.FC = () => {
         })
         .catch(err => console.error('Failed to fetch user role:', err));
     }
+  }, [session]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userMenuOpen && !(event.target as Element).closest('.user-menu')) {
