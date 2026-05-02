@@ -93,6 +93,7 @@ npm run dev      # Start development server
 npm run build    # Build for production
 npm run start    # Start production server
 npm run lint     # Run ESLint
+npm run ci       # Run lint, type check, tests, and build
 npm test         # Run tests
 ```
 

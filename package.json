@@ -27,7 +27,7 @@
     "ioredis": "^5.10.1",
     "isomorphic-fetch": "^3.0.0",
     "lunr": "^2.3.9",
-    "next": "^15.0.0",
+    "next": "15.5.15",
     "next-auth": "^4.24.7",
     "pg": "^8.20.0",
     "pixi-live2d-display": "^0.2.2",
@@ -57,6 +57,8 @@
     "@types/react-dom": "^18.0.0",
     "@types/redis": "^4.0.10",
     "@types/uuid": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
     "@vitest/coverage-v8": "^4.1.4",
     "autoprefixer": "^10.4.24",
     "eslint": "^8.0.0",
@@ -69,18 +71,20 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.2.0",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.4",
+    "wait-on": "^8.0.1"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node ./scripts/next-cli.js dev",
+    "build": "node ./scripts/next-cli.js build",
+    "start": "node ./scripts/next-cli.js start",
     "start-server": "node server/index.js",
-    "lint": "next lint",
+    "lint": "node ./scripts/next-cli.js lint",
     "format": "prettier --write .",
     "test": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "check-admin": "tsx scripts/check-admin.ts"
+    "check-admin": "tsx scripts/check-admin.ts",
+    "ci": "npm run lint && npx tsc --noEmit && npm run test -- --run --reporter dot && npm run build"
   }
 }
