@@ -31,7 +31,7 @@ jobs:
           nohup npm run start -- -p 3000 > /tmp/next.log 2>&1 & echo $! > /tmp/next.pid
 
       - name: Wait for server
-        run: npx wait-on http://localhost:3000
+        run: npx wait-on http://localhost:3000 --timeout 60000
 
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v8

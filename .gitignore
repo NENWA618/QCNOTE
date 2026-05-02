@@ -47,6 +47,7 @@ test/**/*.js
 # Temporary files
 .tmp
 temp/
+action-logs.zip
 
 # application data
 server/.notes-cache.json

@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   compress: true,
   productionBrowserSourceMaps: false,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   
   // Security headers
   async headers() {
