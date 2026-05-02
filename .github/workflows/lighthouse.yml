@@ -21,9 +21,11 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        timeout-minutes: 10
         run: npm ci
 
       - name: Build
+        timeout-minutes: 15
         run: npm run build
 
       - name: Start production server
@@ -35,6 +37,7 @@ jobs:
         run: npx wait-on http://localhost:3000 --timeout 60000
 
       - name: Run Lighthouse CI
+        timeout-minutes: 10
         uses: treosh/lighthouse-ci-action@v8
         with:
           urls: http://localhost:3000

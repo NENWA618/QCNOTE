@@ -19,12 +19,15 @@ jobs:
 
 
       - name: Install dependencies
+        timeout-minutes: 10
         run: npm ci
 
       - name: npm audit
+        timeout-minutes: 5
         run: npm audit --audit-level=moderate || true
 
       - name: Run CI pipeline
+        timeout-minutes: 15
         run: npm run ci
 
   e2e:
