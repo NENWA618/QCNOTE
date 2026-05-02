@@ -75,11 +75,11 @@
     "wait-on": "^8.0.1"
   },
   "scripts": {
-    "dev": "node ./scripts/next-cli.js dev",
-    "build": "node ./scripts/next-cli.js build",
-    "start": "node ./scripts/next-cli.js start",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "start-server": "node server/index.js",
-    "lint": "node ./scripts/next-cli.js lint",
+    "lint": "npx eslint . --ext .ts,.tsx --no-error-on-unmatched-pattern",
     "format": "prettier --write .",
     "test": "vitest",
     "test:e2e": "playwright test",
