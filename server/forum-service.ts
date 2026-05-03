@@ -180,7 +180,7 @@ export class ForumService {
       const countResult = await this.postgres.query(countQuery, countParams);
       const total = parseInt(countResult.rows[0].total);
 
-      const posts = result.rows.map(row => ({
+      const posts = result.rows.map((row: any) => ({
         id: row.id,
         title: row.title,
         content: row.content,
@@ -401,7 +401,7 @@ export class ForumService {
 
     const total = parseInt(countResult.rows[0].total);
 
-    const replies = result.rows.map(row => ({
+    const replies = result.rows.map((row: any) => ({
       id: row.id,
       postId: row.post_id,
       content: row.content,
@@ -491,7 +491,7 @@ export class ForumService {
         'SELECT id, name, description, icon, post_count, created_at FROM forum_categories ORDER BY name'
       );
 
-      const categories = result.rows.map(row => ({
+      const categories = result.rows.map((row: any) => ({
         id: row.id,
         name: row.name,
         description: row.description,
@@ -626,7 +626,7 @@ export class ForumService {
     const countResult = await this.postgres.query(countQuery, countParams);
     const total = parseInt(countResult.rows[0].total);
 
-    const posts = result.rows.map(row => ({
+    const posts = result.rows.map((row: any) => ({
       id: row.id,
       title: row.title,
       content: row.content,

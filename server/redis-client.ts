@@ -37,7 +37,7 @@ export async function initRedisClient(): Promise<RedisClientType> {
     disableOfflineQueue: false
   });
 
-  redisClient.on('error', (err) => {
+  redisClient.on('error', (err: unknown) => {
     console.error('[Redis] Error:', err);
   });
 

@@ -591,12 +591,12 @@ export class UGCService {
     }
 
     // 批量获取用户信息，避免 N+1 查询
-    const userIds = entries.map(entry => entry.value as string);
-    const infoKeys = userIds.map(userId => `leaderboard:${leaderboardKey}:${userId}:info`);
+    const userIds = entries.map((entry: any) => entry.value as string);
+    const infoKeys = userIds.map((userId: string) => `leaderboard:${leaderboardKey}:${userId}:info`);
 
     const userInfos = await this.redis.mGet(infoKeys);
 
-    return entries.map((entry, index) => {
+    return entries.map((entry: any, index: number) => {
       const userId = entry.value as string;
       const info = userInfos[index];
       const parsed = info ? JSON.parse(info) : {};

@@ -46,8 +46,8 @@ export class RecommendationService {
     }
 
     // 4. 批量获取笔记数据，避免 N+1 查询
-    const noteKeys = allNoteIds.map(id => `note:${id}`);
-    const noteDataList = await this.redis.mGet(noteKeys);
+    const noteKeys = allNoteIds.map((id: string) => `note:${id}`);
+    const noteDataList = await this.redis.mGet(noteKeys) as Array<string | null>;
 
     // 5. 计算每个笔记的推荐分数
     const scores: Array<{ noteId: string; score: number; reason: string }> = [];
@@ -310,8 +310,8 @@ export class RecommendationService {
 
     // 批量获取笔记数据
     if (noteIds.length > 0) {
-      const noteKeys = noteIds.map(id => `note:${id}`);
-      const noteDataList = await this.redis.mGet(noteKeys);
+      const noteKeys = noteIds.map((id: string) => `note:${id}`);
+      const noteDataList = await this.redis.mGet(noteKeys) as Array<string | null>;
 
       for (let i = 0; i < noteIds.length; i++) {
         const noteData = noteDataList[i];

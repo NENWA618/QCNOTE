@@ -79,7 +79,7 @@ export class CacheManager {
   async mget<T>(keys: string[]): Promise<(T | null)[]> {
     try {
       const redisKeys = keys.map(key => this.getKey(key));
-      const values = await this.redis.mGet(redisKeys);
+      const values = (await this.redis.mGet(redisKeys)) as Array<string | null>;
       return values.map(value => value ? JSON.parse(value) : null);
     } catch (error) {
       console.warn('Cache mget error:', error);
