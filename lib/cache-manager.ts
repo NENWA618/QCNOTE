@@ -80,7 +80,7 @@ export class CacheManager {
     try {
       const redisKeys = keys.map(key => this.getKey(key));
       const values = (await this.redis.mGet(redisKeys)) as Array<string | null>;
-      return values.map(value => value ? JSON.parse(value) : null);
+      return values.map((value: string | null) => value ? JSON.parse(value) : null);
     } catch (error) {
       console.warn('Cache mget error:', error);
       return new Array(keys.length).fill(null);
