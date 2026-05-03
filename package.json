@@ -23,6 +23,7 @@
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@testing-library/user-event": "^14.6.1",
     "axios": "^1.6.5",
+    "caniuse-lite": "^1.0.30001651",
     "fastify": "^5.8.4",
     "ioredis": "^5.10.1",
     "isomorphic-fetch": "^3.0.0",
