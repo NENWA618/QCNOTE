@@ -54,7 +54,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^14.0.0",
     "@types/lunr": "^2.3.7",
-    "@types/node": "^20.19.37",
+    "@types/node": "^25.6.2",
     "@types/pg": "^8.20.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
