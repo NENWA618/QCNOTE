@@ -1,0 +1,28 @@
+{
+  "name": "note-server",
+  "version": "1.0.3",
+  "description": "Backend server for QCNOTE application",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsx --tsconfig tsconfig.server.json index.ts",
+    "dev": "tsx --watch --tsconfig tsconfig.server.json index.ts",
+    "postinstall": "if [ -n \"$ADMIN_SET_EMAIL\" ]; then npm run set-admin -- \"$ADMIN_SET_EMAIL\"; elif [ -n \"$ADMIN_CHECK_EMAIL\" ]; then npm run check-admin -- \"$ADMIN_CHECK_EMAIL\"; else echo \"ADMIN_CHECK_EMAIL not set, skipping admin check\"; fi",
+    "check-admin": "tsx --tsconfig tsconfig.server.json check-admin.ts",
+    "set-admin": "tsx --tsconfig tsconfig.server.json set-admin.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^8.2.0",
+    "@fastify/jwt": "^7.2.4",
+    "fastify": "^4.24.0",
+    "pg": "^8.11.1",
+    "redis": "^4.6.12",
+    "bull": "^4.11.5",
+    "uuid": "^9.0.1",
+    "tsx": "^4.21.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.37",
+    "@types/uuid": "^9.0.7"
+  }
+}

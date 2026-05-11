@@ -1,0 +1,44 @@
+name: Enforce main branch protection
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  administration: write
+
+jobs:
+  enforce-main-branch-protection:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce branch protection on main
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const branch = 'main';
+            await github.rest.repos.updateBranchProtection({
+              owner,
+              repo,
+              branch,
+              required_status_checks: {
+                strict: true,
+                contexts: [
+                  'CI / Build, lint and test',
+                  'CI / End-to-end tests'
+                ]
+              },
+              enforce_admins: true,
+              required_pull_request_reviews: {
+                dismiss_stale_reviews: true,
+                require_code_owner_reviews: false,
+                required_approving_review_count: 1
+              },
+              allow_force_pushes: false,
+              allow_deletions: false
+            });
