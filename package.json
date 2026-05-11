@@ -28,7 +28,7 @@
     "isomorphic-fetch": "^3.0.0",
     "katex": "^0.16.45",
     "lunr": "^2.3.9",
-    "next": "^15.0.0",
+    "next": "^16.2.6",
     "next-auth": "^4.24.14",
     "pg": "^8.20.0",
     "pixi-live2d-display": "^0.4.0",
