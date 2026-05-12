@@ -15,20 +15,14 @@ let redisClient: any = null;
 
 /**
  * Initialize Redis client if available
+ * Must be called with a pre-initialized Redis client from server-side code
  */
 export async function initCSRFRedis(client?: any): Promise<void> {
   if (client) {
     redisClient = client;
     logger.info('[CSRF] Redis client initialized');
   } else {
-    // Try to import and initialize
-    try {
-      const { initRedisClient } = await import('./redis-client');
-      redisClient = await initRedisClient();
-      logger.info('[CSRF] Redis client initialized');
-    } catch (error) {
-      logger.warn('[CSRF] Redis initialization failed, falling back to in-memory store', { error });
-    }
+    logger.info('[CSRF] No Redis client provided, using in-memory store');
   }
 }
 
