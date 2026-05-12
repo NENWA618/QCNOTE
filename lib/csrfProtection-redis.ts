@@ -198,7 +198,7 @@ function cleanupExpiredTokens(): void {
   });
 
   if (keysToDelete.length > 0) {
-    logger.debug(`[CSRF] Cleaned up ${keysToDelete.length} expired tokens`);
+    logger.info(`[CSRF] Cleaned up ${keysToDelete.length} expired tokens`);
   }
 }
 
