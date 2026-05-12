@@ -4,7 +4,7 @@
  */
 import IDB from '../idb';
 import logger from '../logger';
-import { safeAsync } from '../errorHandler';
+import { safeAsync, safeSync } from '../errorHandler';
 
 export interface IStorageAdapter {
   get<T>(key: string): Promise<T | null>;
@@ -20,7 +20,7 @@ export interface IStorageAdapter {
 class LocalStorageAdapter implements IStorageAdapter {
   get<T>(key: string): Promise<T | null> {
     return Promise.resolve(
-      safeAsync(
+      safeSync(
         () => {
           const raw = localStorage.getItem(key);
           return raw ? (JSON.parse(raw) as T) : null;
@@ -33,7 +33,7 @@ class LocalStorageAdapter implements IStorageAdapter {
 
   set<T>(key: string, value: T): Promise<boolean> {
     return Promise.resolve(
-      safeAsync(
+      safeSync(
         () => {
           localStorage.setItem(key, JSON.stringify(value));
           return true;
@@ -45,7 +45,7 @@ class LocalStorageAdapter implements IStorageAdapter {
   }
 
   async remove(key: string): Promise<boolean> {
-    return safeAsync(
+    return safeSync(
       () => {
         localStorage.removeItem(key);
         return true;
@@ -56,7 +56,7 @@ class LocalStorageAdapter implements IStorageAdapter {
   }
 
   async clear(): Promise<boolean> {
-    return safeAsync(
+    return safeSync(
       () => {
         localStorage.clear();
         return true;
