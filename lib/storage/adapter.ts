@@ -111,7 +111,7 @@ class IndexedDBAdapter implements IStorageAdapter {
   async clear(): Promise<boolean> {
     return safeAsync(
       async () => {
-        await IDB.clear();
+        await IDB.clearStore();
         return true;
       },
       false,
