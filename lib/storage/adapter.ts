@@ -2,9 +2,9 @@
  * Storage Adapter Module
  * Abstracts localStorage and IndexedDB access patterns
  */
-import IDB from './idb';
-import logger from './logger';
-import { safeAsync } from './errorHandler';
+import IDB from '../idb';
+import logger from '../logger';
+import { safeAsync } from '../errorHandler';
 
 export interface IStorageAdapter {
   get<T>(key: string): Promise<T | null>;
