@@ -8,6 +8,7 @@ import 'katex/dist/katex.min.css';
 import { Inter } from 'next/font/google';
 import { initWindowStorage } from '../lib/storage';
 import { showNotification } from '../lib/ui';
+import { setupGlobalErrorHandlers } from '../lib/errorHandler';
 import ErrorBoundary from '../components/ErrorBoundary';
 import PushNotificationPrompt from '../components/PushNotificationPrompt';
 
@@ -21,6 +22,9 @@ export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     // 获取或创建全局 storage 实例（单例）
     if (typeof window === 'undefined') return;
+
+    // Initialize global error handlers (Phase 1 improvement)
+    setupGlobalErrorHandlers();
 
     // 初始化暗黑模式
     const savedTheme = localStorage.getItem('theme');
