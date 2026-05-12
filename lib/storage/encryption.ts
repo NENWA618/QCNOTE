@@ -67,7 +67,7 @@ async function deriveKey(passphrase: string, salt: Uint8Array): Promise<CryptoKe
  */
 export async function encryptText(plainText: string, passphrase: string): Promise<string> {
   try {
-    const encoder = new TextEncoding();
+    const encoder = new TextEncoder();
     const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
     const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
     const key = await deriveKey(passphrase, salt);
