@@ -147,7 +147,7 @@ export class ApiClient {
     const mergedHeaders = { ...this.defaultHeaders, ...headers };
 
     const makeRequest = async () => {
-      logger.debug(`[ApiClient] ${method} ${endpoint}`);
+      logger.info(`[ApiClient] ${method} ${endpoint}`);
 
       const response = await fetchWithTimeout(url, {
         method,
