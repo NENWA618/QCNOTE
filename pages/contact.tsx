@@ -88,7 +88,7 @@ const Contact: React.FC = () => {
               </p>
               <div className="mx-auto max-w-xs">
                 <Image
-                  src="/QR.png"
+                  src="/tngqr.png"
                   alt="TNG 收款二维码"
                   width={320}
                   height={320}
