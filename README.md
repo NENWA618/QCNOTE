@@ -3,10 +3,10 @@
 一个现代化、隐私优先的个人笔记应用，采用离线优先架构，具有强大的搜索功能、知识管理和社区功能。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Next.js](https://img.shields.io/badge/Next.js-15.0-black)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18.0-61dafb?logo=react)](https://react.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4-38b2ac?logo=tailwindcss)](https://tailwindcss.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2.6-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.2.0-blue)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.3.1-61dafb?logo=react)](https://react.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4.1-38b2ac?logo=tailwindcss)](https://tailwindcss.com/)
 
 ## ✨ 核心功能
 
@@ -147,10 +147,10 @@ REDIS_URL=redis://localhost:6379
 QCNOTE 采用现代化的前后端分离架构：
 
 ### 前端技术栈
-- **Next.js 15**: 构建高性能的 React 应用
-- **React 18**: 并发特性和 Hooks
-- **TypeScript**: 类型安全的开发体验
-- **Tailwind CSS**: 响应式 UI 设计
+- **Next.js 16.2.6**: 构建高性能的 React 应用
+- **React 18.3.1**: 并发特性和 Hooks
+- **TypeScript 5.2.0**: 类型安全的开发体验
+- **Tailwind CSS 3.4.1**: 响应式 UI 设计
 - **IndexedDB**: 客户端本地数据存储
 
 ### 搜索与智能
@@ -176,7 +176,7 @@ npm run build    # 生产构建
 npm run start    # 启动生产服务器
 npm run lint     # 代码检查
 npm test         # 运行单元测试
-npm run e2e      # 运行 E2E 测试
+npm run test:e2e # 运行 E2E 测试
 ```
 
 ### 项目结构
@@ -225,7 +225,7 @@ QCNOTE 使用多层次的测试策略：
 npm test
 
 # 端到端测试
-npm run e2e
+npm run test:e2e
 
 # 代码检查
 npm run lint
