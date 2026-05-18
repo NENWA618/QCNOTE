@@ -196,25 +196,7 @@ export class QCDb {
     const secrets = this.secretFields.get(store) ?? new Set();
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(record)) {
-      if (secrets.has(k) && typeof v === 'string') {
-        if (!isEncryptedFieldValue(v)) {
-          // 兼容旧数据：字段可能存储为明文，直接返回原值
-          out[k] = v;
-          continue;
-        }
-
-        try {
-          out[k] = await decryptField(v, this.cryptoKey);
-        } catch (error) {
-          console.warn(
-            `[QCDb.decryptRecord] failed to decrypt secret field ${store}.${k}; returning raw value`,
-            error,
-          );
-          out[k] = v;
-        }
-      } else {
-        out[k] = v;
-      }
+      out[k] = secrets.has(k) && typeof v === 'string' ? await encryptField(v, this.cryptoKey) : v;
     }
     return out;
   }
@@ -228,6 +210,11 @@ export class QCDb {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(record)) {
       if (secrets.has(k) && typeof v === 'string') {
+        if (!isEncryptedFieldValue(v)) {
+          out[k] = v;
+          continue;
+        }
+
         try {
           out[k] = await decryptField(v, this.cryptoKey);
         } catch (error) {
