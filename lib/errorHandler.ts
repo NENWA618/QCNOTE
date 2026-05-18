@@ -9,7 +9,7 @@ export class AppError extends Error {
     public code: string,
     public statusCode: number,
     public message: string,
-    public details?: Record<string, unknown>
+    public details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'AppError';
@@ -58,7 +58,7 @@ export class ConflictError extends AppError {
 export async function safeAsync<T>(
   fn: () => Promise<T>,
   fallback: T,
-  errorMessage?: string
+  errorMessage?: string,
 ): Promise<T> {
   try {
     return await fn();
@@ -72,11 +72,7 @@ export async function safeAsync<T>(
 /**
  * Safely execute a sync function with fallback
  */
-export function safeSync<T>(
-  fn: () => T,
-  fallback: T,
-  errorMessage?: string
-): T {
+export function safeSync<T>(fn: () => T, fallback: T, errorMessage?: string): T {
   try {
     return fn();
   } catch (error) {
@@ -93,7 +89,7 @@ export async function retryAsync<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
   delayMs: number = 1000,
-  exponentialBackoff: boolean = true
+  exponentialBackoff: boolean = true,
 ): Promise<T> {
   let lastError: Error | undefined;
 
@@ -102,13 +98,13 @@ export async function retryAsync<T>(
       return await fn();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      
+
       if (attempt < maxRetries - 1) {
         const delay = exponentialBackoff ? delayMs * Math.pow(2, attempt) : delayMs;
         logger.warn(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`, {
           error: lastError.message,
         });
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
@@ -184,7 +180,7 @@ export function formatErrorResponse(error: unknown) {
   };
 }
 
-export default {
+const errorHandlerExports = {
   AppError,
   ValidationError,
   NotFoundError,
@@ -197,3 +193,5 @@ export default {
   setupGlobalErrorHandlers,
   formatErrorResponse,
 };
+
+export default errorHandlerExports;

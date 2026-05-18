@@ -42,14 +42,14 @@ function generateSecureToken(): string {
     const array = new Uint8Array(TOKEN_LENGTH);
     window.crypto.getRandomValues(array);
     return Array.from(array)
-      .map(b => b.toString(16).padStart(2, '0'))
+      .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
   } else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
     // Node.js environment
     const array = new Uint8Array(TOKEN_LENGTH);
     crypto.getRandomValues(array);
     return Array.from(array)
-      .map(b => b.toString(16).padStart(2, '0'))
+      .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
   }
 
@@ -85,11 +85,7 @@ export async function generateCSRFToken(sessionId: string): Promise<string> {
   // Try Redis first
   if (redisClient) {
     try {
-      await retryAsync(
-        () => redisClient.setEx(key, TOKEN_EXPIRY_SECONDS, token),
-        2,
-        500
-      );
+      await retryAsync(() => redisClient.setEx(key, TOKEN_EXPIRY_SECONDS, token), 2, 500);
       logger.info('[CSRF] Token stored in Redis');
       return token;
     } catch (error) {
@@ -122,16 +118,12 @@ export async function validateCSRFToken(sessionId: string, token: string): Promi
       const storedToken = await safeAsync(
         () => redisClient.get(key),
         null,
-        '[CSRF] Redis token validation failed'
+        '[CSRF] Redis token validation failed',
       );
 
       if (storedToken && timingSafeEqual(storedToken, token)) {
         // Delete token after validation (single-use)
-        await safeAsync(
-          () => redisClient.del(key),
-          null,
-          '[CSRF] Failed to delete Redis token'
-        );
+        await safeAsync(() => redisClient.del(key), null, '[CSRF] Failed to delete Redis token');
         return true;
       }
 
@@ -169,11 +161,7 @@ export async function revokeCSRFToken(sessionId: string): Promise<void> {
 
   // Revoke from Redis
   if (redisClient) {
-    await safeAsync(
-      () => redisClient.del(key),
-      null,
-      '[CSRF] Failed to revoke Redis token'
-    );
+    await safeAsync(() => redisClient.del(key), null, '[CSRF] Failed to revoke Redis token');
   }
 
   // Revoke from in-memory store
@@ -193,7 +181,7 @@ function cleanupExpiredTokens(): void {
     }
   }
 
-  keysToDelete.forEach(sessionId => {
+  keysToDelete.forEach((sessionId) => {
     inMemoryTokenStore.delete(sessionId);
   });
 
@@ -223,7 +211,7 @@ export function getCSRFTokenStats() {
   };
 }
 
-export default {
+const csrfProtectionRedisExports = {
   initCSRFRedis,
   generateCSRFToken,
   validateCSRFToken,
@@ -231,3 +219,5 @@ export default {
   startCSRFTokenCleanup,
   getCSRFTokenStats,
 };
+
+export default csrfProtectionRedisExports;

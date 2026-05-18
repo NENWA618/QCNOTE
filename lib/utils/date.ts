@@ -50,8 +50,10 @@ export function estimateReadingTime(text: string): number {
   return minutes > 0 ? minutes : 1;
 }
 
-export default {
+const dateUtils = {
   formatDate,
   getRelativeTime,
   estimateReadingTime,
 };
+
+export default dateUtils;

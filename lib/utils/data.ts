@@ -16,13 +16,13 @@ export function generateId(): string {
  */
 export function getWordFrequency(
   texts: string[],
-  limit: number = 20
+  limit: number = 20,
 ): Array<{ word: string; count: number }> {
   const freq: Record<string, number> = {};
 
-  texts.forEach(text => {
+  texts.forEach((text) => {
     const words = text.toLowerCase().match(/[\u4e00-\u9fa5\w]+/g) || [];
-    words.forEach(word => {
+    words.forEach((word) => {
       if (word.length > 1) {
         freq[word] = (freq[word] || 0) + 1;
       }
@@ -77,9 +77,11 @@ export function getColorPalette(): string[] {
   ];
 }
 
-export default {
+const dataUtils = {
   generateId,
   getWordFrequency,
   sortNotes,
   getColorPalette,
 };
+
+export default dataUtils;

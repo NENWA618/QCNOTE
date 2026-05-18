@@ -35,7 +35,7 @@ const DEFAULT_RETRY_DELAY = 1000;
 async function fetchWithTimeout(
   url: string,
   options: RequestInit,
-  timeout: number = DEFAULT_TIMEOUT
+  timeout: number = DEFAULT_TIMEOUT,
 ): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -111,8 +111,9 @@ export class ApiClient {
     }
 
     try {
-      const data =
-        contentType?.includes('application/json') ? await response.json() : await response.text();
+      const data = contentType?.includes('application/json')
+        ? await response.json()
+        : await response.text();
       return { ok: true, data };
     } catch (error) {
       logger.error('[ApiClient] Failed to parse response', { error });
@@ -132,7 +133,7 @@ export class ApiClient {
    */
   async request<T = any>(
     endpoint: string,
-    options: ApiRequestOptions = {}
+    options: ApiRequestOptions = {},
   ): Promise<ApiResponse<T>> {
     const {
       method = 'GET',
@@ -149,11 +150,15 @@ export class ApiClient {
     const makeRequest = async () => {
       logger.info(`[ApiClient] ${method} ${endpoint}`);
 
-      const response = await fetchWithTimeout(url, {
-        method,
-        headers: mergedHeaders,
-        body: body ? JSON.stringify(body) : undefined,
-      }, timeout);
+      const response = await fetchWithTimeout(
+        url,
+        {
+          method,
+          headers: mergedHeaders,
+          body: body ? JSON.stringify(body) : undefined,
+        },
+        timeout,
+      );
 
       return this.handleResponse<T>(response);
     };
@@ -186,7 +191,7 @@ export class ApiClient {
   async post<T = any>(
     endpoint: string,
     body?: any,
-    options?: ApiRequestOptions
+    options?: ApiRequestOptions,
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'POST', body });
   }
@@ -197,7 +202,7 @@ export class ApiClient {
   async put<T = any>(
     endpoint: string,
     body?: any,
-    options?: ApiRequestOptions
+    options?: ApiRequestOptions,
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'PUT', body });
   }
@@ -208,7 +213,7 @@ export class ApiClient {
   async patch<T = any>(
     endpoint: string,
     body?: any,
-    options?: ApiRequestOptions
+    options?: ApiRequestOptions,
   ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { ...options, method: 'PATCH', body });
   }
@@ -223,11 +228,7 @@ export class ApiClient {
   /**
    * Safe request with fallback
    */
-  async safeGet<T = any>(
-    endpoint: string,
-    fallback: T,
-    options?: ApiRequestOptions
-  ): Promise<T> {
+  async safeGet<T = any>(endpoint: string, fallback: T, options?: ApiRequestOptions): Promise<T> {
     const response = await this.get<T>(endpoint, options);
     return response.ok && response.data ? response.data : fallback;
   }
@@ -239,7 +240,7 @@ export class ApiClient {
     endpoint: string,
     body?: any,
     fallback?: T,
-    options?: ApiRequestOptions
+    options?: ApiRequestOptions,
   ): Promise<T | undefined> {
     const response = await this.post<T>(endpoint, body, options);
     return response.ok && response.data ? response.data : fallback;
@@ -262,8 +263,10 @@ export function getApiClient(): ApiClient {
   return apiClient;
 }
 
-export default {
+const apiClientExports = {
   ApiClient,
   initApiClient,
   getApiClient,
 };
+
+export default apiClientExports;

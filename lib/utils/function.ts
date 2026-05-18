@@ -8,7 +8,7 @@
  */
 export function debounce<T extends (...args: unknown[]) => void>(
   func: T,
-  wait: number = 300
+  wait: number = 300,
 ): (...args: Parameters<T>) => void {
   let timeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -28,7 +28,7 @@ export function debounce<T extends (...args: unknown[]) => void>(
  */
 export function throttle<T extends (...args: unknown[]) => void>(
   func: T,
-  limit: number = 300
+  limit: number = 300,
 ): (...args: Parameters<T>) => void {
   let inThrottle = false;
 
@@ -75,10 +75,12 @@ export function memoize<T extends (...args: any[]) => any>(fn: T): T {
   }) as T;
 }
 
-export default {
+const functionUtils = {
   debounce,
   throttle,
   compose,
   pipe,
   memoize,
 };
+
+export default functionUtils;

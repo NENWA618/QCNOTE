@@ -82,7 +82,7 @@ export function matchesSingleToken(note: NoteItem, token: SearchToken): boolean 
       case 'content':
         return note.content.toLowerCase().includes(searchValue);
       case 'tag':
-        return note.tags.some(tag => tag.toLowerCase().includes(searchValue));
+        return note.tags.some((tag) => tag.toLowerCase().includes(searchValue));
       case 'category':
         return note.category.toLowerCase().includes(searchValue);
       case 'date':
@@ -95,7 +95,7 @@ export function matchesSingleToken(note: NoteItem, token: SearchToken): boolean 
     return (
       note.title.toLowerCase().includes(searchValue) ||
       note.content.toLowerCase().includes(searchValue) ||
-      note.tags.some(tag => tag.toLowerCase().includes(searchValue)) ||
+      note.tags.some((tag) => tag.toLowerCase().includes(searchValue)) ||
       note.category.toLowerCase().includes(searchValue)
     );
   }
@@ -121,7 +121,7 @@ export function matchesSearchTokens(note: NoteItem, tokens: SearchToken[]): bool
     }
   }
 
-  return hasAndMatch && (tokens.some(t => t.operator === 'OR') ? hasOrMatch : true);
+  return hasAndMatch && (tokens.some((t) => t.operator === 'OR') ? hasOrMatch : true);
 }
 
 /**
@@ -131,10 +131,10 @@ export function searchNotes(notes: NoteItem[], query: string): NoteItem[] {
   if (!query.trim()) return notes;
 
   const tokens = parseSearchQuery(query);
-  return notes.filter(note => matchesSearchTokens(note, tokens));
+  return notes.filter((note) => matchesSearchTokens(note, tokens));
 }
 
-export default {
+const searchUtils = {
   parseSearchQuery,
   parseSingleToken,
   matchesDateRange,
@@ -142,3 +142,5 @@ export default {
   matchesSearchTokens,
   searchNotes,
 };
+
+export default searchUtils;

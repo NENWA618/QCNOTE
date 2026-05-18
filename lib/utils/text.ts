@@ -72,10 +72,12 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export default {
+const textUtils = {
   truncateText,
   escapeHtml,
   getTextSummary,
   fuzzySearch,
   copyToClipboard,
 };
+
+export default textUtils;

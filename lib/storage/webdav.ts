@@ -46,7 +46,7 @@ export async function createWebDAVRequest(
   url: string,
   config: WebDAVConfig,
   body?: string,
-  timeout: number = DEFAULT_REQUEST_TIMEOUT
+  timeout: number = DEFAULT_REQUEST_TIMEOUT,
 ): Promise<Response> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/octet-stream',
@@ -80,7 +80,7 @@ export async function pushNotesToWebDAV(
   notes: NoteItem[],
   config: WebDAVConfig,
   encrypt: boolean = true,
-  batchSize: number = DEFAULT_BATCH_SIZE
+  batchSize: number = DEFAULT_BATCH_SIZE,
 ): Promise<{ success: boolean; failedNotes: string[] }> {
   if (!validateWebDAVConfig(config)) {
     return { success: false, failedNotes: [] };
@@ -97,7 +97,7 @@ export async function pushNotesToWebDAV(
     payload = await safeAsync(
       () => encryptText(payload, config.encryptionKey!),
       payload,
-      '[WebDAV] Encryption failed, using plaintext'
+      '[WebDAV] Encryption failed, using plaintext',
     );
   }
 
@@ -106,14 +106,14 @@ export async function pushNotesToWebDAV(
     const response = await retryAsync(
       () => createWebDAVRequest('PUT', url, config, payload),
       3,
-      1000
+      1000,
     );
 
     if (!response.ok) {
       throw new AppError(
         'WEBDAV_PUSH_FAILED',
         response.status,
-        `WebDAV push failed: ${response.statusText}`
+        `WebDAV push failed: ${response.statusText}`,
       );
     }
 
@@ -121,7 +121,7 @@ export async function pushNotesToWebDAV(
     return { success: true, failedNotes: [] };
   } catch (error) {
     logger.error('[WebDAV] Push failed', { error });
-    return { success: false, failedNotes: notes.map(n => n.id) };
+    return { success: false, failedNotes: notes.map((n) => n.id) };
   }
 }
 
@@ -130,7 +130,7 @@ export async function pushNotesToWebDAV(
  */
 export async function pullNotesFromWebDAV(
   config: WebDAVConfig,
-  decrypt: boolean = true
+  decrypt: boolean = true,
 ): Promise<{ notes: NoteItem[]; success: boolean }> {
   if (!validateWebDAVConfig(config)) {
     return { notes: [], success: false };
@@ -141,17 +141,13 @@ export async function pullNotesFromWebDAV(
   const url = normalizeWebDAVUrl(config);
 
   try {
-    const response = await retryAsync(
-      () => createWebDAVRequest('GET', url, config),
-      3,
-      1000
-    );
+    const response = await retryAsync(() => createWebDAVRequest('GET', url, config), 3, 1000);
 
     if (!response.ok) {
       throw new AppError(
         'WEBDAV_PULL_FAILED',
         response.status,
-        `WebDAV pull failed: ${response.statusText}`
+        `WebDAV pull failed: ${response.statusText}`,
       );
     }
 
@@ -161,7 +157,7 @@ export async function pullNotesFromWebDAV(
       content = await safeAsync(
         () => decryptText(content, config.encryptionKey!),
         content,
-        '[WebDAV] Decryption failed, using as-is'
+        '[WebDAV] Decryption failed, using as-is',
       );
     }
 
@@ -184,7 +180,7 @@ export async function pullNotesFromWebDAV(
 export async function syncWithWebDAV(
   localNotes: NoteItem[],
   config: WebDAVConfig,
-  direction: 'push' | 'pull' | 'both' = 'both'
+  direction: 'push' | 'pull' | 'both' = 'both',
 ): Promise<{
   mergedNotes: NoteItem[];
   conflicts: Array<{ local: NoteItem; remote: NoteItem }>;
@@ -199,31 +195,22 @@ export async function syncWithWebDAV(
     if (direction === 'pull' || direction === 'both') {
       const { notes: remoteNotes, success } = await pullNotesFromWebDAV(
         config,
-        !!config.encryptionKey
+        !!config.encryptionKey,
       );
 
       if (!success) {
         throw new AppError('SYNC_FAILED', 500, 'Failed to pull from WebDAV');
       }
 
-      const strategy =
-        (config.conflictStrategy as any) || 'manual';
-      const { merged, conflicts: detected } = mergeNoteLists(
-        localNotes,
-        remoteNotes,
-        strategy
-      );
+      const strategy = (config.conflictStrategy as any) || 'manual';
+      const { merged, conflicts: detected } = mergeNoteLists(localNotes, remoteNotes, strategy);
 
       mergedNotes = merged;
       conflicts.push(...detected);
     }
 
     if (direction === 'push' || direction === 'both') {
-      const { success } = await pushNotesToWebDAV(
-        mergedNotes,
-        config,
-        !!config.encryptionKey
-      );
+      const { success } = await pushNotesToWebDAV(mergedNotes, config, !!config.encryptionKey);
 
       if (!success) {
         throw new AppError('SYNC_FAILED', 500, 'Failed to push to WebDAV');
@@ -231,7 +218,7 @@ export async function syncWithWebDAV(
     }
 
     logger.info(
-      `[WebDAV] Sync completed: ${mergedNotes.length} notes, ${conflicts.length} conflicts`
+      `[WebDAV] Sync completed: ${mergedNotes.length} notes, ${conflicts.length} conflicts`,
     );
     return { mergedNotes, conflicts, success: true };
   } catch (error) {
@@ -240,7 +227,7 @@ export async function syncWithWebDAV(
   }
 }
 
-export default {
+const webdavExports = {
   validateWebDAVConfig,
   normalizeWebDAVUrl,
   createWebDAVRequest,
@@ -248,3 +235,5 @@ export default {
   pullNotesFromWebDAV,
   syncWithWebDAV,
 };
+
+export default webdavExports;

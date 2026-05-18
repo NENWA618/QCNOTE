@@ -41,13 +41,13 @@ async function getIndexMetadata(): Promise<IndexMetadata> {
   const metadata = await safeAsync(
     () => IDB.getItem<IndexMetadata>(INDEX_METADATA_KEY),
     null,
-    '[Indexer] Failed to load metadata'
+    '[Indexer] Failed to load metadata',
   );
 
   if (metadata) {
     cachedMetadata = {
       ...metadata,
-      indexedNotes: new Set(Array.from(metadata.indexedNotes as any || [])),
+      indexedNotes: new Set(Array.from((metadata.indexedNotes as any) || [])),
     };
     return cachedMetadata;
   }
@@ -74,18 +74,15 @@ async function saveIndexMetadata(metadata: IndexMetadata): Promise<void> {
   await safeAsync(
     () => IDB.setItem(INDEX_METADATA_KEY, toSave),
     null,
-    '[Indexer] Failed to save metadata'
+    '[Indexer] Failed to save metadata',
   );
 }
 
 /**
  * Identify changed notes
  */
-function getChangedNotes(
-  notes: NoteItem[],
-  previousHashes: Record<string, number>
-): NoteItem[] {
-  return notes.filter(note => {
+function getChangedNotes(notes: NoteItem[], previousHashes: Record<string, number>): NoteItem[] {
+  return notes.filter((note) => {
     const currentHash = note.updatedAt;
     const previousHash = previousHashes[note.id];
     return previousHash === undefined || previousHash !== currentHash;
@@ -142,7 +139,7 @@ export async function buildIndex(notes: NoteItem[]): Promise<lunr.Index> {
     version: 1,
     lastUpdateTime: Date.now(),
     totalNotes: notes.length,
-    indexedNotes: new Set(notes.map(n => n.id)),
+    indexedNotes: new Set(notes.map((n) => n.id)),
   };
   await saveIndexMetadata(metadata);
 
@@ -165,7 +162,7 @@ export async function buildIndex(notes: NoteItem[]): Promise<lunr.Index> {
  */
 export async function updateIndexIncremental(
   notes: NoteItem[],
-  previousIndex?: lunr.Index
+  previousIndex?: lunr.Index,
 ): Promise<lunr.Index> {
   logger.info('[Indexer] Updating index incrementally for', notes.length, 'notes');
 
@@ -174,7 +171,7 @@ export async function updateIndexIncremental(
   const noteHashes: Record<string, number> = {};
 
   // Get only changed notes
-  const changedNotes = notes.filter(note => {
+  const changedNotes = notes.filter((note) => {
     const previousHash = metadata.indexedNotes.has(note.id) ? note.updatedAt : undefined;
     noteHashes[note.id] = note.updatedAt;
     return previousHash === undefined || previousHash !== note.updatedAt;
@@ -194,7 +191,7 @@ export async function updateIndexIncremental(
     const indexData = await safeAsync(
       () => IDB.getItem<Record<string, unknown>>(INDEX_KEY),
       null,
-      '[Indexer] Failed to load existing index'
+      '[Indexer] Failed to load existing index',
     );
 
     if (indexData) {
@@ -224,7 +221,7 @@ export async function updateIndexIncremental(
   // Update metadata
   metadata.lastUpdateTime = Date.now();
   metadata.totalNotes = notes.length;
-  metadata.indexedNotes = new Set(notes.map(n => n.id));
+  metadata.indexedNotes = new Set(notes.map((n) => n.id));
   await saveIndexMetadata(metadata);
 
   // Update cache
@@ -251,7 +248,7 @@ export async function loadIndex(): Promise<lunr.Index | null> {
     const data = await safeAsync(
       () => IDB.getItem<Record<string, unknown>>(INDEX_KEY),
       null,
-      '[Indexer] Failed to load index'
+      '[Indexer] Failed to load index',
     );
 
     if (data) {
@@ -277,7 +274,7 @@ export async function loadVectors(): Promise<Record<string, Vector>> {
   const vectors = await safeAsync(
     () => IDB.getItem<Record<string, Vector>>(VECTOR_KEY),
     {},
-    '[Indexer] Failed to load vectors'
+    '[Indexer] Failed to load vectors',
   );
 
   cachedVectors = vectors || {};
@@ -297,7 +294,7 @@ export async function loadSentiments(): Promise<
   const sentiments = await safeAsync(
     () => IDB.getItem<Record<string, { score: number; comparative: number }>>(SENTIMENT_KEY),
     {},
-    '[Indexer] Failed to load sentiments'
+    '[Indexer] Failed to load sentiments',
   );
 
   cachedSentiments = sentiments || {};
@@ -336,7 +333,7 @@ export function getIndexStats() {
   };
 }
 
-export default {
+const indexerExports = {
   buildIndex,
   updateIndexIncremental,
   loadIndex,
@@ -345,3 +342,5 @@ export default {
   clearIndexCache,
   getIndexStats,
 };
+
+export default indexerExports;

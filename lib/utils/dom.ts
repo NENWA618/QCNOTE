@@ -54,19 +54,18 @@ export function isInViewport(element: Element): boolean {
 /**
  * Scroll element into view
  */
-export function scrollIntoView(
-  element: Element,
-  options?: ScrollIntoViewOptions
-): void {
+export function scrollIntoView(element: Element, options?: ScrollIntoViewOptions): void {
   if (element && element.scrollIntoView) {
     element.scrollIntoView(options);
   }
 }
 
-export default {
+const domUtils = {
   prefersDarkMode,
   prefersReducedMotion,
   getViewportSize,
   isInViewport,
   scrollIntoView,
 };
+
+export default domUtils;

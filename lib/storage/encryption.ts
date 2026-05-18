@@ -44,7 +44,7 @@ async function deriveKey(passphrase: string, salt: Uint8Array): Promise<CryptoKe
     encoder.encode(passphrase),
     'PBKDF2',
     false,
-    ['deriveKey']
+    ['deriveKey'],
   );
 
   return crypto.subtle.deriveKey(
@@ -57,7 +57,7 @@ async function deriveKey(passphrase: string, salt: Uint8Array): Promise<CryptoKe
     baseKey,
     { name: ENCRYPTION_ALGORITHM, length: 256 },
     false,
-    ['encrypt', 'decrypt']
+    ['encrypt', 'decrypt'],
   );
 }
 
@@ -75,7 +75,7 @@ export async function encryptText(plainText: string, passphrase: string): Promis
     const encrypted = await crypto.subtle.encrypt(
       { name: ENCRYPTION_ALGORITHM, iv },
       key,
-      encoder.encode(plainText)
+      encoder.encode(plainText),
     );
 
     // Combine salt + iv + ciphertext
@@ -109,7 +109,7 @@ export async function decryptText(encryptedBase64: string, passphrase: string): 
     const decrypted = await crypto.subtle.decrypt(
       { name: ENCRYPTION_ALGORITHM, iv },
       key,
-      ciphertext
+      ciphertext,
     );
 
     return decoder.decode(decrypted);
@@ -125,12 +125,12 @@ export async function decryptText(encryptedBase64: string, passphrase: string): 
 export async function safeEncrypt(
   plainText: string,
   passphrase: string,
-  fallback: string = plainText
+  fallback: string = plainText,
 ): Promise<string> {
   return safeAsync(
     () => encryptText(plainText, passphrase),
     fallback,
-    '[Encryption] Safe encrypt failed'
+    '[Encryption] Safe encrypt failed',
   );
 }
 
@@ -140,16 +140,16 @@ export async function safeEncrypt(
 export async function safeDecrypt(
   encryptedBase64: string,
   passphrase: string,
-  fallback: string = encryptedBase64
+  fallback: string = encryptedBase64,
 ): Promise<string> {
   return safeAsync(
     () => decryptText(encryptedBase64, passphrase),
     fallback,
-    '[Encryption] Safe decrypt failed'
+    '[Encryption] Safe decrypt failed',
   );
 }
 
-export default {
+const encryptionExports = {
   encryptText,
   decryptText,
   safeEncrypt,
@@ -157,3 +157,5 @@ export default {
   arrayBufferToBase64,
   base64ToArrayBuffer,
 };
+
+export default encryptionExports;

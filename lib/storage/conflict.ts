@@ -169,9 +169,11 @@ export class ConflictManager {
   }
 }
 
-export default {
+const conflictExports = {
   detectConflict,
   resolveConflict,
   mergeNoteLists,
   ConflictManager,
 };
+
+export default conflictExports;
