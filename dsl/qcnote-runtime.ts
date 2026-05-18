@@ -84,8 +84,12 @@ export async function deriveKey(
     false,
     ['deriveKey'],
   );
+  const saltSource =
+    salt.buffer instanceof ArrayBuffer
+      ? salt.buffer.slice(salt.byteOffset, salt.byteOffset + salt.byteLength)
+      : new Uint8Array(salt).buffer;
   const key = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 100_000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: saltSource, iterations: 100_000, hash: 'SHA-256' },
     rawKey,
     { name: ALGO, length: KEY_LEN },
     false,

@@ -76,10 +76,10 @@ export interface NoteConflict {
 
 export class NoteStorage {
   storageKeyPrefix = 'QCNOTE';
-  storageKey: string;
-  settingsKey: string;
-  webdavConfigKey: string;
-  conflictsKey: string;
+  storageKey!: string;
+  settingsKey!: string;
+  webdavConfigKey!: string;
+  conflictsKey!: string;
   useIndexedDB: boolean;
   currentUserId: string | null;
   useEncryption: boolean;
@@ -458,7 +458,7 @@ export class NoteStorage {
     const currentNotes = (await this.getDataAsync()) || [];
     const mergedNotes = [
       ...currentNotes,
-      ...guestNotes.map((note) => ({ ...note, ownerId: this.currentUserId })),
+      ...guestNotes.map((note) => ({ ...note, ownerId: this.currentUserId ?? undefined })),
     ];
 
     await this.setDataAsync(mergedNotes);

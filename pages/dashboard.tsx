@@ -85,9 +85,10 @@ const Dashboard: React.FC = () => {
     loadNotes();
   }, []);
 
+  const userId = (session?.user as { id?: string } | undefined)?.id || null;
+
   useEffect(() => {
     if (!storageRef.current) return;
-    const userId = (session?.user as { id?: string } | undefined)?.id || null;
 
     const updateUserStorage = async () => {
       await storageRef.current?.setCurrentUser(userId);
@@ -98,7 +99,7 @@ const Dashboard: React.FC = () => {
     };
 
     updateUserStorage();
-  }, [session?.user?.id]);
+  }, [userId]);
 
   // Auto-sync effect
   useEffect(() => {
