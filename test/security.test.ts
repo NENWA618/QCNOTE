@@ -28,10 +28,10 @@ describe('Security Tests', () => {
     it('should expire tokens after timeout', async () => {
       const { generateCSRFToken, validateCSRFToken } = await import('../lib/csrfProtection');
       const token = generateCSRFToken('session1');
-      
+
       // Simulate token expiration by waiting
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       // Token should still be valid within expiry window
       expect(validateCSRFToken('session1', token)).toBe(true);
     });
@@ -47,25 +47,22 @@ describe('Security Tests', () => {
       ];
 
       // These should be sanitized by rehype-sanitize in renderMarkdown
-      maliciousInputs.forEach(input => {
+      maliciousInputs.forEach((input) => {
         // In a real test, you'd render and check the output
         expect(input.length).toBeGreaterThan(0);
       });
     });
 
     it('should validate URLs', () => {
-      const validUrls = [
-        'https://example.com',
-        'http://localhost:3000',
-      ];
-      
+      const validUrls = ['https://example.com', 'http://localhost:3000'];
+
       const invalidUrls = [
         'javascript:alert(1)',
         'data:text/html,<script>alert(1)</script>',
         '//example.com', // Protocol-relative
       ];
 
-      validUrls.forEach(url => {
+      validUrls.forEach((url) => {
         try {
           new URL(url);
           expect(true).toBe(true);
@@ -74,7 +71,7 @@ describe('Security Tests', () => {
         }
       });
 
-      invalidUrls.forEach(url => {
+      invalidUrls.forEach((url) => {
         try {
           if (url.startsWith('javascript:') || url.startsWith('data:')) {
             throw new Error('Invalid protocol');
@@ -91,14 +88,22 @@ describe('Security Tests', () => {
     it('should encrypt and decrypt text', async () => {
       const { NoteStorage } = await import('../lib/storage');
       const storage = new NoteStorage();
-      
+
       const plaintext = 'This is a secret password';
       const passphrase = 'test-passphrase';
-      
+
       // Note: These are private methods, so we test indirectly
       // through WebDAV config encryption
       expect(plaintext.length).toBeGreaterThan(0);
       expect(passphrase.length).toBeGreaterThan(0);
+    });
+
+    it('should detect encrypted field values and accept plaintext secrets', async () => {
+      const { isEncryptedFieldValue, getStoredSalt } = await import('../dsl/qcnote-runtime');
+      expect(isEncryptedFieldValue('YWJjZGVm.Z2hpamts')).toBe(true);
+      expect(isEncryptedFieldValue('plain text value')).toBe(false);
+      expect(isEncryptedFieldValue('not.base64.string!')).toBe(false);
+      expect(getStoredSalt('NON_EXISTENT_DB')).toBeNull();
     });
   });
 

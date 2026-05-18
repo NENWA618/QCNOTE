@@ -108,6 +108,15 @@ async function encryptField(value: unknown, key: CryptoKey): Promise<string> {
   return b64(iv) + '.' + b64(cipher);
 }
 
+export function isEncryptedFieldValue(encoded: string): boolean {
+  return /^[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+$/.test(encoded);
+}
+
+export function getStoredSalt(dbName: string): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  return localStorage.getItem(`qcnote:${dbName}:salt`);
+}
+
 async function decryptField(encoded: string, key: CryptoKey): Promise<unknown> {
   const [ivB64, cipherB64] = encoded.split('.');
   const fromB64 = (s: string) =>
@@ -187,7 +196,25 @@ export class QCDb {
     const secrets = this.secretFields.get(store) ?? new Set();
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(record)) {
-      out[k] = secrets.has(k) ? await encryptField(v, this.cryptoKey) : v;
+      if (secrets.has(k) && typeof v === 'string') {
+        if (!isEncryptedFieldValue(v)) {
+          // 兼容旧数据：字段可能存储为明文，直接返回原值
+          out[k] = v;
+          continue;
+        }
+
+        try {
+          out[k] = await decryptField(v, this.cryptoKey);
+        } catch (error) {
+          console.warn(
+            `[QCDb.decryptRecord] failed to decrypt secret field ${store}.${k}; returning raw value`,
+            error,
+          );
+          out[k] = v;
+        }
+      } else {
+        out[k] = v;
+      }
     }
     return out;
   }
@@ -200,7 +227,16 @@ export class QCDb {
     const secrets = this.secretFields.get(store) ?? new Set();
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(record)) {
-      out[k] = secrets.has(k) && typeof v === 'string' ? await decryptField(v, this.cryptoKey) : v;
+      if (secrets.has(k) && typeof v === 'string') {
+        try {
+          out[k] = await decryptField(v, this.cryptoKey);
+        } catch (error) {
+          console.warn(`[QCDb.decryptRecord] failed to decrypt ${store}.${k}`, error);
+          out[k] = v;
+        }
+      } else {
+        out[k] = v;
+      }
     }
     return out;
   }
