@@ -41,7 +41,7 @@
     "react-window-infinite-loader": "^2.0.1",
     "redis": "^5.12.1",
     "rehype-katex": "^7.0.1",
-    "rehype-sanitize": "^5.0.1",
+    "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "sentiment": "^5.0.1",
