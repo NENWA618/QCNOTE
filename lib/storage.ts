@@ -2,6 +2,7 @@ import Utils from './utils';
 import IDB from './idb';
 import logger from './logger';
 import Indexer from './indexer';
+import { QCRuntime, QCDb, QCStoreSchema } from '../dsl/qcnote-runtime';
 
 export interface NoteVersion {
   versionId: string;
@@ -31,6 +32,7 @@ export interface NoteItem {
   versions?: NoteVersion[];
   isDeleted?: boolean;
   deletedAt?: number;
+  ownerId?: string;
 }
 
 export interface Stats {
@@ -73,18 +75,51 @@ export interface NoteConflict {
 }
 
 export class NoteStorage {
+  storageKeyPrefix = 'QCNOTE';
   storageKey: string;
   settingsKey: string;
   webdavConfigKey: string;
   conflictsKey: string;
   useIndexedDB: boolean;
+  currentUserId: string | null;
+  useEncryption: boolean;
+  currentEncryptionKey: string | null;
+  encryptionSecretKeyPrefix = 'QCNOTE_USER_SECRET';
+
+  private readonly noteStoreSchema: QCStoreSchema = {
+    name: 'notes',
+    keyField: 'id',
+    keyAuto: false,
+    fields: [
+      { name: 'id', type: 'str', indexed: true, secret: false },
+      { name: 'title', type: 'str', indexed: false, secret: true },
+      { name: 'content', type: 'str', indexed: false, secret: true },
+      { name: 'category', type: 'str', indexed: true, secret: false },
+      { name: 'tags', type: 'json', indexed: false, secret: false },
+      { name: 'color', type: 'str', indexed: false, secret: false },
+      { name: 'isFavorite', type: 'bool', indexed: false, secret: false },
+      { name: 'isArchived', type: 'bool', indexed: false, secret: false },
+      { name: 'createdAt', type: 'num', indexed: false, secret: false },
+      { name: 'updatedAt', type: 'num', indexed: false, secret: false },
+      { name: 'links', type: 'json', indexed: false, secret: false },
+      { name: 'backlinks', type: 'json', indexed: false, secret: false },
+      { name: 'versions', type: 'json', indexed: false, secret: false },
+      { name: 'isDeleted', type: 'bool', indexed: false, secret: false },
+      { name: 'deletedAt', type: 'num', indexed: false, secret: false },
+      { name: 'ownerId', type: 'str', indexed: true, secret: false },
+    ],
+  };
+
+  private notesDb?: QCDb | null;
+  private notesDbName: string | null = null;
+  private notesDbOpenFailed = false;
 
   constructor() {
-    this.storageKey = 'QCNOTE_STORAGE';
-    this.settingsKey = 'QCNOTE_SETTINGS';
-    this.webdavConfigKey = 'QCNOTE_WEBDAV_CONFIG';
-    this.conflictsKey = 'QCNOTE_CONFLICTS';
+    this.currentUserId = null;
+    this.useEncryption = false;
+    this.currentEncryptionKey = null;
     this.useIndexedDB = false;
+    this.updateNamespacedKeys();
     this.init();
     // 自动检查 IndexedDB 是否可用
     this.detectIndexedDB();
@@ -93,7 +128,9 @@ export class NoteStorage {
   private _warnSyncUsage(method: string) {
     if (typeof window !== 'undefined') {
       // keep message concise to aid debugging during migration
-      console.warn(`[NoteStorage] Deprecated sync method used: ${method}. Prefer using the async variant (e.g. ${method}Async).`);
+      console.warn(
+        `[NoteStorage] Deprecated sync method used: ${method}. Prefer using the async variant (e.g. ${method}Async).`,
+      );
     }
   }
 
@@ -109,6 +146,24 @@ export class NoteStorage {
     } catch (e) {
       // IndexedDB 不可用或出错，保持 useIndexedDB = false
     }
+  }
+
+  private sanitizeUserId(userId: string): string {
+    return userId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  }
+
+  private getNamespacedKey(baseKey: string, userId: string | null = null): string {
+    if (!userId) {
+      return `${this.storageKeyPrefix}_${baseKey}`;
+    }
+    return `${this.storageKeyPrefix}_${baseKey}_USER_${this.sanitizeUserId(userId)}`;
+  }
+
+  private updateNamespacedKeys() {
+    this.storageKey = this.getNamespacedKey('STORAGE', this.currentUserId);
+    this.settingsKey = this.getNamespacedKey('SETTINGS', this.currentUserId);
+    this.webdavConfigKey = this.getNamespacedKey('WEBDAV_CONFIG', this.currentUserId);
+    this.conflictsKey = this.getNamespacedKey('CONFLICTS', this.currentUserId);
   }
 
   private parseWikiLinks(text: string): string[] {
@@ -158,6 +213,66 @@ export class NoteStorage {
       ...note,
       backlinks: Array.from(backlinksMap.get(note.id) || []),
     }));
+  }
+
+  private getNotesDbName(userId: string | null = this.currentUserId): string {
+    const suffix = userId ? this.sanitizeUserId(userId) : 'GUEST';
+    return `${this.storageKeyPrefix}_NOTES_DB_${suffix}`;
+  }
+
+  private async ensureNotesDb(userId: string | null = this.currentUserId): Promise<QCDb | null> {
+    const dbName = this.getNotesDbName(userId);
+    if (this.notesDb && this.notesDbName === dbName) {
+      return this.notesDb;
+    }
+
+    if (this.notesDb) {
+      this.notesDb.close();
+      this.notesDb = null;
+      this.notesDbName = null;
+    }
+
+    if (this.notesDbOpenFailed) {
+      return null;
+    }
+
+    if (typeof window === 'undefined' || !('indexedDB' in window)) {
+      this.notesDbOpenFailed = true;
+      return null;
+    }
+
+    try {
+      const secret = userId && this.useEncryption ? await this.getOrCreateUserSecret() : undefined;
+      this.notesDb = await QCRuntime.open(dbName, [this.noteStoreSchema], 1, secret);
+      this.notesDbName = dbName;
+      this.notesDbOpenFailed = false;
+      return this.notesDb;
+    } catch (e) {
+      console.warn('[NoteStorage] QCRuntime.open failed, falling back to legacy storage', e);
+      this.notesDbOpenFailed = true;
+      return null;
+    }
+  }
+
+  private async readGuestNotesFromDslAsync(): Promise<NoteItem[]> {
+    try {
+      const guestDb = await this.ensureNotesDb(null);
+      if (!guestDb) return [];
+      return await guestDb.find<NoteItem>(this.noteStoreSchema.name, {});
+    } catch (e) {
+      console.warn('[NoteStorage] readGuestNotesFromDslAsync failed', e);
+      return [];
+    }
+  }
+
+  private async clearGuestNotesFromDslAsync(): Promise<void> {
+    try {
+      const guestDb = await this.ensureNotesDb(null);
+      if (!guestDb) return;
+      await guestDb.clear(this.noteStoreSchema.name);
+    } catch (e) {
+      console.warn('[NoteStorage] clearGuestNotesFromDslAsync failed', e);
+    }
   }
 
   /**
@@ -238,15 +353,204 @@ export class NoteStorage {
     return this.arrayBufferToBase64(combined.buffer);
   }
 
-  private async decryptText(cipherText: string, passphrase: string): Promise<string> {
-    const encoder = new TextDecoder();
-    const combined = new Uint8Array(this.base64ToArrayBuffer(cipherText));
+  private async decryptText(encryptedBase64: string, passphrase: string): Promise<string> {
+    const decoder = new TextDecoder();
+    const combined = new Uint8Array(this.base64ToArrayBuffer(encryptedBase64));
     const salt = combined.slice(0, 16);
     const iv = combined.slice(16, 28);
-    const data = combined.slice(28);
+    const ciphertext = combined.slice(28);
     const key = await this.deriveKey(passphrase, salt);
-    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
-    return encoder.decode(decrypted);
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+    return decoder.decode(decrypted);
+  }
+
+  private isEncryptedPayload(value: unknown): value is { encrypted: true; payload: string } {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      (value as any).encrypted === true &&
+      typeof (value as any).payload === 'string'
+    );
+  }
+
+  private async getOrCreateUserSecret(): Promise<string> {
+    if (!this.currentUserId) {
+      throw new Error('Cannot create encryption key without userId');
+    }
+
+    if (this.currentEncryptionKey) {
+      return this.currentEncryptionKey;
+    }
+
+    const keyName = `${this.encryptionSecretKeyPrefix}_${this.sanitizeUserId(this.currentUserId)}`;
+    let secret = null;
+    try {
+      secret = localStorage.getItem(keyName);
+    } catch {
+      secret = null;
+    }
+
+    if (!secret) {
+      const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+      secret = btoa(String.fromCharCode(...randomBytes));
+      try {
+        localStorage.setItem(keyName, secret);
+      } catch {
+        console.warn(
+          '[NoteStorage] 无法保存用户加密密钥到 localStorage，登录后数据仍可解密但密钥不会持久化。',
+        );
+      }
+    }
+
+    this.currentEncryptionKey = secret;
+    return secret;
+  }
+
+  async setCurrentUser(userId: string | null): Promise<void> {
+    this.currentUserId = userId;
+    this.useEncryption = Boolean(userId);
+    this.currentEncryptionKey = null;
+    this.updateNamespacedKeys();
+
+    if (this.notesDb) {
+      this.notesDb.close();
+      this.notesDb = null;
+      this.notesDbName = null;
+      this.notesDbOpenFailed = false;
+    }
+
+    if (this.useEncryption) {
+      await this.getOrCreateUserSecret();
+    }
+  }
+
+  async migrateGuestDataToUser(): Promise<boolean> {
+    if (!this.currentUserId) {
+      return false;
+    }
+
+    const legacyGuestStorageKey = this.getNamespacedKey('STORAGE', null);
+    const legacyRawGuestValue = await this.readStoredValue<
+      NoteItem[] | { encrypted: true; payload: string }
+    >(legacyGuestStorageKey);
+    let guestNotes: NoteItem[] | null = null;
+
+    if (legacyRawGuestValue) {
+      guestNotes = Array.isArray(legacyRawGuestValue)
+        ? legacyRawGuestValue
+        : (() => {
+            try {
+              return JSON.parse(legacyRawGuestValue.payload) as NoteItem[];
+            } catch {
+              return null;
+            }
+          })();
+    }
+
+    if (!guestNotes || guestNotes.length === 0) {
+      guestNotes = await this.readGuestNotesFromDslAsync();
+    }
+
+    if (!guestNotes || guestNotes.length === 0) {
+      return false;
+    }
+
+    const currentNotes = (await this.getDataAsync()) || [];
+    const mergedNotes = [
+      ...currentNotes,
+      ...guestNotes.map((note) => ({ ...note, ownerId: this.currentUserId })),
+    ];
+
+    await this.setDataAsync(mergedNotes);
+    await this.clearGuestNamespace();
+    await this.clearGuestNotesFromDslAsync();
+    return true;
+  }
+
+  private async clearGuestNamespace(): Promise<void> {
+    const guestKeys = [
+      this.getNamespacedKey('STORAGE', null),
+      this.getNamespacedKey('SETTINGS', null),
+      this.getNamespacedKey('WEBDAV_CONFIG', null),
+      this.getNamespacedKey('CONFLICTS', null),
+    ];
+
+    if (this.useIndexedDB) {
+      for (const key of guestKeys) {
+        await IDB.deleteItem(key);
+      }
+    }
+    guestKeys.forEach((key) => localStorage.removeItem(key));
+  }
+
+  private async readStoredValue<T>(key: string): Promise<T | null> {
+    try {
+      if (this.useIndexedDB) {
+        const item = await IDB.getItem<T>(key);
+        if (item !== undefined) {
+          return item;
+        }
+      }
+    } catch (e) {
+      console.warn('[NoteStorage] 读取 IndexedDB 数据失败，回退到 localStorage', e);
+    }
+
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as T) : null;
+    } catch (e) {
+      console.error('[NoteStorage] 解析本地存储数据失败', e);
+      return null;
+    }
+  }
+
+  private async writeStoredValue<T>(key: string, value: T): Promise<void> {
+    if (this.useIndexedDB) {
+      await IDB.setItem(key, value);
+      return;
+    }
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  private async getNotesFromKey(key: string): Promise<NoteItem[] | null> {
+    const stored = await this.readStoredValue<NoteItem[] | { encrypted: true; payload: string }>(
+      key,
+    );
+    if (!stored) return null;
+    if (Array.isArray(stored)) {
+      return stored as NoteItem[];
+    }
+    if (this.isEncryptedPayload(stored)) {
+      if (!this.useEncryption) {
+        return null;
+      }
+      if (!this.currentEncryptionKey) {
+        await this.getOrCreateUserSecret();
+      }
+      try {
+        const decrypted = await this.decryptText(stored.payload, this.currentEncryptionKey || '');
+        return JSON.parse(decrypted) as NoteItem[];
+      } catch (e) {
+        console.error('[NoteStorage] 解密笔记失败:', e);
+        return null;
+      }
+    }
+    return null;
+  }
+
+  private async storeNotesByKey(key: string, notes: NoteItem[]): Promise<void> {
+    if (this.useEncryption) {
+      if (!this.currentEncryptionKey) {
+        await this.getOrCreateUserSecret();
+      }
+      const payload = {
+        encrypted: true,
+        payload: await this.encryptText(JSON.stringify(notes), this.currentEncryptionKey || ''),
+      };
+      await this.writeStoredValue(key, payload);
+      return;
+    }
+    await this.writeStoredValue(key, notes);
   }
 
   async getWebDAVConfigAsync(): Promise<WebDAVConfig | null> {
@@ -260,7 +564,7 @@ export class NoteStorage {
         const raw = localStorage.getItem(this.webdavConfigKey);
         config = raw ? (JSON.parse(raw) as WebDAVConfig) : null;
       }
-      
+
       // Decrypt password if encrypted
       if (config && config.password) {
         try {
@@ -291,7 +595,7 @@ export class NoteStorage {
           console.warn('[NoteStorage] Failed to encrypt WebDAV password, storing plaintext', e);
         }
       }
-      
+
       if (this.useIndexedDB) {
         await IDB.setItem(this.webdavConfigKey, configToStore);
       } else {
@@ -364,13 +668,13 @@ export class NoteStorage {
 
   async resolveConflictAsync(id: string, resolvedNote: NoteItem): Promise<boolean> {
     const conflicts = await this.getConflictsAsync();
-    const index = conflicts.findIndex(c => c.id === id);
+    const index = conflicts.findIndex((c) => c.id === id);
     if (index === -1) return false;
     conflicts.splice(index, 1);
     await this.setConflictsAsync(conflicts);
     // Update the note
     const notes = (await this.getDataAsync()) || [];
-    const noteIndex = notes.findIndex(n => n.id === id);
+    const noteIndex = notes.findIndex((n) => n.id === id);
     if (noteIndex !== -1) {
       notes[noteIndex] = resolvedNote;
     } else {
@@ -379,7 +683,12 @@ export class NoteStorage {
     return this.setDataAsync(notes);
   }
 
-  private async webdavFetch(method: string, url: string, config: WebDAVConfig, body?: string): Promise<Response> {
+  private async webdavFetch(
+    method: string,
+    url: string,
+    config: WebDAVConfig,
+    body?: string,
+  ): Promise<Response> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/octet-stream',
     };
@@ -440,7 +749,7 @@ export class NoteStorage {
       }
 
       const localNotes = (await this.getDataAsync()) || [];
-      const localMap = new Map(localNotes.map(n => [n.id, n]));
+      const localMap = new Map(localNotes.map((n) => [n.id, n]));
       const mergedNotes: NoteItem[] = [];
       const conflicts: NoteConflict[] = [];
 
@@ -448,7 +757,11 @@ export class NoteStorage {
         const local = localMap.get(remote.id);
         if (local) {
           // Check for conflict: if local is newer or content differs
-          if (local.updatedAt > remote.updatedAt || local.content !== remote.content || local.title !== remote.title) {
+          if (
+            local.updatedAt > remote.updatedAt ||
+            local.content !== remote.content ||
+            local.title !== remote.title
+          ) {
             const strategy = config.conflictStrategy || 'manual';
             if (strategy === 'prefer-local') {
               mergedNotes.push(local);
@@ -477,7 +790,7 @@ export class NoteStorage {
 
       // Add local notes not in remote
       for (const local of localNotes) {
-        if (!remoteNotes.some(r => r.id === local.id)) {
+        if (!remoteNotes.some((r) => r.id === local.id)) {
           mergedNotes.push(local);
         }
       }
@@ -496,39 +809,43 @@ export class NoteStorage {
     if (typeof window === 'undefined') return false;
     if (this.useIndexedDB) return true; // 已启用，跳过
     try {
-      // 如果 IndexedDB 已有数据，则不要覆盖
       const existing = await IDB.getItem(this.storageKey);
-      if (existing && Array.isArray(existing) && existing.length > 0) {
+      if (existing !== undefined && existing !== null) {
         this.useIndexedDB = true;
         logger.info('✓ IndexedDB 已有数据，保留现有数据，启用索引存储');
         return true;
       }
 
       // 否则从 localStorage 迁移（如果有）
-      const notes = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
-      const settings = JSON.parse(localStorage.getItem(this.settingsKey) || 'null');
-      if (notes && Array.isArray(notes) && notes.length > 0) {
-        // 备份当前 localStorage 内容到 IndexedDB 备份键，防止意外覆盖
+      const raw = localStorage.getItem(this.storageKey);
+      const settingsRaw = localStorage.getItem(this.settingsKey);
+      if (raw) {
         try {
+          const parsed = JSON.parse(raw);
           const backupKey = `${this.storageKey}_backup_${Date.now()}`;
-          await IDB.setItem(backupKey, notes);
+          await IDB.setItem(backupKey, parsed);
           logger.info('✓ 本地数据已备份到 IndexedDB 键：', backupKey);
-        } catch (bkErr) {
-          console.warn('备份 localStorage 数据到 IndexedDB 失败，继续迁移：', bkErr);
+          await IDB.setItem(this.storageKey, parsed);
+          if (settingsRaw) {
+            try {
+              const parsedSettings = JSON.parse(settingsRaw);
+              await IDB.setItem(this.settingsKey, parsedSettings);
+            } catch {
+              // ignore settings parse issues
+            }
+          }
+          this.useIndexedDB = true;
+          localStorage.removeItem(this.storageKey);
+          localStorage.removeItem(this.settingsKey);
+          logger.info('✓ IndexedDB 已启用，数据迁移成功');
+          return true;
+        } catch (err) {
+          logger.warn('[NoteStorage] 本地数据迁移到 IndexedDB 失败，继续启用 IndexedDB：', err);
         }
-        await IDB.setItem(this.storageKey, notes);
-        if (settings) await IDB.setItem(this.settingsKey, settings);
-        this.useIndexedDB = true;
-        // 清空 localStorage
-        localStorage.removeItem(this.storageKey);
-        localStorage.removeItem(this.settingsKey);
-        logger.info('✓ IndexedDB 已启用，数据迁移成功');
-        return true;
       }
 
-      // 两边均无数据：启用 IndexedDB（但不写入空数组）
       this.useIndexedDB = true;
-        logger.info('✓ IndexedDB 已启用（无需迁移）');
+      logger.info('✓ IndexedDB 已启用（无需迁移）');
       return true;
     } catch (e: unknown) {
       console.error('启用IndexedDB失败:', e);
@@ -544,51 +861,40 @@ export class NoteStorage {
   // async accessors that respect IndexedDB when enabled
   async getDataAsync(): Promise<NoteItem[] | null> {
     try {
-      // 优先尝试 IndexedDB（防止竞态条件）
-      const idbData = await IDB.getItem(this.storageKey);
-      if (idbData) {
-        this.useIndexedDB = true; // 确保标志正确设置
-        return (idbData as NoteItem[]).map((note) => this.normalizeNote(note));
+      const notesDb = await this.ensureNotesDb();
+      if (notesDb) {
+        const notes = await notesDb.find<NoteItem>(this.noteStoreSchema.name, {});
+        return notes.map((note) => this.normalizeNote(note));
       }
-      // IndexedDB 无数据，尝试 localStorage
-      const lsData = this._getDataLocal();
-      if (lsData) {
-        return lsData.map((note) => this.normalizeNote(note));
-      }
-      return null;
+
+      const notes = await this.getNotesFromKey(this.storageKey);
+      return notes ? notes.map((note) => this.normalizeNote(note)) : [];
     } catch (e) {
       console.error('读取存储失败:', e);
-      // IndexedDB 出错，回退到 localStorage
-      return this._getDataLocal();
+      return [];
     }
   }
 
   async setDataAsync(notes: NoteItem[]): Promise<boolean> {
     const normalizedNotes = notes.map((note) => this.normalizeNote(note));
     try {
-      // 优先 IndexedDB，次之 localStorage
-      if (this.useIndexedDB) {
+      const notesDb = await this.ensureNotesDb();
+      if (notesDb) {
         try {
-          await this.writeDataWithCleanupAsync(normalizedNotes);
+          await notesDb.clear(this.noteStoreSchema.name);
+          await Promise.all(
+            normalizedNotes.map((note) => notesDb.put(this.noteStoreSchema.name, note)),
+          );
+          this.syncWithServer(notes).catch((err) => {
+            logger.warn('[NoteStorage] 同步服务器失败', err);
+          });
+          return true;
         } catch (err) {
-          console.warn('[NoteStorage] IndexedDB 写入失败，回退到 localStorage', err);
-          this.useIndexedDB = false;
-          this._setDataLocal(normalizedNotes);
-        }
-      } else {
-        // 尝试写入 IndexedDB（可能在启用过程中）
-        try {
-          await this.writeDataWithCleanupAsync(notes);
-          this.useIndexedDB = true;
-          // 清空 localStorage
-          localStorage.removeItem(this.storageKey);
-        } catch (_) {
-          // IndexedDB 失败，回退到本地 localStorage
-          this._setDataLocal(normalizedNotes);
+          console.warn('[NoteStorage] QCRuntime note storage 写入失败，回退到旧存储', err);
         }
       }
 
-      // 一旦本地数据写入成功，尝试同步到服务器（如果可用）
+      await this.storeNotesByKey(this.storageKey, normalizedNotes);
       this.syncWithServer(notes).catch((err) => {
         logger.warn('[NoteStorage] 同步服务器失败', err);
       });
@@ -620,8 +926,8 @@ export class NoteStorage {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(note),
-          })
-        )
+          }),
+        ),
       );
     } catch (e) {
       console.debug('[NoteStorage] 无法同步到服务器', e);
@@ -637,12 +943,15 @@ export class NoteStorage {
         (error.name === 'QuotaExceededError' || error.name === 'QuotaError');
 
       if (isQuotaError) {
-        logger.warn('[NoteStorage] IndexedDB 空间不足，已回退到 localStorage，不会自动删除笔记内容');
+        logger.warn(
+          '[NoteStorage] IndexedDB 空间不足，已回退到 localStorage，不会自动删除笔记内容',
+        );
         if (typeof window !== 'undefined' && window.dispatchEvent) {
           window.dispatchEvent(
             new CustomEvent('qcnote:storage-fallback', {
               detail: {
-                message: '检测到 IndexedDB 存储空间不足，已自动回退到本地存储。笔记未丢失，但建议尽快备份或清理旧数据。',
+                message:
+                  '检测到 IndexedDB 存储空间不足，已自动回退到本地存储。笔记未丢失，但建议尽快备份或清理旧数据。',
               },
             }),
           );
@@ -650,12 +959,15 @@ export class NoteStorage {
       } else if (typeof error === 'object' && error !== null) {
         const maybeMsg = (error as Error).message || '';
         if (maybeMsg.includes('quota') || maybeMsg.includes('QuotaExceeded')) {
-          logger.warn('[NoteStorage] IndexedDB 空间不足，已回退到 localStorage，不会自动删除笔记内容');
+          logger.warn(
+            '[NoteStorage] IndexedDB 空间不足，已回退到 localStorage，不会自动删除笔记内容',
+          );
           if (typeof window !== 'undefined' && window.dispatchEvent) {
             window.dispatchEvent(
               new CustomEvent('qcnote:storage-fallback', {
                 detail: {
-                  message: '检测到 IndexedDB 存储空间不足，已自动回退到本地存储。笔记未丢失，但建议尽快备份或清理旧数据。',
+                  message:
+                    '检测到 IndexedDB 存储空间不足，已自动回退到本地存储。笔记未丢失，但建议尽快备份或清理旧数据。',
                 },
               }),
             );
@@ -675,8 +987,8 @@ export class NoteStorage {
     if (this.useIndexedDB) {
       return;
     }
-    
-    if (!localStorage.getItem(this.storageKey)) {
+
+    if (!localStorage.getItem(this.storageKey) && !this.useEncryption) {
       localStorage.setItem(this.storageKey, JSON.stringify([]));
     }
     if (!localStorage.getItem(this.settingsKey)) {
@@ -687,7 +999,7 @@ export class NoteStorage {
           sortBy: 'date',
           itemsPerPage: 12,
           defaultCategory: '生活',
-        })
+        }),
       );
     }
   }
@@ -733,7 +1045,6 @@ export class NoteStorage {
     }
   }
 
-
   async addNoteAsync(note: Partial<NoteItem>) {
     const notes = (await this.getDataAsync()) || [];
 
@@ -759,7 +1070,6 @@ export class NoteStorage {
     Indexer.invalidateIndex(); // Invalidate search index cache
     return updatedNotes.find((n) => n.id === newNote.id) as NoteItem;
   }
-
 
   async updateNoteAsync(id: string, updates: Partial<NoteItem>) {
     const notes = (await this.getDataAsync()) || [];
@@ -793,7 +1103,6 @@ export class NoteStorage {
     }
     return null;
   }
-
 
   async deleteNoteAsync(id: string) {
     const notes = (await this.getDataAsync()) || [];
@@ -841,12 +1150,10 @@ export class NoteStorage {
     return notes.filter((n) => n.isDeleted);
   }
 
-
   async getNoteAsync(id: string) {
     const notes = (await this.getDataAsync()) || [];
     return notes.find((n) => n.id === id);
   }
-
 
   async searchNotesAsync(keyword?: string, includeDeleted = false) {
     const notes = (await this.getDataAsync()) || [];
@@ -865,7 +1172,6 @@ export class NoteStorage {
     );
   }
 
-
   async getNotesByCategoryAsync(category: string, includeDeleted = false) {
     const notes = (await this.getDataAsync()) || [];
     let filtered = notes;
@@ -876,12 +1182,10 @@ export class NoteStorage {
     return filtered.filter((n) => n.category === category);
   }
 
-
   async getFavoriteNotesAsync() {
     const notes = (await this.getDataAsync()) || [];
     return notes.filter((n) => !n.isDeleted && n.isFavorite);
   }
-
 
   async toggleFavoriteAsync(id: string): Promise<boolean | null> {
     const notes = (await this.getDataAsync()) || [];
@@ -894,13 +1198,11 @@ export class NoteStorage {
     return null;
   }
 
-
   async getCategoriesAsync() {
     const notes = (await this.getDataAsync()) || [];
     const categories = new Set(notes.map((n) => n.category));
     return Array.from(categories).sort();
   }
-
 
   async getAllTagsAsync() {
     const notes = (await this.getDataAsync()) || [];
@@ -951,20 +1253,41 @@ export class NoteStorage {
     });
   }
 
-
   async clearAllAsync() {
     if (typeof window === 'undefined') return false;
     // Storage layer should not perform UI confirmation prompts.
+    const keysToRemove = [
+      this.storageKey,
+      this.settingsKey,
+      this.webdavConfigKey,
+      this.conflictsKey,
+    ];
+
+    try {
+      const notesDb = await this.ensureNotesDb();
+      if (notesDb) {
+        await notesDb.clear(this.noteStoreSchema.name);
+      }
+    } catch (e) {
+      logger.warn('[NoteStorage] clearAllAsync failed to clear DSL note DB', e);
+    }
+
     if (this.useIndexedDB) {
-      await IDB.clearStore();
-      // IndexedDB data removed; leave storage keys alone
+      for (const key of keysToRemove) {
+        await IDB.deleteItem(key);
+      }
     } else {
-      localStorage.removeItem(this.storageKey);
+      keysToRemove.forEach((key) => localStorage.removeItem(key));
+    }
+    if (this.notesDb) {
+      this.notesDb.close();
+      this.notesDb = null;
+      this.notesDbName = null;
+      this.notesDbOpenFailed = false;
     }
     this.init();
     return true;
   }
-
 
   async getStatsAsync(): Promise<Stats> {
     const notes = (await this.getDataAsync()) || [];

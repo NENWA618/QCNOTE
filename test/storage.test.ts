@@ -10,7 +10,7 @@ describe('NoteStorage', () => {
     let _store: Record<string, string> = {};
     (global as any).localStorage = {
       getItem(key: string) {
-        return _store.hasOwnProperty(key) ? _store[key] : null;
+        return Object.prototype.hasOwnProperty.call(_store, key) ? _store[key] : null;
       },
       setItem(key: string, value: string) {
         _store[key] = String(value);
@@ -40,12 +40,17 @@ describe('NoteStorage', () => {
     await storage.getDataAsync();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await storage.clearAllAsync().catch(() => {});
     resetLocalStorage();
     // ensure IndexedDB is cleaned up between suites as well
     if (IDB.clearStore) {
-      // clearStore returns a promise but afterEach cannot be async easily
-      IDB.clearStore().catch(() => {});
+      await IDB.clearStore().catch(() => {});
+    }
+    try {
+      await QCRuntime.drop('QCNOTE_NOTES_DB_GUEST');
+    } catch {
+      // ignore if the guest DB does not exist or drop fails
     }
   });
 
@@ -120,7 +125,7 @@ describe('NoteStorage', () => {
     it('should find notes by title', async () => {
       const results = await storage.searchNotesAsync('JavaScript');
       expect(results).toHaveLength(2);
-      expect(results.some(n => n.title.includes('JavaScript'))).toBe(true);
+      expect(results.some((n) => n.title.includes('JavaScript'))).toBe(true);
     });
 
     it('should find notes by content', async () => {
@@ -373,7 +378,13 @@ describe('NoteStorage', () => {
         {
           id: '1',
           local: { id: '1', title: 'Local', content: 'Local content', createdAt: 1, updatedAt: 1 },
-          remote: { id: '1', title: 'Remote', content: 'Remote content', createdAt: 1, updatedAt: 2 },
+          remote: {
+            id: '1',
+            title: 'Remote',
+            content: 'Remote content',
+            createdAt: 1,
+            updatedAt: 2,
+          },
           resolved: false,
           createdAt: Date.now(),
         },
@@ -411,7 +422,7 @@ describe('NoteStorage', () => {
       const conflicts = await storage.getConflictsAsync();
       expect(conflicts).toHaveLength(0);
       const notes = await storage.getDataAsync();
-      const updatedNote = notes.find(n => n.id === '1');
+      const updatedNote = notes.find((n) => n.id === '1');
       expect(updatedNote?.content).toBe('Merged content');
     });
   });

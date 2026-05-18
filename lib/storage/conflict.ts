@@ -12,10 +12,7 @@ export type ConflictStrategy = 'prefer-local' | 'prefer-remote' | 'manual' | 'me
 /**
  * Detect conflicts between local and remote notes
  */
-export function detectConflict(
-  local: NoteItem,
-  remote: NoteItem
-): boolean {
+export function detectConflict(local: NoteItem, remote: NoteItem): boolean {
   // A conflict exists if:
   // 1. Content differs
   // 2. Title differs
@@ -23,7 +20,7 @@ export function detectConflict(
   return (
     local.title !== remote.title ||
     local.content !== remote.content ||
-    (local.updatedAt !== remote.updatedAt)
+    local.updatedAt !== remote.updatedAt
   );
 }
 
@@ -33,7 +30,7 @@ export function detectConflict(
 export function resolveConflict(
   local: NoteItem,
   remote: NoteItem,
-  strategy: ConflictStrategy
+  strategy: ConflictStrategy,
 ): NoteItem {
   switch (strategy) {
     case 'prefer-local':
@@ -42,7 +39,7 @@ export function resolveConflict(
     case 'prefer-remote':
       return remote;
 
-    case 'merge':
+    case 'merge': {
       // Smart merge: keep newer version as base, but preserve important fields
       const newer = local.updatedAt >= remote.updatedAt ? local : remote;
       const older = local.updatedAt >= remote.updatedAt ? remote : local;
@@ -56,6 +53,7 @@ export function resolveConflict(
         // Update metadata
         updatedAt: Date.now(),
       };
+    }
 
     case 'manual':
     default:
@@ -70,13 +68,13 @@ export function resolveConflict(
 export function mergeNoteLists(
   localNotes: NoteItem[],
   remoteNotes: NoteItem[],
-  strategy: ConflictStrategy = 'manual'
+  strategy: ConflictStrategy = 'manual',
 ): {
   merged: NoteItem[];
   conflicts: Array<{ local: NoteItem; remote: NoteItem }>;
 } {
-  const localMap = new Map(localNotes.map(n => [n.id, n]));
-  const remoteMap = new Map(remoteNotes.map(n => [n.id, n]));
+  const localMap = new Map(localNotes.map((n) => [n.id, n]));
+  const remoteMap = new Map(remoteNotes.map((n) => [n.id, n]));
 
   const merged: NoteItem[] = [];
   const conflicts: Array<{ local: NoteItem; remote: NoteItem }> = [];
@@ -152,7 +150,7 @@ export class ConflictManager {
    */
   async resolveConflict(id: string, resolution: NoteItem): Promise<boolean> {
     const conflicts = await this.getConflicts();
-    const index = conflicts.findIndex(c => c.id === id);
+    const index = conflicts.findIndex((c) => c.id === id);
 
     if (index === -1) {
       logger.warn(`[ConflictManager] Conflict ${id} not found`);

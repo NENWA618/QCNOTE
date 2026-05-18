@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import Layout from '../components/Layout';
 import Sidebar from '../components/Sidebar';
 import NoteList from '../components/NoteList';
@@ -14,7 +15,15 @@ import Conflicts from '../components/Conflicts';
 import TagManager from '../components/TagManager';
 import OneDriveSync from '../components/OneDriveSync';
 import WebDAVSyncManager from '../lib/webdavSyncManager';
-import { NoteItem, NoteStorage, Stats, NoteVersion, WebDAVConfig, NoteConflict, initWindowStorage } from '../lib/storage';
+import {
+  NoteItem,
+  NoteStorage,
+  Stats,
+  NoteVersion,
+  WebDAVConfig,
+  NoteConflict,
+  initWindowStorage,
+} from '../lib/storage';
 import { Utils } from '../lib/utils';
 
 const Dashboard: React.FC = () => {
@@ -35,7 +44,10 @@ const Dashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewingTrash, setViewingTrash] = useState(false);
   const [trashNotes, setTrashNotes] = useState<NoteItem[]>([]);
-  const [conflicts, setConflicts] = useState<NoteConflict[]>([]);  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts' | 'tags'>('list');
+  const [conflicts, setConflicts] = useState<NoteConflict[]>([]);
+  const [viewMode, setViewMode] = useState<
+    'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts' | 'tags'
+  >('list');
   const [webdavConfig, setWebdavConfig] = useState({
     url: '',
     username: '',
@@ -58,6 +70,7 @@ const Dashboard: React.FC = () => {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const { data: session } = useSession();
 
   // Editor state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -71,6 +84,21 @@ const Dashboard: React.FC = () => {
     setSyncManager(new WebDAVSyncManager(s));
     loadNotes();
   }, []);
+
+  useEffect(() => {
+    if (!storageRef.current) return;
+    const userId = (session?.user as { id?: string } | undefined)?.id || null;
+
+    const updateUserStorage = async () => {
+      await storageRef.current?.setCurrentUser(userId);
+      if (userId) {
+        await storageRef.current?.migrateGuestDataToUser();
+      }
+      await loadNotes();
+    };
+
+    updateUserStorage();
+  }, [session?.user?.id]);
 
   // Auto-sync effect
   useEffect(() => {
@@ -109,7 +137,7 @@ const Dashboard: React.FC = () => {
 
     // 更新缓存
     const newCache = new Map();
-    all.forEach(note => newCache.set(note.id, note));
+    all.forEach((note) => newCache.set(note.id, note));
     setNoteCache(newCache);
 
     setNotes(all);
@@ -157,7 +185,7 @@ const Dashboard: React.FC = () => {
 
     // Category filter
     if (category !== 'all' && !viewingTrash) {
-      filtered = filtered.filter(note => note.category === category);
+      filtered = filtered.filter((note) => note.category === category);
     }
 
     // Sort
@@ -225,7 +253,7 @@ const Dashboard: React.FC = () => {
   const handleToggleFavorite = async (id: string) => {
     const s = storageRef.current;
     if (!s) return;
-    const note = notes.find(n => n.id === id);
+    const note = notes.find((n) => n.id === id);
     if (note) {
       await s.updateNoteAsync(id, { ...note, isFavorite: !note.isFavorite });
       await loadNotes();
@@ -235,7 +263,7 @@ const Dashboard: React.FC = () => {
   const handleToggleArchive = async (id: string) => {
     const s = storageRef.current;
     if (!s) return;
-    const note = notes.find(n => n.id === id);
+    const note = notes.find((n) => n.id === id);
     if (note) {
       await s.updateNoteAsync(id, { ...note, isArchived: !note.isArchived });
       await loadNotes();
@@ -344,9 +372,9 @@ const Dashboard: React.FC = () => {
     const s = storageRef.current;
     if (!s) return;
 
-    const updatedNotes = notes.map(note => ({
+    const updatedNotes = notes.map((note) => ({
       ...note,
-      tags: note.tags?.map(tag => tag === oldTag ? newTag : tag) || []
+      tags: note.tags?.map((tag) => (tag === oldTag ? newTag : tag)) || [],
     }));
 
     await s.setDataAsync(updatedNotes);
@@ -357,20 +385,24 @@ const Dashboard: React.FC = () => {
     const s = storageRef.current;
     if (!s) return;
 
-    const updatedNotes = notes.map(note => ({
+    const updatedNotes = notes.map((note) => ({
       ...note,
-      tags: note.tags?.filter(tag => tag !== tagToDelete) || []
+      tags: note.tags?.filter((tag) => tag !== tagToDelete) || [],
     }));
 
     await s.setDataAsync(updatedNotes);
     await loadNotes();
   };
 
-  const handleBulkTagOperation = async (operation: 'add' | 'remove', tag: string, noteIds: string[]) => {
+  const handleBulkTagOperation = async (
+    operation: 'add' | 'remove',
+    tag: string,
+    noteIds: string[],
+  ) => {
     const s = storageRef.current;
     if (!s) return;
 
-    const updatedNotes = notes.map(note => {
+    const updatedNotes = notes.map((note) => {
       if (!noteIds.includes(note.id)) return note;
 
       const currentTags = note.tags || [];
@@ -379,7 +411,7 @@ const Dashboard: React.FC = () => {
       if (operation === 'add') {
         newTags = currentTags.includes(tag) ? currentTags : [...currentTags, tag];
       } else {
-        newTags = currentTags.filter(t => t !== tag);
+        newTags = currentTags.filter((t) => t !== tag);
       }
 
       return { ...note, tags: newTags };
@@ -390,10 +422,8 @@ const Dashboard: React.FC = () => {
   };
 
   const handleTagClick = (tag: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag) 
-        : [...prev, tag]
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
   };
 
@@ -423,7 +453,7 @@ const Dashboard: React.FC = () => {
   const handleRevertVersion = async (version: NoteVersion) => {
     const s = storageRef.current;
     if (!s || !editingNote) return;
-    
+
     const revertedNote: NoteItem = {
       ...editingNote,
       title: version.title,
@@ -435,7 +465,7 @@ const Dashboard: React.FC = () => {
       isArchived: version.isArchived,
       updatedAt: Date.now(),
     };
-    
+
     await s.updateNoteAsync(editingNote.id, revertedNote);
     await loadNotes();
     alert('✅ 成功恢复到版本！');
@@ -445,171 +475,167 @@ const Dashboard: React.FC = () => {
     <>
       <Head>
         <title>笔记管理 - QCNOTE</title>
-        <meta name="description" content="QCNOTE 笔记管理面板。创建、编辑和组织您的个人笔记，支持分类、搜索和多视图显示。" />
+        <meta
+          name="description"
+          content="QCNOTE 笔记管理面板。创建、编辑和组织您的个人笔记，支持分类、搜索和多视图显示。"
+        />
       </Head>
 
       <Layout>
-          <div className="flex min-h-[calc(100vh-14rem)] lg:min-h-[calc(100vh-16rem)] gap-6">
-        {/* Sidebar */}
-        <Sidebar
-          isOpen={sidebarOpen}
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
-          categories={categories}
-          stats={stats}
-          currentCategory={category}
-          onCategoryChange={setCategory}
-          search={search}
-          onSearchChange={setSearch}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-        />
+        <div className="flex min-h-[calc(100vh-14rem)] lg:min-h-[calc(100vh-16rem)] gap-6">
+          {/* Sidebar */}
+          <Sidebar
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen(!sidebarOpen)}
+            categories={categories}
+            stats={stats}
+            currentCategory={category}
+            onCategoryChange={setCategory}
+            search={search}
+            onSearchChange={setSearch}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+          />
 
-        {/* Main Content */}
-        <main className="flex-1 p-6">
-          {/* Header Controls */}
-          <div className="flex flex-col md:flex-row justify-start items-start md:items-center gap-4 mb-6">
-            {/* Actions */}
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setViewingTrash(!viewingTrash)}
-                className="btn-secondary btn-sm flex items-center gap-1"
-              >
-                {viewingTrash ? '返回' : `🗑️ 回收站 ${trashNotes.length > 0 ? `(${trashNotes.length})` : ''}`}
-              </button>
-              {!viewingTrash && (
-                <>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`btn-secondary btn-sm flex items-center gap-1 ${
-                      viewMode === 'list' ? 'bg-blue-100 text-blue-600' : ''
-                    }`}
-                  >
-                    📝 列表
-                  </button>
-                  <button
-                    onClick={() => setViewMode('calendar')}
-                    className={`btn-secondary btn-sm flex items-center gap-1 ${
-                      viewMode === 'calendar' ? 'bg-blue-100 text-blue-600' : ''
-                    }`}
-                  >
-                    📅 日历
-                  </button>
-                  <button
-                    onClick={() => setViewMode('timeline')}
-                    className={`btn-secondary btn-sm flex items-center gap-1 ${
-                      viewMode === 'timeline' ? 'bg-blue-100 text-blue-600' : ''
-                    }`}
-                  >
-                    📊 时间线
-                  </button>
-                  <button
-                    onClick={() => setViewMode('graph')}
-                    className={`btn-secondary btn-sm flex items-center gap-1 ${
-                      viewMode === 'graph' ? 'bg-blue-100 text-blue-600' : ''
-                    }`}
-                  >
-                    🧠 图谱
-                  </button>
-                  <button
-                    onClick={() => setViewMode('conflicts')}
-                    className={`btn-secondary btn-sm flex items-center gap-1 ${
-                      viewMode === 'conflicts' ? 'bg-yellow-100 text-yellow-600' : ''
-                    }`}
-                  >
-                    ⚠️ 冲突 {conflicts.length > 0 ? `(${conflicts.length})` : ''}
-                  </button>
-                  <button
-                    onClick={() => setViewMode('tags')}
-                    className={`btn-secondary btn-sm flex items-center gap-1 ${
-                      viewMode === 'tags' ? 'bg-purple-100 text-purple-600' : ''
-                    }`}
-                  >
-                    🏷️ 标签管理
-                  </button>
-                  <button
-                    onClick={handleNewNote}
-                    className="btn-primary btn-sm flex items-center gap-1"
-                  >
-                    ➕ 新建笔记
-                  </button>
-                </>
-              )}
+          {/* Main Content */}
+          <main className="flex-1 p-6">
+            {/* Header Controls */}
+            <div className="flex flex-col md:flex-row justify-start items-start md:items-center gap-4 mb-6">
+              {/* Actions */}
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setViewingTrash(!viewingTrash)}
+                  className="btn-secondary btn-sm flex items-center gap-1"
+                >
+                  {viewingTrash
+                    ? '返回'
+                    : `🗑️ 回收站 ${trashNotes.length > 0 ? `(${trashNotes.length})` : ''}`}
+                </button>
+                {!viewingTrash && (
+                  <>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={`btn-secondary btn-sm flex items-center gap-1 ${
+                        viewMode === 'list' ? 'bg-blue-100 text-blue-600' : ''
+                      }`}
+                    >
+                      📝 列表
+                    </button>
+                    <button
+                      onClick={() => setViewMode('calendar')}
+                      className={`btn-secondary btn-sm flex items-center gap-1 ${
+                        viewMode === 'calendar' ? 'bg-blue-100 text-blue-600' : ''
+                      }`}
+                    >
+                      📅 日历
+                    </button>
+                    <button
+                      onClick={() => setViewMode('timeline')}
+                      className={`btn-secondary btn-sm flex items-center gap-1 ${
+                        viewMode === 'timeline' ? 'bg-blue-100 text-blue-600' : ''
+                      }`}
+                    >
+                      📊 时间线
+                    </button>
+                    <button
+                      onClick={() => setViewMode('graph')}
+                      className={`btn-secondary btn-sm flex items-center gap-1 ${
+                        viewMode === 'graph' ? 'bg-blue-100 text-blue-600' : ''
+                      }`}
+                    >
+                      🧠 图谱
+                    </button>
+                    <button
+                      onClick={() => setViewMode('conflicts')}
+                      className={`btn-secondary btn-sm flex items-center gap-1 ${
+                        viewMode === 'conflicts' ? 'bg-yellow-100 text-yellow-600' : ''
+                      }`}
+                    >
+                      ⚠️ 冲突 {conflicts.length > 0 ? `(${conflicts.length})` : ''}
+                    </button>
+                    <button
+                      onClick={() => setViewMode('tags')}
+                      className={`btn-secondary btn-sm flex items-center gap-1 ${
+                        viewMode === 'tags' ? 'bg-purple-100 text-purple-600' : ''
+                      }`}
+                    >
+                      🏷️ 标签管理
+                    </button>
+                    <button
+                      onClick={handleNewNote}
+                      className="btn-primary btn-sm flex items-center gap-1"
+                    >
+                      ➕ 新建笔记
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Stats */}
+            {/* Stats */}
 
-          {/* Import/Export */}
-          {!viewingTrash && viewMode === 'list' && (
-            <ImportExport
-              onExport={handleExport}
-              onImport={handleImport}
-              onClearAll={handleClearAll}
-            />
-          )}
+            {/* Import/Export */}
+            {!viewingTrash && viewMode === 'list' && (
+              <ImportExport
+                onExport={handleExport}
+                onImport={handleImport}
+                onClearAll={handleClearAll}
+              />
+            )}
 
-          {/* View Content */}
-          {viewingTrash ? (
-            <Trash
-              trashNotes={trashNotes}
-              onRestore={handleRestoreNote}
-              onPermanentlyDelete={handlePermanentlyDeleteNote}
-            />
-          ) : viewMode === 'calendar' ? (
-            <Calendar
-              notes={notes}
-              onSelectDate={(date) => {
-                // You can add logic here to filter notes by date if needed
-              }}
-            />
-          ) : viewMode === 'timeline' ? (
-            <Timeline
-              notes={notes}
-              onSelectNote={handleEditNote}
-            />
-          ) : viewMode === 'graph' ? (
-            <KnowledgeGraph
-              notes={notes}
-              onSelectNote={handleEditNote}
-            />
-          ) : viewMode === 'tags' ? (
-            <TagManager
-              notes={notes}
-              onTagRename={handleTagRename}
-              onTagDelete={handleTagDelete}
-              onBulkTagOperation={handleBulkTagOperation}
-            />
-          ) : viewMode === 'conflicts' ? (
-            <Conflicts
-              conflicts={conflicts}
-              onResolve={handleResolveConflict}
-            />
-          ) : (
-            <div className="space-y-4">
-              <WebDAVSync
-                config={webdavConfig}
-                syncManager={syncManager}
-                onSaveConfig={handleSaveWebdavConfig}
-                onPush={handleWebdavPush}
-                onPull={handleWebdavPull}
-                onClearConfig={handleClearWebdavConfig}
-                onConfigChange={handleWebdavConfigChange}
+            {/* View Content */}
+            {viewingTrash ? (
+              <Trash
+                trashNotes={trashNotes}
+                onRestore={handleRestoreNote}
+                onPermanentlyDelete={handlePermanentlyDeleteNote}
               />
-              <OneDriveSync
-                config={onedriveConfig}
-                onSync={handleOneDriveSync}
-                onSaveConfig={handleSaveOneDriveConfig}
+            ) : viewMode === 'calendar' ? (
+              <Calendar
+                notes={notes}
+                onSelectDate={(date) => {
+                  // You can add logic here to filter notes by date if needed
+                }}
               />
-              <NoteList
-                notes={filteredNotes}
-                onEdit={handleEditNote}
-                onTagClick={handleTagClick}
+            ) : viewMode === 'timeline' ? (
+              <Timeline notes={notes} onSelectNote={handleEditNote} />
+            ) : viewMode === 'graph' ? (
+              <KnowledgeGraph notes={notes} onSelectNote={handleEditNote} />
+            ) : viewMode === 'tags' ? (
+              <TagManager
+                notes={notes}
+                onTagRename={handleTagRename}
+                onTagDelete={handleTagDelete}
+                onBulkTagOperation={handleBulkTagOperation}
               />
-            </div>
-          )}
-        </main>
-      </div>
-    </Layout>
+            ) : viewMode === 'conflicts' ? (
+              <Conflicts conflicts={conflicts} onResolve={handleResolveConflict} />
+            ) : (
+              <div className="space-y-4">
+                <WebDAVSync
+                  config={webdavConfig}
+                  syncManager={syncManager}
+                  onSaveConfig={handleSaveWebdavConfig}
+                  onPush={handleWebdavPush}
+                  onPull={handleWebdavPull}
+                  onClearConfig={handleClearWebdavConfig}
+                  onConfigChange={handleWebdavConfigChange}
+                />
+                <OneDriveSync
+                  config={onedriveConfig}
+                  onSync={handleOneDriveSync}
+                  onSaveConfig={handleSaveOneDriveConfig}
+                />
+                <NoteList
+                  notes={filteredNotes}
+                  onEdit={handleEditNote}
+                  onTagClick={handleTagClick}
+                />
+              </div>
+            )}
+          </main>
+        </div>
+      </Layout>
 
       {/* Note Editor Modal */}
       <NoteEditor
@@ -634,7 +660,6 @@ const Dashboard: React.FC = () => {
         onOpenRelatedNote={handleEditNote}
         onRevertVersion={handleRevertVersion}
       />
-
     </>
   );
 };

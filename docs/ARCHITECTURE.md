@@ -17,75 +17,83 @@ QCNOTE 是一个以**隐私优先、离线优先**为核心的现代个人笔记
 ### 前端技术栈
 
 #### 核心框架
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Next.js | 16.2.6 | React 服务框架，App Router |
-| React | 18.3.1 | UI 组件库，并发特性 |
-| TypeScript | 5.2.0 | 类型安全和开发体验 |
-| Tailwind CSS | 3.4.1 | 响应式 UI 设计系统 |
+
+| 技术         | 版本   | 用途                       |
+| ------------ | ------ | -------------------------- |
+| Next.js      | 16.2.6 | React 服务框架，App Router |
+| React        | 18.3.1 | UI 组件库，并发特性        |
+| TypeScript   | 5.2.0  | 类型安全和开发体验         |
+| Tailwind CSS | 3.4.1  | 响应式 UI 设计系统         |
 
 #### 数据处理和搜索
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Lunr.js | 2.3.9 | 全文搜索引擎（500KB 库） |
-| IndexedDB | - | 客户端本地数据库 |
-| React Context | - | 状态管理 |
-| axios | 1.6.5 | HTTP 请求库 |
+
+| 技术          | 版本  | 用途                     |
+| ------------- | ----- | ------------------------ |
+| Lunr.js       | 2.3.9 | 全文搜索引擎（500KB 库） |
+| IndexedDB     | -     | 客户端本地数据库         |
+| React Context | -     | 状态管理                 |
+| axios         | 1.6.5 | HTTP 请求库              |
 
 #### 内容渲染
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| react-markdown | - | Markdown 渲染 |
-| remark-gfm | - | GitHub 风格 Markdown |
-| remark-math | - | 数学公式支持 |
-| rehype-katex | 7.0.1 | KaTeX 数学渲染 |
-| rehype-sanitize | - | HTML 内容安全防护 |
+
+| 技术            | 版本  | 用途                 |
+| --------------- | ----- | -------------------- |
+| react-markdown  | -     | Markdown 渲染        |
+| remark-gfm      | -     | GitHub 风格 Markdown |
+| remark-math     | -     | 数学公式支持         |
+| rehype-katex    | 7.0.1 | KaTeX 数学渲染       |
+| rehype-sanitize | -     | HTML 内容安全防护    |
 
 #### 交互增强
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| @dnd-kit | - | 拖拽排序功能 |
-| react-window | - | 虚拟滚动优化 |
-| react-diff-viewer-continued | - | 版本对比 |
+
+| 技术                        | 版本 | 用途         |
+| --------------------------- | ---- | ------------ |
+| @dnd-kit                    | -    | 拖拽排序功能 |
+| react-window                | -    | 虚拟滚动优化 |
+| react-diff-viewer-continued | -    | 版本对比     |
 
 #### 3D 和图形
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Pixi.js | 6.5.10 | 2D WebGL 渲染引擎 |
-| pixi-live2d-display | - | Live2D 虚拟角色 |
+
+| 技术                | 版本   | 用途              |
+| ------------------- | ------ | ----------------- |
+| Pixi.js             | 6.5.10 | 2D WebGL 渲染引擎 |
+| pixi-live2d-display | -      | Live2D 虚拟角色   |
 
 ### 后端技术栈（可选）
 
 #### 核心框架
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Fastify | 5.8.5 | 高性能 HTTP 服务器 |
-| Node.js | 18+ | JavaScript 运行时 |
-| TypeScript | 5.2.0 | 服务端类型安全 |
+
+| 技术       | 版本  | 用途               |
+| ---------- | ----- | ------------------ |
+| Fastify    | 5.8.5 | 高性能 HTTP 服务器 |
+| Node.js    | 18+   | JavaScript 运行时  |
+| TypeScript | 5.2.0 | 服务端类型安全     |
 
 #### 数据存储
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| PostgreSQL | 14+ | 关系数据库（论坛、用户数据） |
-| pg | 8.20.0 | PostgreSQL 驱动 |
-| Redis | 7.0 | 缓存和会话存储 |
-| ioredis | 5.10.1 | Redis 客户端库 |
+
+| 技术       | 版本   | 用途                         |
+| ---------- | ------ | ---------------------------- |
+| PostgreSQL | 14+    | 关系数据库（论坛、用户数据） |
+| pg         | 8.20.0 | PostgreSQL 驱动              |
+| Redis      | 7.0    | 缓存和会话存储               |
+| ioredis    | 5.10.1 | Redis 客户端库               |
 
 #### 认证
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| NextAuth | 4.24.14 | OAuth 认证框架 |
-| @microsoft/microsoft-graph-client | - | OneDrive 集成 |
+
+| 技术                              | 版本    | 用途           |
+| --------------------------------- | ------- | -------------- |
+| NextAuth                          | 4.24.14 | OAuth 认证框架 |
+| @microsoft/microsoft-graph-client | -       | OneDrive 集成  |
 
 ### 开发工具
 
-| 工具 | 版本 | 用途 |
-|------|------|------|
-| Vitest | 4.1.4 | 单元测试框架 |
+| 工具       | 版本   | 用途           |
+| ---------- | ------ | -------------- |
+| Vitest     | 4.1.4  | 单元测试框架   |
 | Playwright | 1.60.0 | E2E 自动化测试 |
-| ESLint | 8.0.0 | 代码检查 |
-| Prettier | 2.8.0 | 代码格式化 |
-| Docker | - | 容器化部署 |
+| ESLint     | 8.0.0  | 代码检查       |
+| Prettier   | 2.8.0  | 代码格式化     |
+| Docker     | -      | 容器化部署     |
 
 ## 应用层次结构
 
@@ -132,7 +140,7 @@ QCNOTE 是一个以**隐私优先、离线优先**为核心的现代个人笔记
 ┌─────────────────────────────────────────────────────────┐
 │                    数据层 (Storage)                     │
 │  ├─ 客户端存储                                          │
-│  │  ├─ IndexedDB - 本地笔记、索引、配置                │
+│  │  ├─ IndexedDB - 本地笔记、索引、配置（主笔记存储已切换到 QCNOTE DSL 运行时）                │
 │  │  └─ localStorage - 小数据和用户偏好                 │
 │  │                                                     │
 │  └─ 可选后端存储                                        │
@@ -154,35 +162,49 @@ QCNOTE 是一个以**隐私优先、离线优先**为核心的现代个人笔记
 
 ### IndexedDB 存储结构
 
+QCNOTE 目前主要使用 QCNOTE DSL 运行时（QCRuntime）来存储笔记主体数据。笔记标题和内容字段在本地采用 AES-GCM 加密，并按登录账号隔离到不同的 IndexedDB 数据库。
+
 ```
-QCNOTE (ObjectStore)
-├── QCNOTE_STORAGE
-│   ├── key: "NOTES"
-│   └── value: NoteItem[] - 所有笔记
-│
-├── QCNOTE_SETTINGS
-│   ├── key: "settings"
-│   └── value: UserSettings - 用户设置
-│
-├── QCNOTE_LUNR_INDEX
-│   ├── key: "lunr_index"
-│   └── value: Lunr Index JSON - 搜索索引
-│
-├── QCNOTE_VECTORS
-│   ├── key: "vectors"
-│   └── value: Map<noteId, vector[]> - 语义向量
-│
-├── QCNOTE_SENTIMENTS
-│   ├── key: "sentiments"
-│   └── value: Map<noteId, sentiment> - 情感分析缓存
-│
-├── QCNOTE_WEBDAV_CONFIG
-│   ├── key: "webdav_config"
-│   └── value: WebDAVConfig - 同步配置
-│
-└── QCNOTE_CONFLICTS
-    ├── key: "conflicts"
-    └── value: SyncConflict[] - 待解决的冲突
+QCNOTE_NOTES_DB_GUEST
+├── notes (ObjectStore) - 访客笔记存储
+│   ├── id: string
+│   ├── title: encrypted string
+│   ├── content: encrypted string
+│   ├── category: string
+│   ├── tags: json
+│   ├── color: string
+│   ├── isFavorite: boolean
+│   ├── isArchived: boolean
+│   ├── createdAt: number
+│   ├── updatedAt: number
+│   ├── links: json
+│   ├── backlinks: json
+│   ├── versions: json
+│   ├── isDeleted: boolean
+│   ├── deletedAt: number
+│   └── ownerId: string | null
+
+QCNOTE_NOTES_DB_USER_<userId>
+├── notes (ObjectStore) - 登录用户笔记存储
+│   ├── same schema as guest notes, with encrypted title/content
+```
+
+### 传统存储与配置
+
+为了兼容回退场景，部分应用配置和旧存储仍然保留在原有 IndexedDB/localStorage 结构中，但主笔记数据已切换为 DSL 方案。
+
+```
+QCNOTE_SETTINGS
+├── key: "settings"
+└── value: UserSettings - 用户设置
+
+QCNOTE_WEBDAV_CONFIG
+├── key: "webdav_config"
+└── value: WebDAVConfig - 同步配置
+
+QCNOTE_CONFLICTS
+├── key: "conflicts"
+└── value: SyncConflict[] - 待解决的冲突
 ```
 
 ### PostgreSQL 数据模型
@@ -327,6 +349,7 @@ LOD (细节级别) 优化:
 ### 1. 笔记编辑器 (NoteEditor)
 
 **功能**:
+
 - Markdown 编辑和实时预览
 - LaTeX 数学公式渲染（KaTeX）
 - 双链创建和管理
@@ -334,6 +357,7 @@ LOD (细节级别) 优化:
 - 块级编辑支持
 
 **数据流**:
+
 ```
 编辑器输入 → useState → 保存到 IndexedDB → 更新搜索索引 → UI 更新
 ```
@@ -341,13 +365,14 @@ LOD (细节级别) 优化:
 ### 2. 全文搜索 (indexer.ts)
 
 **算法流程**:
+
 ```typescript
 // 1. 索引构建
-notes.forEach(note => {
+notes.forEach((note) => {
   lunr_index.add({
     id: note.id,
     title: note.title,
-    content: note.content
+    content: note.content,
   });
 });
 
@@ -366,12 +391,13 @@ const results = lunr_index.search(query);
 ### 3. 语义搜索 (vector.ts)
 
 **向量计算**:
+
 ```typescript
 // 1. 文本向量化（词频统计）
 function vectorize(text: string): number[] {
   const words = tokenize(text);
   const wordCounts = countWords(words);
-  return words.map(w => wordCounts[w] / totalWords);
+  return words.map((w) => wordCounts[w] / totalWords);
 }
 
 // 2. 相似度计算 (余弦相似度)
@@ -386,6 +412,7 @@ function cosineSimilarity(v1: number[], v2: number[]): number {
 ### 4. 同步管理 (webdavSyncManager.ts)
 
 **同步流程**:
+
 ```
 检测本地变化
   ↓
@@ -454,8 +481,11 @@ function cosineSimilarity(v1: number[], v2: number[]): number {
 ```typescript
 // 添加新功能示例
 export class NewFeature {
-  constructor(private storage: Storage, private indexer: Indexer) {}
-  
+  constructor(
+    private storage: Storage,
+    private indexer: Indexer,
+  ) {}
+
   async execute() {
     // 业务逻辑
   }
@@ -465,6 +495,7 @@ export class NewFeature {
 ### 插件系统
 
 可扩展的架构允许：
+
 - 自定义 Markdown 插件
 - 新的搜索算法
 - 额外的同步源
@@ -501,7 +532,7 @@ services:
   web:
     build: .
     ports:
-      - "3000:3000"
+      - '3000:3000'
   db:
     image: postgres:15
     environment:

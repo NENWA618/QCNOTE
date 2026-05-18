@@ -11,14 +11,20 @@ export default function Home() {
         {/* Primary Meta Tags */}
         <title>QCNOTE - 私有本地优先的个人笔记平台</title>
         <meta name="title" content="QCNOTE - 私有本地优先的个人笔记平台" />
-        <meta name="description" content="本地优先、隐私优先的个人笔记应用，支持Markdown、搜索、分类和离线保存。安全的个人知识库管理系统。" />
+        <meta
+          name="description"
+          content="本地优先、隐私优先的个人笔记应用，支持Markdown、搜索、分类和离线保存。安全的个人知识库管理系统。"
+        />
         <meta name="keywords" content="笔记应用,知识管理,个人日记,笔记管理,跨平台,离线优先" />
 
         {/* Open Graph Meta Tags */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://qcnote.com/" />
         <meta property="og:title" content="QCNOTE - 个人笔记管理平台" />
-        <meta property="og:description" content="智能、安全、跨平台的笔记应用。专注于本地存储与隐私保护，让你安心记录每一刻。" />
+        <meta
+          property="og:description"
+          content="智能、安全、跨平台的笔记应用。专注于本地存储与隐私保护，让你安心记录每一刻。"
+        />
         <meta property="og:image" content="https://qcnote.com/images/icons/note_icon.png" />
         <meta property="og:site_name" content="QCNOTE" />
         <meta property="og:locale" content="zh_CN" />
@@ -27,7 +33,10 @@ export default function Home() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content="https://qcnote.com/" />
         <meta name="twitter:title" content="QCNOTE - 个人笔记管理平台" />
-        <meta name="twitter:description" content="智能、安全、跨平台的笔记应用。专注于本地数据与离线体验。" />
+        <meta
+          name="twitter:description"
+          content="智能、安全、跨平台的笔记应用。专注于本地数据与离线体验。"
+        />
         <meta name="twitter:image" content="https://qcnote.com/images/icons/note_icon.png" />
 
         {/* Additional SEO Tags */}
@@ -43,21 +52,21 @@ export default function Home() {
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'SoftwareApplication',
-              'name': 'QCNOTE',
-              'description': '本地优先的个人笔记管理平台，强调隐私与易用性。',
-              'url': 'https://qcnote.com',
-              'applicationCategory': 'ProductivityApplication',
-              'offers': {
+              name: 'QCNOTE',
+              description: '本地优先的个人笔记管理平台，强调隐私与易用性。',
+              url: 'https://qcnote.com',
+              applicationCategory: 'ProductivityApplication',
+              offers: {
                 '@type': 'Offer',
-                'price': '0',
-                'priceCurrency': 'CNY'
+                price: '0',
+                priceCurrency: 'CNY',
               },
-              'aggregateRating': {
+              aggregateRating: {
                 '@type': 'AggregateRating',
-                'ratingValue': '4.8',
-                'ratingCount': '1000'
-              }
-            })
+                ratingValue: '4.8',
+                ratingCount: '1000',
+              },
+            }),
           }}
         />
         <script
@@ -66,16 +75,16 @@ export default function Home() {
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Organization',
-              'name': 'QCNOTE',
-              'url': 'https://qcnote.com',
-              'logo': 'https://qcnote.com/images/icons/note_icon.png',
-              'description': '智能笔记应用平台',
-              'contact': {
+              name: 'QCNOTE',
+              url: 'https://qcnote.com',
+              logo: 'https://qcnote.com/images/icons/note_icon.png',
+              description: '智能笔记应用平台',
+              contact: {
                 '@type': 'ContactPoint',
-                'contactType': 'Customer Support',
-                'url': 'https://qcnote.com/contact'
-              }
-            })
+                contactType: 'Customer Support',
+                url: 'https://qcnote.com/contact',
+              },
+            }),
           }}
         />
       </Head>
@@ -115,7 +124,9 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
                   <span className="text-2xl">📝</span>
                 </div>
-                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">Markdown 编辑</h4>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">
+                  Markdown 编辑
+                </h4>
               </div>
               <p className="text-text-light leading-relaxed">
                 完整的 Markdown 支持，包括表格、代码块、链接等。实时预览，让内容组织更清晰。
@@ -127,7 +138,9 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
                   <span className="text-2xl">🧮</span>
                 </div>
-                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">LaTeX 公式</h4>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">
+                  LaTeX 公式
+                </h4>
               </div>
               <p className="text-text-light leading-relaxed">
                 支持数学公式渲染，行内公式 <code>$...$</code> 和块级公式 <code>$$...$$</code>。
@@ -139,7 +152,9 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
                   <span className="text-2xl">🔗</span>
                 </div>
-                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">双链支持</h4>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">
+                  双链支持
+                </h4>
               </div>
               <p className="text-text-light leading-relaxed">
                 使用 <code>[[笔记标题]]</code> 创建双向链接，自动生成反向链接和关联关系。
@@ -151,7 +166,9 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
                   <span className="text-2xl">📊</span>
                 </div>
-                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">知识图谱</h4>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">
+                  知识图谱
+                </h4>
               </div>
               <p className="text-text-light leading-relaxed">
                 可视化呈现笔记之间的联系。蓝线表示反向链接，紫线表示主动引用。
@@ -163,7 +180,9 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
                   <span className="text-2xl">🔍</span>
                 </div>
-                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">智能搜索</h4>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">
+                  智能搜索
+                </h4>
               </div>
               <p className="text-text-light leading-relaxed">
                 全文搜索 + 语义搜索 + 模糊匹配。瞬间定位任何笔记或关键字。
@@ -173,9 +192,26 @@ export default function Home() {
             <div className="card group" style={{ background: 'rgba(220, 150, 180, 0.06)' }}>
               <div className="flex items-center mb-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
+                  <span className="text-2xl">🔐</span>
+                </div>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">
+                  DSL 加密存储
+                </h4>
+              </div>
+              <p className="text-text-light leading-relaxed">
+                笔记主体使用 QCNOTE DSL
+                字段级加密存储，标题与内容在本地以加密形式保存，并按账号隔离。
+              </p>
+            </div>
+
+            <div className="card group" style={{ background: 'rgba(220, 150, 180, 0.06)' }}>
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
                   <span className="text-2xl">⏰</span>
                 </div>
-                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">版本历史</h4>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">
+                  版本历史
+                </h4>
               </div>
               <p className="text-text-light leading-relaxed">
                 完整的版本控制。对比历史版本，一键恢复任意版本。
@@ -187,7 +223,9 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
                   <span className="text-2xl">📱</span>
                 </div>
-                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">云端同步</h4>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">
+                  云端同步
+                </h4>
               </div>
               <p className="text-text-light leading-relaxed">
                 支持 WebDAV 和 OneDrive 同步。跨设备无缝工作。
@@ -199,7 +237,9 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
                   <span className="text-2xl">💬</span>
                 </div>
-                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">社区论坛</h4>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">
+                  社区论坛
+                </h4>
               </div>
               <p className="text-text-light leading-relaxed">
                 分享笔记、讨论话题、互相学习。关注用户、查看排行榜。
@@ -211,7 +251,9 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gradient-to-br from-accent-pink to-accent-purple rounded-xl flex items-center justify-center mr-4 shadow-medium">
                   <span className="text-2xl">🎨</span>
                 </div>
-                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">深色模式</h4>
+                <h4 className="text-primary-dark text-lg font-semibold group-hover:text-accent-pink transition-colors">
+                  深色模式
+                </h4>
               </div>
               <p className="text-text-light leading-relaxed">
                 完美的浅色和深色主题切换。护眼设计，全天舒适体验。
@@ -236,7 +278,8 @@ export default function Home() {
               <div>
                 <h3 className="text-accent-pink mb-2 font-semibold">2️⃣ 灵活编写</h3>
                 <p className="text-text-light">
-                  使用 Markdown 格式、LaTeX 公式、双链引用。内容自动保存到本地。
+                  使用 Markdown 格式、LaTeX 公式、双链引用。内容自动保存到本地，并采用 QCNOTE DSL
+                  加密存储，确保笔记主体在本地加密保存。
                 </p>
               </div>
               <div>
@@ -272,9 +315,12 @@ export default function Home() {
 
         <section id="about" className="mt-12 md:mt-16">
           <div className="card">
-            <h2 className="text-primary-dark mb-6 text-2xl md:text-3xl font-bold">💎 关于 QCNOTE</h2>
+            <h2 className="text-primary-dark mb-6 text-2xl md:text-3xl font-bold">
+              💎 关于 QCNOTE
+            </h2>
             <p className="text-text-light leading-relaxed">
-              QCNOTE 是一个现代化的个人笔记应用，致力于提供**隐私优先、离线优先**的记录体验。我们相信，记录是思考的开始，而思考是成长的源动力。
+              QCNOTE
+              是一个现代化的个人笔记应用，致力于提供**隐私优先、离线优先**的记录体验。我们相信，记录是思考的开始，而思考是成长的源动力。
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               <div>
@@ -331,19 +377,22 @@ export default function Home() {
             <div className="card mb-4">
               <h3 className="text-primary-dark mb-4 font-bold">支持 Markdown 和数学公式吗？</h3>
               <p className="text-text-light">
-                完全支持！支持完整的 Markdown 语法、LaTeX 数学公式、双链引用 [[标题]]。编辑时可实时预览。
+                完全支持！支持完整的 Markdown 语法、LaTeX 数学公式、双链引用
+                [[标题]]。编辑时可实时预览。
               </p>
             </div>
             <div className="card mb-4">
               <h3 className="text-primary-dark mb-4 font-bold">能在多个设备同步吗？</h3>
               <p className="text-text-light">
-                支持！通过 WebDAV 或 OneDrive 进行云端同步。配置好后可实现自动同步，也支持手动导入导出。
+                支持！通过 WebDAV 或 OneDrive
+                进行云端同步。配置好后可实现自动同步，也支持手动导入导出。
               </p>
             </div>
             <div className="card mb-4">
               <h3 className="text-primary-dark mb-4 font-bold">什么是双链和知识图谱？</h3>
               <p className="text-text-light">
-                双链是指使用 [[笔记标题]] 创建的笔记间的相互引用。知识图谱则可视化显示笔记的关系网络，帮你看清思想脉络。
+                双链是指使用 [[笔记标题]]
+                创建的笔记间的相互引用。知识图谱则可视化显示笔记的关系网络，帮你看清思想脉络。
               </p>
             </div>
             <div className="card">

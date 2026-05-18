@@ -11,7 +11,7 @@ if (
   let _store: Record<string, string> = {};
   globalThis.localStorage = {
     getItem(key: string) {
-      return _store.hasOwnProperty(key) ? _store[key] : null;
+      return Object.prototype.hasOwnProperty.call(_store, key) ? _store[key] : null;
     },
     setItem(key: string, value: string) {
       _store[key] = String(value);
@@ -38,4 +38,3 @@ process.on('warning', (w) => {
   }
   console.warn(w);
 });
-
