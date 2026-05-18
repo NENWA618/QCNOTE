@@ -6,10 +6,10 @@ export interface Vector {
 
 // tokenize by non-word characters, lowercase
 function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((w) => w.length > 0);
+  const normalized = text.toLowerCase();
+  const matches = normalized.match(/[\p{Script=Han}]|[\p{L}\p{N}]+/gu);
+  if (!matches) return [];
+  return matches.filter((w) => w.length > 0);
 }
 
 export function computeVector(text: string): Vector {

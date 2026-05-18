@@ -18,4 +18,70 @@ describe('Utils', () => {
     const minutes = Utils.estimateReadingTime('一二三');
     expect(minutes).toBeGreaterThanOrEqual(1);
   });
+
+  it('searchNotes supports category field filtering', () => {
+    const notes = [
+      {
+        id: '1',
+        title: '工作总结',
+        content: '今天完成了任务 A',
+        category: 'work',
+        tags: ['summary'],
+        color: '#fff',
+        isFavorite: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        isArchived: false,
+      },
+      {
+        id: '2',
+        title: '购物清单',
+        content: '牛奶，面包，水果',
+        category: 'personal',
+        tags: ['todo'],
+        color: '#000',
+        isFavorite: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        isArchived: false,
+      },
+    ];
+
+    const results = Utils.searchNotes(notes as any, 'category:work');
+    expect(results).toHaveLength(1);
+    expect(results[0].id).toBe('1');
+  });
+
+  it('searchNotes combines structured filtering and lunr/vector full-text search', () => {
+    const notes = [
+      {
+        id: '1',
+        title: 'JavaScript 学习笔记',
+        content: '深入理解闭包和异步',
+        category: 'study',
+        tags: ['js'],
+        color: '#ff0',
+        isFavorite: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        isArchived: false,
+      },
+      {
+        id: '2',
+        title: 'Python 教程',
+        content: '解释器和生成器',
+        category: 'study',
+        tags: ['python'],
+        color: '#0f0',
+        isFavorite: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        isArchived: false,
+      },
+    ];
+
+    const results = Utils.searchNotes(notes as any, '学习 OR Python');
+    expect(results.length).toBeGreaterThanOrEqual(2);
+    expect(results.map((note) => note.id)).toEqual(expect.arrayContaining(['1', '2']));
+  });
 });

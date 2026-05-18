@@ -1163,13 +1163,7 @@ export class NoteStorage {
     }
     if (!keyword) return filtered;
 
-    const lowerKeyword = keyword.toLowerCase();
-    return filtered.filter(
-      (note) =>
-        note.title.toLowerCase().includes(lowerKeyword) ||
-        note.content.toLowerCase().includes(lowerKeyword) ||
-        note.tags.some((tag) => tag.toLowerCase().includes(lowerKeyword)),
-    );
+    return Utils.searchNotes(filtered, keyword);
   }
 
   async getNotesByCategoryAsync(category: string, includeDeleted = false) {

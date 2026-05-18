@@ -2,6 +2,8 @@
  * 工具函数模块 (TypeScript)
  */
 import type { NoteItem } from './storage';
+import lunr from 'lunr';
+import vector from './vector';
 
 export const Utils = {
   formatDate(timestamp: number) {
@@ -57,13 +59,112 @@ export const Utils = {
     if (!query.trim()) return notes;
 
     const tokens = this.parseSearchQuery(query);
-    return notes.filter(note => this.matchesSearchTokens(note, tokens));
+    if (!tokens.length) return notes;
+
+    const hasIndexedSearch = tokens.some((token) => {
+      if (!token.field) return true;
+      const field = token.field.toLowerCase();
+      return field === 'title' || field === 'content' || field === 'tag' || field === 'category';
+    });
+
+    const dateFilteredNotes = notes.filter((note) =>
+      tokens.every((token) => {
+        if (!token.field) return true;
+        return token.field.toLowerCase() !== 'date' || this.matchesSingleToken(note, token);
+      }),
+    );
+
+    if (!hasIndexedSearch) {
+      return dateFilteredNotes.filter((note) => this.matchesSearchTokens(note, tokens));
+    }
+
+    try {
+      const idx = lunr(function (this: lunr.Builder) {
+        this.ref('id');
+        this.field('title');
+        this.field('content');
+        this.field('tags');
+        this.field('category');
+
+        dateFilteredNotes.forEach((note) => {
+          this.add({
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            tags: note.tags.join(' '),
+            category: note.category,
+          });
+        });
+      });
+
+      const queryString = this.buildLunrQuery(tokens);
+      const results: Array<{ ref: string }> = idx.search(queryString);
+      const hits = results.map((r) => r.ref as string);
+
+      const qvec = vector.computeVector(query);
+      const similarityScores = dateFilteredNotes.map((note) => ({
+        id: note.id,
+        score: vector.cosine(qvec, vector.computeVector(`${note.title} ${note.content}`)),
+      }));
+      similarityScores.sort((a, b) => b.score - a.score);
+      for (const { id, score } of similarityScores) {
+        if (score > 0.15 && !hits.includes(id)) {
+          hits.push(id);
+        }
+      }
+
+      const orderedNotes = hits
+        .map((id) => dateFilteredNotes.find((note) => note.id === id))
+        .filter((note): note is NoteItem => Boolean(note));
+
+      return orderedNotes;
+    } catch (e) {
+      console.warn('[Utils.searchNotes] lunr search failed, falling back to token filter', e);
+      return dateFilteredNotes.filter((note) => this.matchesSearchTokens(note, tokens));
+    }
+  },
+
+  /**
+   * 构建 lunr 查询字符串
+   */
+  buildLunrQuery(
+    tokens: Array<{ field?: string; value: string; operator: 'AND' | 'OR' | 'NOT' }>,
+  ): string {
+    return tokens
+      .map((token) => {
+        const rawValue = token.value.replace(/"/g, '');
+        const sanitized = this.sanitizeLunrTerm(rawValue);
+        if (!sanitized) return '';
+
+        const quoted = sanitized.includes(' ') ? `"${sanitized}"` : sanitized;
+        const field = token.field?.toLowerCase();
+        const prefix = token.operator === 'NOT' ? '-' : '';
+
+        const expression = field ? `${field === 'tag' ? 'tags' : field}:${quoted}` : quoted;
+
+        if (token.operator === 'OR') {
+          return `OR ${expression}`;
+        }
+
+        return `${prefix}${expression}`;
+      })
+      .filter(Boolean)
+      .join(' ');
+  },
+
+  sanitizeLunrTerm(term: string): string {
+    return term
+      .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+      .trim()
+      .replace(/\s+/g, ' ');
   },
 
   /**
    * 解析搜索查询，支持字段限定和操作符
    */
-  parseSearchQuery(query: string): Array<{ field?: string; value: string; operator: 'AND' | 'OR' | 'NOT' }> {
+  parseSearchQuery(
+    query: string,
+  ): Array<{ field?: string; value: string; operator: 'AND' | 'OR' | 'NOT' }> {
     // 支持的格式：
     // title:关键词 content:内容 tag:标签 category:分类 date:2024-01-01..2024-12-31
     // 关键词1 AND 关键词2 OR 关键词3 NOT 关键词4
@@ -75,7 +176,11 @@ export const Utils = {
       const part = parts[i].trim();
       if (!part) continue;
 
-      if (part.toUpperCase() === 'AND' || part.toUpperCase() === 'OR' || part.toUpperCase() === 'NOT') {
+      if (
+        part.toUpperCase() === 'AND' ||
+        part.toUpperCase() === 'OR' ||
+        part.toUpperCase() === 'NOT'
+      ) {
         // 操作符，应用到下一个token
         if (i + 1 < parts.length) {
           const nextToken = this.parseSingleToken(parts[i + 1]);
@@ -91,7 +196,11 @@ export const Utils = {
     return tokens;
   },
 
-  parseSingleToken(token: string): { field?: string; value: string; operator: 'AND' | 'OR' | 'NOT' } {
+  parseSingleToken(token: string): {
+    field?: string;
+    value: string;
+    operator: 'AND' | 'OR' | 'NOT';
+  } {
     const fieldMatch = token.match(/^(\w+):(.+)$/);
     if (fieldMatch) {
       const [, field, value] = fieldMatch;
@@ -100,7 +209,10 @@ export const Utils = {
     return { value: token, operator: 'AND' };
   },
 
-  matchesSearchTokens(note: NoteItem, tokens: Array<{ field?: string; value: string; operator: 'AND' | 'OR' | 'NOT' }>): boolean {
+  matchesSearchTokens(
+    note: NoteItem,
+    tokens: Array<{ field?: string; value: string; operator: 'AND' | 'OR' | 'NOT' }>,
+  ): boolean {
     // 简单实现：所有AND条件必须满足，OR条件只要一个满足，NOT条件不能满足
     let hasOrMatch = false;
     let hasAndMatch = true;
@@ -112,13 +224,14 @@ export const Utils = {
         if (matches) hasOrMatch = true;
       } else if (token.operator === 'NOT') {
         if (matches) return false; // NOT条件满足则不匹配
-      } else { // AND
+      } else {
+        // AND
         if (!matches) hasAndMatch = false;
       }
     }
 
     // 如果有OR条件，必须至少一个OR匹配；AND条件必须全部匹配
-    return hasAndMatch && (tokens.some(t => t.operator === 'OR') ? hasOrMatch : true);
+    return hasAndMatch && (tokens.some((t) => t.operator === 'OR') ? hasOrMatch : true);
   },
 
   matchesSingleToken(note: NoteItem, token: { field?: string; value: string }): boolean {
@@ -131,7 +244,7 @@ export const Utils = {
         case 'content':
           return note.content.toLowerCase().includes(searchValue);
         case 'tag':
-          return note.tags.some(tag => tag.toLowerCase().includes(searchValue));
+          return note.tags.some((tag) => tag.toLowerCase().includes(searchValue));
         case 'category':
           return note.category.toLowerCase().includes(searchValue);
         case 'date':
@@ -144,7 +257,7 @@ export const Utils = {
       return (
         note.title.toLowerCase().includes(searchValue) ||
         note.content.toLowerCase().includes(searchValue) ||
-        note.tags.some(tag => tag.toLowerCase().includes(searchValue)) ||
+        note.tags.some((tag) => tag.toLowerCase().includes(searchValue)) ||
         note.category.toLowerCase().includes(searchValue)
       );
     }
