@@ -1,0 +1,171 @@
+import { type NextAuthOptions, type Session } from 'next-auth';
+import { type JWT } from 'next-auth/jwt';
+import GoogleProvider from 'next-auth/providers/google';
+import GitHubProvider from 'next-auth/providers/github';
+import DiscordProvider from 'next-auth/providers/discord';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import { v4 as uuidv4 } from 'uuid';
+import { env } from '../../../lib/env-config';
+
+type SessionUserWithId = {
+  id?: string;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+};
+
+type ExtendedJWT = {
+  id?: string;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+  provider?: string | null;
+  sub?: string;
+  iat?: number;
+  exp?: number;
+};
+
+const NEXTAUTH_URL = env.NEXTAUTH_URL;
+const NEXTAUTH_SECRET = env.NEXTAUTH_SECRET;
+
+function getStableUserId(user: any, account: any, profile: any, token: JWT): string {
+  const providerAccountId = account?.providerAccountId;
+  const profileId = profile?.sub || profile?.id;
+  const provider = account?.provider;
+
+  return (
+    user?.id ||
+    (provider && providerAccountId ? `${provider}:${providerAccountId}` : undefined) ||
+    profileId ||
+    token.sub ||
+    uuidv4()
+  );
+}
+
+export const authOptions: NextAuthOptions = {
+  providers: [
+    GoogleProvider({
+      clientId: env.GOOGLE_CLIENT_ID || '',
+      clientSecret: env.GOOGLE_CLIENT_SECRET || '',
+    }),
+    GitHubProvider({
+      clientId: env.GITHUB_CLIENT_ID || '',
+      clientSecret: env.GITHUB_CLIENT_SECRET || '',
+    }),
+    DiscordProvider({
+      clientId: env.DISCORD_CLIENT_ID || '',
+      clientSecret: env.DISCORD_CLIENT_SECRET || '',
+    }),
+    CredentialsProvider({
+      // 允许本地开发测试
+      id: 'test',
+      name: 'Test Login',
+      credentials: {
+        username: { label: 'Username', type: 'text' },
+      },
+      async authorize(credentials: Record<string, string> | undefined) {
+        if (process.env.NODE_ENV !== 'development') {
+          return null;
+        }
+        if (!credentials?.username) {
+          return null;
+        }
+        const normalizedUsername = credentials.username.trim().toLowerCase();
+        return {
+          id: `dev-user:${normalizedUsername}`,
+          name: credentials.username,
+          email: `${normalizedUsername}@test.local`,
+          image: `https://api.dicebear.com/7.x/avataaars/svg?seed=${credentials.username}`,
+        };
+      },
+    }),
+  ],
+
+  callbacks: {
+    async jwt({ token, user, account, profile }): Promise<ExtendedJWT> {
+      const typedToken = token as ExtendedJWT;
+      if (user) {
+        typedToken.id = getStableUserId(user, account, profile, token);
+        typedToken.email = (user as any).email;
+        typedToken.name = (user as any).name;
+        typedToken.image = (user as any).image;
+        typedToken.provider = (account as any)?.provider;
+      } else if (!typedToken.id) {
+        typedToken.id = token.sub;
+      }
+      return typedToken;
+    },
+
+    async session({ session, token }) {
+      if (session.user) {
+        const user = session.user as SessionUserWithId;
+        const typedToken = token as ExtendedJWT;
+        user.id = typedToken.id;
+        user.email = typedToken.email;
+        user.name = typedToken.name;
+        user.image = typedToken.image;
+      }
+      return session;
+    },
+
+    async signIn({ user, account, profile }) {
+      try {
+        const baseUrl =
+          process.env.NEXTAUTH_URL ||
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+        const userId = getStableUserId(user, account, profile, {} as JWT);
+        const username = (user as any).name || (user as any).email?.split('@')[0] || 'user';
+        const email =
+          (user as any).email || `${username}@${(account as any)?.provider || 'local'}.local`;
+
+        const response = await fetch(`${baseUrl}/api/ugc/user/init`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            email,
+            username,
+          }),
+        });
+
+        if (!response.ok) {
+          console.error('Failed to initialize user:', await response.text());
+        } else {
+          console.log('User initialized successfully');
+        }
+      } catch (error) {
+        console.error('Error initializing user:', error);
+      }
+
+      return true;
+    },
+
+    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
+      // 允许回调到相对URL
+      if (url.startsWith('/')) return `${baseUrl}${url}`;
+      // 仅允许来自相同来源的回调
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
+    },
+  },
+
+  pages: {
+    signIn: '/signin',
+    error: '/signin',
+  },
+
+  secret: NEXTAUTH_SECRET,
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+
+  jwt: {
+    secret: NEXTAUTH_SECRET,
+    maxAge: 30 * 24 * 60 * 60,
+  },
+
+  debug: process.env.NODE_ENV === 'development',
+};
