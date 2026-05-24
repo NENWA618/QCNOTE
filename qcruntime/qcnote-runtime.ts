@@ -334,11 +334,19 @@ export class QCRuntime {
     schemas: QCStoreSchema[],
     version = 1,
     secret?: string,
+    sessionToken?: string,
   ): Promise<QCDb> {
     const legacySalt = getStoredSalt(name);
     await migrateAllLegacySalts();
     clearLegacyEncryptionStorage(name);
-    const response = (await workerRpc('open', [name, schemas, version, secret, legacySalt])) as {
+    const response = (await workerRpc('open', [
+      name,
+      schemas,
+      version,
+      secret,
+      legacySalt,
+      sessionToken,
+    ])) as {
       dbId: number;
       migratedSalt: boolean;
     };

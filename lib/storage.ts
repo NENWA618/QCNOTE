@@ -5,6 +5,8 @@ import Indexer from './indexer';
 import SentimentUtil from './sentiment';
 import { QCRuntime, QCDb, QCStoreSchema } from '../qcruntime/qcnote-runtime';
 
+const DEVICE_SESSION_TOKEN_KEY = 'qcnote:deviceSessionToken';
+
 export interface NoteVersion {
   versionId: string;
   title: string;
@@ -123,6 +125,36 @@ export class NoteStorage {
   private notesDb?: QCDb | null;
   private notesDbName: string | null = null;
   private notesDbOpenFailed = false;
+
+  private getDeviceSessionToken(userId: string | null): string | null {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined' || !userId) {
+      return null;
+    }
+
+    const raw = sessionStorage.getItem(DEVICE_SESSION_TOKEN_KEY);
+    if (!raw) return null;
+
+    try {
+      const parsed = JSON.parse(raw) as { userId: string; token: string };
+      if (!parsed?.userId || !parsed?.token || parsed.userId !== userId) {
+        sessionStorage.removeItem(DEVICE_SESSION_TOKEN_KEY);
+        return null;
+      }
+      return parsed.token;
+    } catch {
+      sessionStorage.removeItem(DEVICE_SESSION_TOKEN_KEY);
+      return null;
+    }
+  }
+
+  private setDeviceSessionToken(userId: string | null, token: string | null): void {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return;
+    if (!userId || !token) {
+      sessionStorage.removeItem(DEVICE_SESSION_TOKEN_KEY);
+      return;
+    }
+    sessionStorage.setItem(DEVICE_SESSION_TOKEN_KEY, JSON.stringify({ userId, token }));
+  }
 
   constructor() {
     this.currentUserId = null;
@@ -255,7 +287,12 @@ export class NoteStorage {
     try {
       const secret =
         userId && this.useEncryption ? (this.currentEncryptionKey ?? undefined) : undefined;
-      this.notesDb = await QCRuntime.open(dbName, [this.noteStoreSchema], 1, secret);
+      const sessionToken =
+        userId && this.useEncryption ? this.getDeviceSessionToken(userId) : undefined;
+      if (userId && this.useEncryption && !sessionToken) {
+        throw new Error('Device session token is required to open encrypted notes database');
+      }
+      this.notesDb = await QCRuntime.open(dbName, [this.noteStoreSchema], 1, secret, sessionToken);
       this.notesDbName = dbName;
       this.notesDbOpenFailed = false;
       return this.notesDb;

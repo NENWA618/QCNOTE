@@ -437,6 +437,7 @@ export class QCRuntime {
     version = 1,
     secret?: string,
     legacySaltB64?: string,
+    sessionToken?: string,
   ): Promise<QCDb> {
     let cryptoKey: CryptoKey | undefined;
 
@@ -445,6 +446,12 @@ export class QCRuntime {
     const { salt, migrated } = await getSalt(name, legacySaltB64);
     if (migrated) {
       await writeMeta(name, 'salt', base64Encode(salt));
+    }
+
+    const isGuestDb = name.endsWith('_GUEST');
+    const hasPersistedKey = !isGuestDb && (await loadPersistentCryptoKey(name)) !== undefined;
+    if (!isGuestDb && !sessionToken && (secret || hasPersistedKey)) {
+      throw new Error('Device session token required to open encrypted database');
     }
 
     // If a secret is provided, derive a compatible AES-GCM key and
@@ -458,8 +465,6 @@ export class QCRuntime {
     }
 
     const db = await openDatabase(name, version, schemas);
-
-    const isGuestDb = name.endsWith('_GUEST');
 
     // If no secret is passed, try loading a previously stored worker key.
     if (!cryptoKey) {
@@ -508,14 +513,15 @@ interface WorkerResponse {
 }
 
 async function handleOpen(args: unknown[]): Promise<{ dbId: number; migratedSalt: boolean }> {
-  const [name, schemas, version, secret, legacySaltB64] = args as [
+  const [name, schemas, version, secret, legacySaltB64, sessionToken] = args as [
     string,
     QCStoreSchema[],
     number,
     string | undefined,
     string | undefined,
+    string | undefined,
   ];
-  const db = await QCRuntime.open(name, schemas, version, secret, legacySaltB64);
+  const db = await QCRuntime.open(name, schemas, version, secret, legacySaltB64, sessionToken);
   const dbId = nextDbId++;
   dbInstances.set(dbId, db);
   const migratedSalt = Boolean(legacySaltB64);

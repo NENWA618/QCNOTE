@@ -77,6 +77,219 @@ const Dashboard: React.FC = () => {
   const [deviceVerificationMessage, setDeviceVerificationMessage] = useState('');
   const { data: session } = useSession();
 
+  const DEVICE_SESSION_TOKEN_KEY = 'qcnote:deviceSessionToken';
+
+  const createDeviceSessionToken = useCallback((): string => {
+    if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    return Array.from(window.crypto.getRandomValues(new Uint8Array(16)))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
+  }, []);
+
+  const BROADCAST_KEY = 'qcnote:deviceSessionTokenBroadcast';
+  const REQUEST_KEY = 'qcnote:deviceSessionTokenRequest';
+  const RESPONSE_KEY = 'qcnote:deviceSessionTokenResponse';
+  const tabIdRef = useRef<string>(createDeviceSessionToken());
+  const pendingDeviceSessionResponseRef = useRef<{
+    requestId: string;
+    userId: string;
+    resolve: (granted: boolean) => void;
+    timeoutId: number;
+  } | null>(null);
+  const loadNotesRef = useRef<(() => Promise<void>) | null>(null);
+
+  const clearDeviceSessionToken = useCallback((userId?: string, broadcast = true) => {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return;
+    sessionStorage.removeItem(DEVICE_SESSION_TOKEN_KEY);
+    if (broadcast && userId && typeof localStorage !== 'undefined') {
+      localStorage.setItem(
+        BROADCAST_KEY,
+        JSON.stringify({
+          sourceId: tabIdRef.current,
+          userId,
+          action: 'remove',
+          timestamp: Date.now(),
+        }),
+      );
+      window.setTimeout(() => localStorage.removeItem(BROADCAST_KEY), 300);
+    }
+  }, []);
+
+  const setDeviceSessionToken = useCallback(
+    (userId: string | null, token: string | null, broadcast = true) => {
+      if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return;
+      if (!userId || !token) {
+        sessionStorage.removeItem(DEVICE_SESSION_TOKEN_KEY);
+        return;
+      }
+      sessionStorage.setItem(DEVICE_SESSION_TOKEN_KEY, JSON.stringify({ userId, token }));
+      if (broadcast && typeof localStorage !== 'undefined') {
+        localStorage.setItem(
+          BROADCAST_KEY,
+          JSON.stringify({
+            sourceId: tabIdRef.current,
+            userId,
+            action: 'set',
+            token,
+            timestamp: Date.now(),
+          }),
+        );
+        window.setTimeout(() => localStorage.removeItem(BROADCAST_KEY), 300);
+      }
+    },
+    [],
+  );
+
+  const getDeviceSessionToken = useCallback((): string | null => {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return null;
+    const raw = sessionStorage.getItem(DEVICE_SESSION_TOKEN_KEY);
+    if (!raw) return null;
+
+    try {
+      const parsed = JSON.parse(raw) as { userId: string; token: string };
+      const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
+      if (!parsed?.userId || !parsed?.token || parsed.userId !== currentUserId) {
+        sessionStorage.removeItem(DEVICE_SESSION_TOKEN_KEY);
+        return null;
+      }
+      return parsed.token;
+    } catch {
+      sessionStorage.removeItem(DEVICE_SESSION_TOKEN_KEY);
+      return null;
+    }
+  }, [session]);
+
+  const requestDeviceSessionTokenFromOtherTabs = useCallback(
+    (userId: string): Promise<boolean> => {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+        return Promise.resolve(false);
+      }
+
+      const existingToken = getDeviceSessionToken();
+      if (existingToken) {
+        return Promise.resolve(true);
+      }
+
+      return new Promise((resolve) => {
+        const requestId = createDeviceSessionToken();
+        const timeoutId = window.setTimeout(() => {
+          if (pendingDeviceSessionResponseRef.current?.requestId === requestId) {
+            pendingDeviceSessionResponseRef.current = null;
+            resolve(false);
+          }
+        }, 400);
+
+        pendingDeviceSessionResponseRef.current = {
+          requestId,
+          userId,
+          resolve,
+          timeoutId,
+        };
+
+        localStorage.setItem(
+          REQUEST_KEY,
+          JSON.stringify({ sourceId: tabIdRef.current, requestId, userId, timestamp: Date.now() }),
+        );
+        window.setTimeout(() => localStorage.removeItem(REQUEST_KEY), 300);
+      });
+    },
+    [getDeviceSessionToken],
+  );
+
+  const handleDeviceSessionStorageEvent = useCallback(
+    async (event: StorageEvent) => {
+      if (!event.key || event.storageArea !== localStorage) return;
+      if (event.key === BROADCAST_KEY && event.newValue) {
+        try {
+          const payload = JSON.parse(event.newValue) as {
+            sourceId: string;
+            userId: string;
+            action: 'set' | 'remove';
+            token?: string;
+          };
+          if (payload.sourceId === tabIdRef.current) return;
+          const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
+          if (!currentUserId || payload.userId !== currentUserId) return;
+          if (payload.action === 'set' && payload.token) {
+            setDeviceSessionToken(currentUserId, payload.token, false);
+          }
+          if (payload.action === 'remove') {
+            clearDeviceSessionToken(undefined, false);
+            if (deviceVerificationStatus === 'verified') {
+              setDeviceVerificationStatus('failed');
+              setDeviceVerificationMessage('当前设备会话已在其他标签页失效，请重新验证。');
+              if (storageRef.current && loadNotesRef.current) {
+                await storageRef.current.setCurrentUser(null);
+                await loadNotesRef.current();
+              }
+            }
+          }
+        } catch {
+          // ignore malformed payloads
+        }
+      }
+
+      if (event.key === REQUEST_KEY && event.newValue) {
+        try {
+          const payload = JSON.parse(event.newValue) as {
+            sourceId: string;
+            requestId: string;
+            userId: string;
+          };
+          if (payload.sourceId === tabIdRef.current) return;
+          const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
+          if (!currentUserId || payload.userId !== currentUserId) return;
+          const token = getDeviceSessionToken();
+          if (token && typeof localStorage !== 'undefined') {
+            localStorage.setItem(
+              RESPONSE_KEY,
+              JSON.stringify({
+                sourceId: tabIdRef.current,
+                requestId: payload.requestId,
+                userId: currentUserId,
+                token,
+                timestamp: Date.now(),
+              }),
+            );
+            window.setTimeout(() => localStorage.removeItem(RESPONSE_KEY), 300);
+          }
+        } catch {
+          // ignore malformed payloads
+        }
+      }
+
+      if (event.key === RESPONSE_KEY && event.newValue) {
+        try {
+          const payload = JSON.parse(event.newValue) as {
+            sourceId: string;
+            requestId: string;
+            userId: string;
+            token: string;
+          };
+          if (payload.sourceId === tabIdRef.current) return;
+          if (!pendingDeviceSessionResponseRef.current) return;
+          if (payload.requestId !== pendingDeviceSessionResponseRef.current.requestId) return;
+          if (payload.userId !== pendingDeviceSessionResponseRef.current.userId) return;
+          setDeviceSessionToken(payload.userId, payload.token);
+          pendingDeviceSessionResponseRef.current.resolve(true);
+          window.clearTimeout(pendingDeviceSessionResponseRef.current.timeoutId);
+          pendingDeviceSessionResponseRef.current = null;
+        } catch {
+          // ignore malformed payloads
+        }
+      }
+    },
+    [session, setDeviceSessionToken, clearDeviceSessionToken, deviceVerificationStatus],
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.addEventListener('storage', handleDeviceSessionStorageEvent);
+    return () => window.removeEventListener('storage', handleDeviceSessionStorageEvent);
+  }, [handleDeviceSessionStorageEvent]);
+
   const sentimentStats = useMemo(() => {
     const activeNotes = notes.filter((note) => !note.isDeleted);
     const total = activeNotes.length;
@@ -192,6 +405,7 @@ const Dashboard: React.FC = () => {
 
       const verification = await verifyDeviceFingerprint();
       if (!verification.allowed) {
+        clearDeviceSessionToken();
         setDeviceVerificationStatus('failed');
         setDeviceVerificationMessage(
           verification.message || '设备指纹重置后仍未通过验证，请使用已登记设备。',
@@ -199,6 +413,7 @@ const Dashboard: React.FC = () => {
         return;
       }
 
+      setDeviceSessionToken(userId, createDeviceSessionToken());
       await storageRef.current?.setCurrentUser(userId);
       await storageRef.current?.migrateGuestDataToUser();
       await loadNotes();
@@ -224,6 +439,7 @@ const Dashboard: React.FC = () => {
       if (!userId) {
         setDeviceVerificationStatus('idle');
         setDeviceVerificationMessage('');
+        clearDeviceSessionToken();
         await storageRef.current?.setCurrentUser(null);
         await loadNotes();
         return;
@@ -245,8 +461,19 @@ const Dashboard: React.FC = () => {
       setTrashNotes([]);
       setConflicts([]);
 
+      const synced = await requestDeviceSessionTokenFromOtherTabs(userId);
+      if (synced) {
+        await storageRef.current?.setCurrentUser(userId);
+        await storageRef.current?.migrateGuestDataToUser();
+        await loadNotes();
+        setDeviceVerificationStatus('verified');
+        setDeviceVerificationMessage('检测到当前设备在其他标签页已通过验证，已同步登录状态。');
+        return;
+      }
+
       const verification = await verifyDeviceFingerprint();
       if (!verification.allowed) {
+        clearDeviceSessionToken(userId);
         setDeviceVerificationStatus('failed');
         setDeviceVerificationMessage(
           verification.message || '当前设备未通过验证，无法加载个人笔记。',
@@ -254,6 +481,7 @@ const Dashboard: React.FC = () => {
         return;
       }
 
+      setDeviceSessionToken(userId, createDeviceSessionToken());
       await storageRef.current?.setCurrentUser(userId);
       await storageRef.current?.migrateGuestDataToUser();
       await loadNotes();
@@ -356,6 +584,10 @@ const Dashboard: React.FC = () => {
     const conflicts = await s.getConflictsAsync();
     setConflicts(conflicts);
   };
+
+  useEffect(() => {
+    loadNotesRef.current = loadNotes;
+  }, [loadNotes]);
 
   // Filtered and sorted notes
   const filteredNotes = useMemo(() => {
