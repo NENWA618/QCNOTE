@@ -288,7 +288,9 @@ export class NoteStorage {
       const secret =
         userId && this.useEncryption ? (this.currentEncryptionKey ?? undefined) : undefined;
       const sessionToken =
-        userId && this.useEncryption ? this.getDeviceSessionToken(userId) : undefined;
+        userId && this.useEncryption
+          ? (this.getDeviceSessionToken(userId) ?? undefined)
+          : undefined;
       if (userId && this.useEncryption && !sessionToken) {
         throw new Error('Device session token is required to open encrypted notes database');
       }
