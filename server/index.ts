@@ -51,13 +51,6 @@ async function getSessionUserId(request: FastifyRequest): Promise<string | null>
     : [];
   const hasNextAuthSecret = Boolean(process.env.NEXTAUTH_SECRET);
 
-  logger.info('Session debug', {
-    hasCookie: Boolean(cookieHeader),
-    cookieNames,
-    hasNextAuthSecret,
-    nextAuthUrl: process.env.NEXTAUTH_URL,
-  });
-
   try {
     const token = await getToken({
       req: {
@@ -77,28 +70,20 @@ async function getSessionUserId(request: FastifyRequest): Promise<string | null>
       return null;
     }
 
-    const debugToken = {
-      id: token.id,
-      sub: token.sub,
-      email: token.email,
-      name: token.name,
-    };
     const userId = (token.id as string) || (token.sub as string) || null;
 
     if (!userId) {
       logger.warn('Decoded token has no user id/sub', {
-        debugToken,
+        id: token.id,
+        sub: token.sub,
+        email: token.email,
+        name: token.name,
         hasCookie: Boolean(cookieHeader),
         cookieNames,
       });
       return null;
     }
 
-    logger.info('Decoded session token', {
-      debugToken,
-      hasCookie: Boolean(cookieHeader),
-      cookieNames,
-    });
     return userId;
   } catch (error) {
     logger.error('Failed to decode session token:', error, {

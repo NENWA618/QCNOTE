@@ -387,7 +387,7 @@ const Dashboard: React.FC = () => {
         });
       });
     },
-    [getDeviceSessionToken, postDeviceSessionBroadcastMessage],
+    [createDeviceSessionToken, getDeviceSessionToken, postDeviceSessionBroadcastMessage],
   );
 
   const handleDeviceSessionStorageEvent = useCallback(
@@ -460,7 +460,7 @@ const Dashboard: React.FC = () => {
     storageRef.current = s;
     setSyncManager(new WebDAVSyncManager(s));
     loadNotes();
-  }, []);
+  }, [loadNotes]);
 
   const userId = (session?.user as { id?: string } | undefined)?.id || null;
 
@@ -631,7 +631,15 @@ const Dashboard: React.FC = () => {
         error instanceof Error ? error.message : '设备指纹重置失败，请稍后重试。',
       );
     }
-  }, [userId, verifyDeviceFingerprint]);
+  }, [
+    userId,
+    verifyDeviceFingerprint,
+    clearDeviceSessionToken,
+    createDeviceSessionTokenOnServer,
+    getDeviceFingerprint,
+    loadNotes,
+    setDeviceSessionToken,
+  ]);
 
   useEffect(() => {
     if (!storageRef.current) return;
@@ -703,7 +711,18 @@ const Dashboard: React.FC = () => {
     };
 
     updateUserStorage();
-  }, [userId, verifyDeviceFingerprint]);
+  }, [
+    userId,
+    verifyDeviceFingerprint,
+    clearDeviceSessionToken,
+    createDeviceSessionTokenOnServer,
+    getDeviceFingerprint,
+    getDeviceSessionToken,
+    loadNotes,
+    requestDeviceSessionTokenFromOtherTabs,
+    setDeviceSessionToken,
+    validateDeviceSessionToken,
+  ]);
 
   useEffect(() => {
     if (deviceVerificationStatus === 'verified' && deviceVerificationMessage) {
@@ -745,9 +764,9 @@ const Dashboard: React.FC = () => {
     }, webdavConfig.syncInterval);
 
     return () => clearInterval(interval);
-  }, [webdavConfig]);
+  }, [webdavConfig, loadNotes]);
 
-  const loadNotes = async () => {
+  const loadNotes = useCallback(async () => {
     const s = storageRef.current;
     if (!s) return;
     const all = (await s.getDataAsync()) || [];
@@ -794,7 +813,7 @@ const Dashboard: React.FC = () => {
     // Load conflicts
     const conflicts = await s.getConflictsAsync();
     setConflicts(conflicts);
-  };
+  }, []);
 
   useEffect(() => {
     loadNotesRef.current = loadNotes;
