@@ -179,10 +179,12 @@ export class UGCService {
   ): Promise<string> {
     const now = Date.now();
     const payload = {
-      userId,
+      sub: userId,
+      scope: 'device_session',
       fingerprint,
       iat: now,
       exp: now + expiresMs,
+      jti: uuidv4(),
     };
     const encodedPayload = this.base64UrlEncode(Buffer.from(JSON.stringify(payload), 'utf-8'));
     const signature = this.signDeviceSessionPayload(encodedPayload);
@@ -203,18 +205,35 @@ export class UGCService {
       return false;
     }
 
-    let payload: { userId: string; fingerprint: string; exp: number };
+    let payload: {
+      sub?: string;
+      userId?: string;
+      fingerprint?: string;
+      exp?: number;
+      scope?: string;
+    };
     try {
       payload = JSON.parse(this.base64UrlDecode(encodedPayload).toString('utf-8')) as {
-        userId: string;
-        fingerprint: string;
-        exp: number;
+        sub?: string;
+        userId?: string;
+        fingerprint?: string;
+        exp?: number;
+        scope?: string;
       };
     } catch {
       return false;
     }
 
-    if (payload.userId !== userId || payload.fingerprint !== fingerprint) {
+    const tokenUserId = payload.sub ?? payload.userId;
+    if (!tokenUserId || tokenUserId !== userId) {
+      return false;
+    }
+
+    if (payload.scope !== 'device_session') {
+      return false;
+    }
+
+    if (payload.fingerprint !== fingerprint) {
       return false;
     }
 

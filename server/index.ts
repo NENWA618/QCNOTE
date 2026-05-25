@@ -897,10 +897,11 @@ function registerRoutes(app: ExtendedFastifyInstance) {
 
   app.post('/api/device/verify', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { userId, fingerprint } = request.body as { userId?: string; fingerprint?: string };
+      const { fingerprint } = request.body as { fingerprint?: string };
+      const userId = await getSessionUserId(request);
 
       if (!userId) {
-        return reply.status(400).send({ error: 'Missing userId' });
+        return reply.status(401).send({ error: 'Unauthorized' });
       }
       if (!fingerprint || typeof fingerprint !== 'string') {
         return reply.status(400).send({ error: 'Fingerprint is required' });
@@ -927,10 +928,11 @@ function registerRoutes(app: ExtendedFastifyInstance) {
 
   app.post('/api/device/session/create', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { userId, fingerprint } = request.body as { userId?: string; fingerprint?: string };
+      const { fingerprint } = request.body as { fingerprint?: string };
+      const userId = await getSessionUserId(request);
 
       if (!userId) {
-        return reply.status(400).send({ error: 'Missing userId' });
+        return reply.status(401).send({ error: 'Unauthorized' });
       }
       if (!fingerprint || typeof fingerprint !== 'string') {
         return reply.status(400).send({ error: 'Fingerprint is required' });
@@ -950,24 +952,22 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       reply.send({ success: true, token, firstTime: verification.firstTime });
     } catch (error) {
       logger.error('Device session create error:', error);
-      reply
-        .status(500)
-        .send({
-          error: error instanceof Error ? error.message : 'Failed to create device session',
-        });
+      reply.status(500).send({
+        error: error instanceof Error ? error.message : 'Failed to create device session',
+      });
     }
   });
 
   app.post('/api/device/session/validate', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { userId, token, fingerprint } = request.body as {
-        userId?: string;
+      const { token, fingerprint } = request.body as {
         token?: string;
         fingerprint?: string;
       };
+      const userId = await getSessionUserId(request);
 
       if (!userId) {
-        return reply.status(400).send({ error: 'Missing userId' });
+        return reply.status(401).send({ error: 'Unauthorized' });
       }
       if (!token || typeof token !== 'string') {
         return reply.status(400).send({ error: 'Token is required' });
@@ -986,20 +986,18 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       reply.send({ success: true });
     } catch (error) {
       logger.error('Device session validate error:', error);
-      reply
-        .status(500)
-        .send({
-          error: error instanceof Error ? error.message : 'Failed to validate device session',
-        });
+      reply.status(500).send({
+        error: error instanceof Error ? error.message : 'Failed to validate device session',
+      });
     }
   });
 
   app.post('/api/device/reset', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { userId } = request.body as { userId?: string };
+      const userId = await getSessionUserId(request);
 
       if (!userId) {
-        return reply.status(400).send({ error: 'Missing userId' });
+        return reply.status(401).send({ error: 'Unauthorized' });
       }
 
       await ugcService.resetDeviceFingerprints(userId);

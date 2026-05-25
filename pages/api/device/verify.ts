@@ -44,8 +44,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...(req.headers.authorization ? { authorization: req.headers.authorization } : {}),
+      ...(req.headers.cookie ? { cookie: req.headers.cookie } : {}),
     },
-    body: JSON.stringify({ userId, fingerprint }),
+    body: JSON.stringify({ fingerprint }),
   });
 
   const responseText = await response.text();
