@@ -925,6 +925,75 @@ function registerRoutes(app: ExtendedFastifyInstance) {
     }
   });
 
+  app.post('/api/device/session/create', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { userId, fingerprint } = request.body as { userId?: string; fingerprint?: string };
+
+      if (!userId) {
+        return reply.status(400).send({ error: 'Missing userId' });
+      }
+      if (!fingerprint || typeof fingerprint !== 'string') {
+        return reply.status(400).send({ error: 'Fingerprint is required' });
+      }
+
+      const verification = await ugcService.verifyDeviceFingerprint(userId, fingerprint);
+      if (!verification.allowed) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Device fingerprint not recognized',
+          code: 'DEVICE_MISMATCH',
+          firstTime: false,
+        });
+      }
+
+      const token = await ugcService.createDeviceSessionToken(userId, fingerprint);
+      reply.send({ success: true, token, firstTime: verification.firstTime });
+    } catch (error) {
+      logger.error('Device session create error:', error);
+      reply
+        .status(500)
+        .send({
+          error: error instanceof Error ? error.message : 'Failed to create device session',
+        });
+    }
+  });
+
+  app.post('/api/device/session/validate', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { userId, token, fingerprint } = request.body as {
+        userId?: string;
+        token?: string;
+        fingerprint?: string;
+      };
+
+      if (!userId) {
+        return reply.status(400).send({ error: 'Missing userId' });
+      }
+      if (!token || typeof token !== 'string') {
+        return reply.status(400).send({ error: 'Token is required' });
+      }
+      if (!fingerprint || typeof fingerprint !== 'string') {
+        return reply.status(400).send({ error: 'Fingerprint is required' });
+      }
+
+      const valid = await ugcService.verifyDeviceSessionToken(userId, token, fingerprint);
+      if (!valid) {
+        return reply
+          .status(403)
+          .send({ success: false, error: 'Invalid or expired device session token' });
+      }
+
+      reply.send({ success: true });
+    } catch (error) {
+      logger.error('Device session validate error:', error);
+      reply
+        .status(500)
+        .send({
+          error: error instanceof Error ? error.message : 'Failed to validate device session',
+        });
+    }
+  });
+
   app.post('/api/device/reset', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { userId } = request.body as { userId?: string };

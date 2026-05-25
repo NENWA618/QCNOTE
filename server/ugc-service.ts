@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { Pool } from 'pg';
 import { RedisClientType } from 'redis';
 import { v4 as uuidv4 } from 'uuid';
@@ -135,6 +136,93 @@ export class UGCService {
     if (result.rowCount === 0) {
       throw new Error(`User not found while saving device fingerprints: ${userId}`);
     }
+  }
+
+  private getDeviceSessionSecret(): string {
+    return (
+      process.env.DEVICE_SESSION_SECRET ||
+      process.env.NEXTAUTH_SECRET ||
+      'qcnote-device-session-secret'
+    );
+  }
+
+  private base64UrlEncode(buffer: Buffer): string {
+    return buffer.toString('base64url');
+  }
+
+  private base64UrlDecode(value: string): Buffer {
+    return Buffer.from(value, 'base64url');
+  }
+
+  private signDeviceSessionPayload(payload: string): string {
+    return this.base64UrlEncode(
+      crypto.createHmac('sha256', this.getDeviceSessionSecret()).update(payload).digest(),
+    );
+  }
+
+  private verifyDeviceSessionSignature(encodedPayload: string, signature: string): boolean {
+    const expectedSignature = this.signDeviceSessionPayload(encodedPayload);
+    const signatureBuffer = Buffer.from(signature, 'base64url');
+    const expectedBuffer = Buffer.from(expectedSignature, 'base64url');
+
+    if (signatureBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+  }
+
+  async createDeviceSessionToken(
+    userId: string,
+    fingerprint: string,
+    expiresMs: number = 1000 * 60 * 60 * 12,
+  ): Promise<string> {
+    const now = Date.now();
+    const payload = {
+      userId,
+      fingerprint,
+      iat: now,
+      exp: now + expiresMs,
+    };
+    const encodedPayload = this.base64UrlEncode(Buffer.from(JSON.stringify(payload), 'utf-8'));
+    const signature = this.signDeviceSessionPayload(encodedPayload);
+    return `${encodedPayload}.${signature}`;
+  }
+
+  async verifyDeviceSessionToken(
+    userId: string,
+    token: string,
+    fingerprint: string,
+  ): Promise<boolean> {
+    const [encodedPayload, signature] = token.split('.');
+    if (!encodedPayload || !signature) {
+      return false;
+    }
+
+    if (!this.verifyDeviceSessionSignature(encodedPayload, signature)) {
+      return false;
+    }
+
+    let payload: { userId: string; fingerprint: string; exp: number };
+    try {
+      payload = JSON.parse(this.base64UrlDecode(encodedPayload).toString('utf-8')) as {
+        userId: string;
+        fingerprint: string;
+        exp: number;
+      };
+    } catch {
+      return false;
+    }
+
+    if (payload.userId !== userId || payload.fingerprint !== fingerprint) {
+      return false;
+    }
+
+    if (typeof payload.exp !== 'number' || payload.exp < Date.now()) {
+      return false;
+    }
+
+    return true;
   }
 
   async verifyDeviceFingerprint(

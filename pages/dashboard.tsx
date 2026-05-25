@@ -350,6 +350,51 @@ const Dashboard: React.FC = () => {
       .join('');
   }, []);
 
+  const validateDeviceSessionToken = useCallback(
+    async (token: string, fingerprint: string): Promise<boolean> => {
+      try {
+        const response = await fetch('/api/device/session/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, fingerprint }),
+        });
+        const result = await response.json();
+        return response.ok && result?.success === true;
+      } catch (error) {
+        console.error('[Device Session] Validation error', error);
+        return false;
+      }
+    },
+    [],
+  );
+
+  const createDeviceSessionTokenOnServer = useCallback(
+    async (
+      fingerprint: string,
+    ): Promise<{ token?: string; firstTime?: boolean; error?: string }> => {
+      try {
+        const response = await fetch('/api/device/session/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fingerprint }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result?.success) {
+          return {
+            error:
+              result?.error?.message ||
+              'Failed to create device session token. Please retry or verify your device again.',
+          };
+        }
+        return { token: result.token, firstTime: result.firstTime };
+      } catch (error) {
+        console.error('[Device Session] Create error', error);
+        return { error: '设备会话令牌创建失败，请检查网络后重试。' };
+      }
+    },
+    [],
+  );
+
   const verifyDeviceFingerprint = useCallback(async () => {
     if (!userId) {
       return { allowed: true, firstTime: false };
@@ -376,7 +421,7 @@ const Dashboard: React.FC = () => {
       }
       return {
         allowed: true,
-        firstTime: result.data?.firstTime === true,
+        firstTime: result.firstTime === true,
       };
     } catch (error) {
       console.error('[Device Verification] Error verifying device fingerprint', error);
@@ -413,7 +458,23 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      setDeviceSessionToken(userId, createDeviceSessionToken());
+      const fingerprint = await getDeviceFingerprint();
+      if (!fingerprint) {
+        clearDeviceSessionToken();
+        setDeviceVerificationStatus('failed');
+        setDeviceVerificationMessage('无法计算设备指纹，无法继续加载笔记。');
+        return;
+      }
+
+      const tokenResult = await createDeviceSessionTokenOnServer(fingerprint);
+      if (!tokenResult.token) {
+        clearDeviceSessionToken();
+        setDeviceVerificationStatus('failed');
+        setDeviceVerificationMessage(tokenResult.error || '设备会话令牌创建失败，请稍后重试。');
+        return;
+      }
+
+      setDeviceSessionToken(userId, tokenResult.token);
       await storageRef.current?.setCurrentUser(userId);
       await storageRef.current?.migrateGuestDataToUser();
       await loadNotes();
@@ -461,33 +522,43 @@ const Dashboard: React.FC = () => {
       setTrashNotes([]);
       setConflicts([]);
 
-      const synced = await requestDeviceSessionTokenFromOtherTabs(userId);
-      if (synced) {
-        await storageRef.current?.setCurrentUser(userId);
-        await storageRef.current?.migrateGuestDataToUser();
-        await loadNotes();
-        setDeviceVerificationStatus('verified');
-        setDeviceVerificationMessage('检测到当前设备在其他标签页已通过验证，已同步登录状态。');
-        return;
-      }
-
-      const verification = await verifyDeviceFingerprint();
-      if (!verification.allowed) {
+      const fingerprint = await getDeviceFingerprint();
+      if (!fingerprint) {
         clearDeviceSessionToken(userId);
         setDeviceVerificationStatus('failed');
-        setDeviceVerificationMessage(
-          verification.message || '当前设备未通过验证，无法加载个人笔记。',
-        );
+        setDeviceVerificationMessage('无法计算设备指纹，无法继续加载笔记。');
         return;
       }
 
-      setDeviceSessionToken(userId, createDeviceSessionToken());
+      const synced = await requestDeviceSessionTokenFromOtherTabs(userId);
+      if (synced) {
+        const localToken = getDeviceSessionToken();
+        if (localToken && (await validateDeviceSessionToken(localToken, fingerprint))) {
+          await storageRef.current?.setCurrentUser(userId);
+          await storageRef.current?.migrateGuestDataToUser();
+          await loadNotes();
+          setDeviceVerificationStatus('verified');
+          setDeviceVerificationMessage('检测到当前设备在其他标签页已通过验证，已同步登录状态。');
+          return;
+        }
+        clearDeviceSessionToken(userId);
+      }
+
+      const result = await createDeviceSessionTokenOnServer(fingerprint);
+      if (!result.token) {
+        clearDeviceSessionToken(userId);
+        setDeviceVerificationStatus('failed');
+        setDeviceVerificationMessage(result.error || '当前设备未通过验证，无法加载个人笔记。');
+        return;
+      }
+
+      setDeviceSessionToken(userId, result.token);
       await storageRef.current?.setCurrentUser(userId);
       await storageRef.current?.migrateGuestDataToUser();
       await loadNotes();
       setDeviceVerificationStatus('verified');
       setDeviceVerificationMessage(
-        verification.firstTime ? '首次在此设备登录，已完成设备指纹登记。' : '当前设备已完成验证。',
+        result.firstTime ? '首次在此设备登录，已完成设备指纹登记。' : '当前设备已完成验证。',
       );
     };
 
