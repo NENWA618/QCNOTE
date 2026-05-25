@@ -34,6 +34,19 @@ let ugcService: UGCService;
 let recommendationService: RecommendationService;
 
 async function getSessionUserId(request: FastifyRequest): Promise<string | null> {
+  const cookieHeader = request.raw.headers.cookie as string | undefined;
+  const cookieNames = cookieHeader
+    ? cookieHeader.split(';').map((item) => item.split('=')[0].trim())
+    : [];
+  const hasNextAuthSecret = Boolean(process.env.NEXTAUTH_SECRET);
+
+  logger.info('Session debug', {
+    hasCookie: Boolean(cookieHeader),
+    cookieNames,
+    hasNextAuthSecret,
+    nextAuthUrl: process.env.NEXTAUTH_URL,
+  });
+
   try {
     const token = await getToken({
       req: request.raw as any,
@@ -43,7 +56,8 @@ async function getSessionUserId(request: FastifyRequest): Promise<string | null>
 
     if (!token || typeof token !== 'object') {
       logger.warn('Session token missing or invalid', {
-        hasCookie: Boolean(request.raw.headers.cookie),
+        hasCookie: Boolean(cookieHeader),
+        cookieNames,
         hasAuthorization: Boolean(request.raw.headers.authorization),
       });
       return null;
@@ -60,20 +74,24 @@ async function getSessionUserId(request: FastifyRequest): Promise<string | null>
     if (!userId) {
       logger.warn('Decoded token has no user id/sub', {
         debugToken,
-        hasCookie: Boolean(request.raw.headers.cookie),
+        hasCookie: Boolean(cookieHeader),
+        cookieNames,
       });
       return null;
     }
 
     logger.info('Decoded session token', {
       debugToken,
-      hasCookie: Boolean(request.raw.headers.cookie),
+      hasCookie: Boolean(cookieHeader),
+      cookieNames,
     });
     return userId;
   } catch (error) {
     logger.error('Failed to decode session token:', error, {
-      hasCookie: Boolean(request.raw.headers.cookie),
+      hasCookie: Boolean(cookieHeader),
+      cookieNames,
       hasAuthorization: Boolean(request.raw.headers.authorization),
+      hasNextAuthSecret,
     });
     return null;
   }
