@@ -27,6 +27,17 @@ interface Note {
   [key: string]: unknown;
 }
 
+function parseCookieHeader(cookieHeader?: string): Record<string, string> {
+  if (!cookieHeader) return {};
+  return cookieHeader.split(';').reduce<Record<string, string>>((cookies, pair) => {
+    const [name, ...valueParts] = pair.split('=');
+    const nameTrimmed = name?.trim();
+    if (!nameTrimmed) return cookies;
+    cookies[nameTrimmed] = decodeURIComponent(valueParts.join('='));
+    return cookies;
+  }, {});
+}
+
 let serverNotes: Note[] = [];
 const NOTES_PERSIST_PATH = path.join(__dirname, '.notes-cache.json');
 
@@ -49,7 +60,10 @@ async function getSessionUserId(request: FastifyRequest): Promise<string | null>
 
   try {
     const token = await getToken({
-      req: request.raw as any,
+      req: {
+        ...request.raw,
+        cookies: parseCookieHeader(request.raw.headers.cookie as string | undefined),
+      } as any,
       secret: process.env.NEXTAUTH_SECRET,
       secureCookie: process.env.NODE_ENV === 'production',
     });
