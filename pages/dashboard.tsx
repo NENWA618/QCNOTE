@@ -454,6 +454,59 @@ const Dashboard: React.FC = () => {
   const [editingNote, setEditingNote] = useState<NoteItem | null>(null);
   const [isPreview, setIsPreview] = useState(false);
 
+  const loadNotes = useCallback(async () => {
+    const s = storageRef.current;
+    if (!s) return;
+    const all = (await s.getDataAsync()) || [];
+
+    // 更新缓存
+    const newCache = new Map();
+    all.forEach((note) => newCache.set(note.id, note));
+    setNoteCache(newCache);
+
+    setNotes(all);
+    setCategories(await s.getCategoriesAsync());
+    setStats(await s.getStatsAsync());
+
+    // Load WebDAV 配置
+    const config = await s.getWebDAVConfigAsync();
+    if (config) {
+      setWebdavConfig({
+        url: config.url,
+        username: config.username,
+        password: config.password,
+        remotePath: config.remotePath,
+        encryptionKey: config.encryptionKey || '',
+        autoSyncEnabled: config.autoSyncEnabled || false,
+        syncInterval: config.syncInterval || 5 * 60 * 1000,
+        conflictStrategy: config.conflictStrategy || 'manual',
+      });
+      setLastSyncTime(config.lastSyncTime ? new Date(config.lastSyncTime) : null);
+    }
+
+    const oneDriveConfig = await s.getOneDriveConfigAsync();
+    if (oneDriveConfig) {
+      setOnedriveConfig({
+        accessToken: oneDriveConfig.accessToken,
+        folderPath: oneDriveConfig.folderPath,
+        encryptionKey: oneDriveConfig.encryptionKey,
+      });
+      setOneDriveConfigSaved(true);
+    }
+
+    // Load trash notes
+    const trash = await s.getTrashNotesAsync();
+    setTrashNotes(trash);
+
+    // Load conflicts
+    const conflicts = await s.getConflictsAsync();
+    setConflicts(conflicts);
+  }, []);
+
+  useEffect(() => {
+    loadNotesRef.current = loadNotes;
+  }, [loadNotes]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const s = initWindowStorage() || new NoteStorage();
@@ -765,59 +818,6 @@ const Dashboard: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [webdavConfig, loadNotes]);
-
-  const loadNotes = useCallback(async () => {
-    const s = storageRef.current;
-    if (!s) return;
-    const all = (await s.getDataAsync()) || [];
-
-    // 更新缓存
-    const newCache = new Map();
-    all.forEach((note) => newCache.set(note.id, note));
-    setNoteCache(newCache);
-
-    setNotes(all);
-    setCategories(await s.getCategoriesAsync());
-    setStats(await s.getStatsAsync());
-
-    // Load WebDAV 配置
-    const config = await s.getWebDAVConfigAsync();
-    if (config) {
-      setWebdavConfig({
-        url: config.url,
-        username: config.username,
-        password: config.password,
-        remotePath: config.remotePath,
-        encryptionKey: config.encryptionKey || '',
-        autoSyncEnabled: config.autoSyncEnabled || false,
-        syncInterval: config.syncInterval || 5 * 60 * 1000,
-        conflictStrategy: config.conflictStrategy || 'manual',
-      });
-      setLastSyncTime(config.lastSyncTime ? new Date(config.lastSyncTime) : null);
-    }
-
-    const oneDriveConfig = await s.getOneDriveConfigAsync();
-    if (oneDriveConfig) {
-      setOnedriveConfig({
-        accessToken: oneDriveConfig.accessToken,
-        folderPath: oneDriveConfig.folderPath,
-        encryptionKey: oneDriveConfig.encryptionKey,
-      });
-      setOneDriveConfigSaved(true);
-    }
-
-    // Load trash notes
-    const trash = await s.getTrashNotesAsync();
-    setTrashNotes(trash);
-
-    // Load conflicts
-    const conflicts = await s.getConflictsAsync();
-    setConflicts(conflicts);
-  }, []);
-
-  useEffect(() => {
-    loadNotesRef.current = loadNotes;
-  }, [loadNotes]);
 
   // Filtered and sorted notes
   const filteredNotes = useMemo(() => {
