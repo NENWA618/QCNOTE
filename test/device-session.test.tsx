@@ -9,6 +9,7 @@ const REQUEST_KEY = 'qcnote:deviceSessionTokenRequest';
 const RESPONSE_KEY = 'qcnote:deviceSessionTokenResponse';
 
 const userId = 'user1';
+const originalFetch = globalThis.fetch;
 
 vi.mock('next-auth/react', () => ({
   useSession: vi.fn(() => ({ data: { user: { id: userId } } })),
@@ -74,9 +75,26 @@ describe('Device session token and runtime gating', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString();
+
+      if (url.includes('/api/device/session/validate')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true }),
+        } as Response;
+      }
+
+      return {
+        ok: false,
+        json: async () => ({ success: false }),
+      } as Response;
+    });
   });
 
   afterEach(async () => {
+    globalThis.fetch = originalFetch;
     await Promise.all([
       deleteDatabase('QCNOTE_NOTES_DB_GUEST').catch(() => {}),
       deleteDatabase('QCNOTE_NOTES_DB_TESTUSER').catch(() => {}),

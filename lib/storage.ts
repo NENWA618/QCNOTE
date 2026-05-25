@@ -184,7 +184,12 @@ export class NoteStorage {
         return false;
       }
 
-      const response = await fetch('/api/device/session/validate', {
+      const baseUrl =
+        typeof window !== 'undefined' && window.location?.origin
+          ? window.location.origin
+          : (process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost');
+
+      const response = await fetch(new URL('/api/device/session/validate', baseUrl).toString(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, fingerprint }),
