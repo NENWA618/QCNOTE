@@ -147,6 +147,56 @@ export class NoteStorage {
     }
   }
 
+  private async getDeviceFingerprint(): Promise<string> {
+    if (typeof window === 'undefined' || !window.crypto?.subtle) {
+      return '';
+    }
+
+    const parts = [
+      navigator.userAgent,
+      navigator.platform,
+      navigator.language,
+      Array.isArray(navigator.languages) ? navigator.languages.join(',') : '',
+      String(screen.width),
+      String(screen.height),
+      String(screen.colorDepth),
+      String((navigator as any).hardwareConcurrency ?? ''),
+      String((navigator as any).deviceMemory ?? ''),
+      String(navigator.maxTouchPoints ?? ''),
+    ].filter(Boolean);
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(parts.join('||'));
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  private async validateDeviceSessionToken(token: string): Promise<boolean> {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    try {
+      const fingerprint = await this.getDeviceFingerprint();
+      if (!fingerprint) {
+        return false;
+      }
+
+      const response = await fetch('/api/device/session/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, fingerprint }),
+      });
+      const result = await response.json();
+      return response.ok && result?.success === true;
+    } catch (error) {
+      logger.warn('[NoteStorage] Device session token validation failed', error);
+      return false;
+    }
+  }
+
   private setDeviceSessionToken(userId: string | null, token: string | null): void {
     if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return;
     if (!userId || !token) {
@@ -294,6 +344,15 @@ export class NoteStorage {
       if (userId && this.useEncryption && !sessionToken) {
         throw new Error('Device session token is required to open encrypted notes database');
       }
+
+      if (userId && this.useEncryption && sessionToken) {
+        const validToken = await this.validateDeviceSessionToken(sessionToken);
+        if (!validToken) {
+          this.setDeviceSessionToken(userId, null);
+          throw new Error('Invalid or expired device session token');
+        }
+      }
+
       this.notesDb = await QCRuntime.open(dbName, [this.noteStoreSchema], 1, secret, sessionToken);
       this.notesDbName = dbName;
       this.notesDbOpenFailed = false;
