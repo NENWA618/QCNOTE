@@ -24,7 +24,7 @@
     "@testing-library/user-event": "^14.6.1",
     "axios": "^1.16.1",
     "isomorphic-fetch": "^3.0.0",
-    "katex": "^0.16.45",
+    "katex": "^0.17.0",
     "lunr": "^2.3.9",
     "next": "^16.2.6",
     "next-auth": "^4.24.14",
