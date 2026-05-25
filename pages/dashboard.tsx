@@ -133,10 +133,14 @@ const Dashboard: React.FC = () => {
         timestamp: number;
       };
 
+  type DeviceSessionBroadcastMessageInternal = DeviceSessionBroadcastMessage & {
+    legacyKey?: string;
+  };
+
   const postDeviceSessionBroadcastMessage = useCallback(
-    (message: DeviceSessionBroadcastMessage) => {
+    (message: DeviceSessionBroadcastMessage, useLocalStorageFallback = false) => {
       if (typeof window === 'undefined') return;
-      if (broadcastChannelRef.current) {
+      if (!useLocalStorageFallback && broadcastChannelRef.current) {
         broadcastChannelRef.current.postMessage(message);
         return;
       }
@@ -158,82 +162,70 @@ const Dashboard: React.FC = () => {
   );
 
   const parseDeviceSessionBroadcastMessage = useCallback(
-    (raw: string): DeviceSessionBroadcastMessage | null => {
+    (raw: string, key: string): DeviceSessionBroadcastMessageInternal | null => {
       try {
-        const parsed = JSON.parse(raw) as DeviceSessionBroadcastMessage;
-        if (!parsed || typeof parsed !== 'object' || typeof parsed.type !== 'string') {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        if (!parsed || typeof parsed !== 'object') {
           return null;
         }
-        return parsed;
+
+        if (typeof parsed.type === 'string') {
+          return parsed as DeviceSessionBroadcastMessage;
+        }
+
+        if (key === BROADCAST_KEY && typeof parsed.action === 'string') {
+          if (parsed.action === 'set' && typeof parsed.token === 'string') {
+            return {
+              type: 'token:set',
+              sourceId: String(parsed.sourceId),
+              userId: String(parsed.userId),
+              token: parsed.token,
+              timestamp: typeof parsed.timestamp === 'number' ? parsed.timestamp : Date.now(),
+            };
+          }
+          if (parsed.action === 'remove') {
+            return {
+              type: 'token:remove',
+              sourceId: String(parsed.sourceId),
+              userId: String(parsed.userId),
+              timestamp: typeof parsed.timestamp === 'number' ? parsed.timestamp : Date.now(),
+            };
+          }
+        }
+
+        if (key === REQUEST_KEY && typeof parsed.requestId === 'string') {
+          return {
+            type: 'token:request',
+            sourceId: String(parsed.sourceId),
+            requestId: parsed.requestId,
+            userId: String(parsed.userId),
+            timestamp: typeof parsed.timestamp === 'number' ? parsed.timestamp : Date.now(),
+            legacyKey: key,
+          };
+        }
+
+        if (
+          key === RESPONSE_KEY &&
+          typeof parsed.requestId === 'string' &&
+          typeof parsed.token === 'string'
+        ) {
+          return {
+            type: 'token:response',
+            sourceId: String(parsed.sourceId),
+            requestId: parsed.requestId,
+            userId: String(parsed.userId),
+            token: parsed.token,
+            timestamp: typeof parsed.timestamp === 'number' ? parsed.timestamp : Date.now(),
+            legacyKey: key,
+          };
+        }
+
+        return null;
       } catch {
         return null;
       }
     },
     [],
-  );
-
-  const handleDeviceSessionMessage = useCallback(
-    async (message: DeviceSessionBroadcastMessage) => {
-      if (message.sourceId === tabIdRef.current) return;
-
-      const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
-
-      if (message.type === 'token:set' || message.type === 'token:remove') {
-        if (!currentUserId || message.userId !== currentUserId) return;
-      }
-
-      if (message.type === 'token:set') {
-        setDeviceSessionToken(currentUserId, message.token, false);
-        return;
-      }
-
-      if (message.type === 'token:remove') {
-        clearDeviceSessionToken(undefined, false);
-        if (deviceVerificationStatus === 'verified') {
-          setDeviceVerificationStatus('failed');
-          setDeviceVerificationMessage('当前设备会话已在其他标签页失效，请重新验证。');
-          if (storageRef.current && loadNotesRef.current) {
-            await storageRef.current.setCurrentUser(null);
-            await loadNotesRef.current();
-          }
-        }
-        return;
-      }
-
-      if (message.type === 'token:request') {
-        if (!currentUserId || message.userId !== currentUserId) return;
-        const token = getDeviceSessionToken();
-        if (token) {
-          postDeviceSessionBroadcastMessage({
-            type: 'token:response',
-            sourceId: tabIdRef.current,
-            requestId: message.requestId,
-            userId: currentUserId,
-            token,
-            timestamp: Date.now(),
-          });
-        }
-        return;
-      }
-
-      if (message.type === 'token:response') {
-        if (!pendingDeviceSessionResponseRef.current) return;
-        if (message.requestId !== pendingDeviceSessionResponseRef.current.requestId) return;
-        if (message.userId !== pendingDeviceSessionResponseRef.current.userId) return;
-        setDeviceSessionToken(message.userId, message.token);
-        pendingDeviceSessionResponseRef.current.resolve(true);
-        window.clearTimeout(pendingDeviceSessionResponseRef.current.timeoutId);
-        pendingDeviceSessionResponseRef.current = null;
-      }
-    },
-    [
-      session,
-      setDeviceSessionToken,
-      clearDeviceSessionToken,
-      deviceVerificationStatus,
-      getDeviceSessionToken,
-      postDeviceSessionBroadcastMessage,
-    ],
   );
 
   const clearDeviceSessionToken = useCallback(
@@ -292,6 +284,73 @@ const Dashboard: React.FC = () => {
     }
   }, [session]);
 
+  const handleDeviceSessionMessage = useCallback(
+    async (message: DeviceSessionBroadcastMessageInternal) => {
+      if (message.sourceId === tabIdRef.current) return;
+
+      const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
+
+      if (message.type === 'token:set' || message.type === 'token:remove') {
+        if (!currentUserId || message.userId !== currentUserId) return;
+      }
+
+      if (message.type === 'token:set') {
+        setDeviceSessionToken(currentUserId, message.token, false);
+        return;
+      }
+
+      if (message.type === 'token:remove') {
+        clearDeviceSessionToken(undefined, false);
+        if (deviceVerificationStatus === 'verified') {
+          setDeviceVerificationStatus('failed');
+          setDeviceVerificationMessage('当前设备会话已在其他标签页失效，请重新验证。');
+          if (storageRef.current && loadNotesRef.current) {
+            await storageRef.current.setCurrentUser(null);
+            await loadNotesRef.current();
+          }
+        }
+        return;
+      }
+
+      if (message.type === 'token:request') {
+        if (!currentUserId || message.userId !== currentUserId) return;
+        const token = getDeviceSessionToken();
+        if (token) {
+          postDeviceSessionBroadcastMessage(
+            {
+              type: 'token:response',
+              sourceId: tabIdRef.current,
+              requestId: message.requestId,
+              userId: currentUserId,
+              token,
+              timestamp: Date.now(),
+            },
+            message.legacyKey === REQUEST_KEY,
+          );
+        }
+        return;
+      }
+
+      if (message.type === 'token:response') {
+        if (!pendingDeviceSessionResponseRef.current) return;
+        if (message.requestId !== pendingDeviceSessionResponseRef.current.requestId) return;
+        if (message.userId !== pendingDeviceSessionResponseRef.current.userId) return;
+        setDeviceSessionToken(message.userId, message.token);
+        pendingDeviceSessionResponseRef.current.resolve(true);
+        window.clearTimeout(pendingDeviceSessionResponseRef.current.timeoutId);
+        pendingDeviceSessionResponseRef.current = null;
+      }
+    },
+    [
+      session,
+      setDeviceSessionToken,
+      clearDeviceSessionToken,
+      deviceVerificationStatus,
+      getDeviceSessionToken,
+      postDeviceSessionBroadcastMessage,
+    ],
+  );
+
   const requestDeviceSessionTokenFromOtherTabs = useCallback(
     (userId: string): Promise<boolean> => {
       if (typeof window === 'undefined') {
@@ -334,7 +393,7 @@ const Dashboard: React.FC = () => {
   const handleDeviceSessionStorageEvent = useCallback(
     async (event: StorageEvent) => {
       if (!event.key || event.storageArea !== localStorage || !event.newValue) return;
-      const payload = parseDeviceSessionBroadcastMessage(event.newValue);
+      const payload = parseDeviceSessionBroadcastMessage(event.newValue, event.key);
       if (!payload) return;
       await handleDeviceSessionMessage(payload);
     },
@@ -360,18 +419,14 @@ const Dashboard: React.FC = () => {
       broadcastFallbackRef.current = true;
     }
 
-    if (broadcastFallbackRef.current) {
-      window.addEventListener('storage', handleDeviceSessionStorageEvent);
-    }
+    window.addEventListener('storage', handleDeviceSessionStorageEvent);
 
     return () => {
       if (channel) {
         channel.close();
         broadcastChannelRef.current = null;
       }
-      if (broadcastFallbackRef.current) {
-        window.removeEventListener('storage', handleDeviceSessionStorageEvent);
-      }
+      window.removeEventListener('storage', handleDeviceSessionStorageEvent);
     };
   }, [handleDeviceSessionMessage, handleDeviceSessionStorageEvent]);
 
