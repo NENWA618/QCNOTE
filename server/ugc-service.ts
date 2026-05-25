@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { Pool } from 'pg';
 import { RedisClientType } from 'redis';
 import { v4 as uuidv4 } from 'uuid';
@@ -138,38 +138,12 @@ export class UGCService {
     }
   }
 
-  private getDeviceSessionSecret(): string {
-    return (
+  private getDeviceSessionSecret(): Uint8Array {
+    const secret =
       process.env.DEVICE_SESSION_SECRET ||
       process.env.NEXTAUTH_SECRET ||
-      'qcnote-device-session-secret'
-    );
-  }
-
-  private base64UrlEncode(buffer: Buffer): string {
-    return buffer.toString('base64url');
-  }
-
-  private base64UrlDecode(value: string): Buffer {
-    return Buffer.from(value, 'base64url');
-  }
-
-  private signDeviceSessionPayload(payload: string): string {
-    return this.base64UrlEncode(
-      crypto.createHmac('sha256', this.getDeviceSessionSecret()).update(payload).digest(),
-    );
-  }
-
-  private verifyDeviceSessionSignature(encodedPayload: string, signature: string): boolean {
-    const expectedSignature = this.signDeviceSessionPayload(encodedPayload);
-    const signatureBuffer = Buffer.from(signature, 'base64url');
-    const expectedBuffer = Buffer.from(expectedSignature, 'base64url');
-
-    if (signatureBuffer.length !== expectedBuffer.length) {
-      return false;
-    }
-
-    return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+      'qcnote-device-session-secret';
+    return new TextEncoder().encode(secret);
   }
 
   async createDeviceSessionToken(
@@ -177,18 +151,14 @@ export class UGCService {
     fingerprint: string,
     expiresMs: number = 1000 * 60 * 60 * 12,
   ): Promise<string> {
-    const now = Date.now();
-    const payload = {
-      sub: userId,
-      scope: 'device_session',
-      fingerprint,
-      iat: now,
-      exp: now + expiresMs,
-      jti: uuidv4(),
-    };
-    const encodedPayload = this.base64UrlEncode(Buffer.from(JSON.stringify(payload), 'utf-8'));
-    const signature = this.signDeviceSessionPayload(encodedPayload);
-    return `${encodedPayload}.${signature}`;
+    const expiresAtSeconds = Math.floor((Date.now() + expiresMs) / 1000);
+    return await new SignJWT({ scope: 'device_session', fingerprint })
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+      .setSubject(userId)
+      .setIssuedAt()
+      .setExpirationTime(expiresAtSeconds)
+      .setJti(uuidv4())
+      .sign(this.getDeviceSessionSecret());
   }
 
   async verifyDeviceSessionToken(
@@ -196,52 +166,23 @@ export class UGCService {
     token: string,
     fingerprint: string,
   ): Promise<boolean> {
-    const [encodedPayload, signature] = token.split('.');
-    if (!encodedPayload || !signature) {
-      return false;
-    }
-
-    if (!this.verifyDeviceSessionSignature(encodedPayload, signature)) {
-      return false;
-    }
-
-    let payload: {
-      sub?: string;
-      userId?: string;
-      fingerprint?: string;
-      exp?: number;
-      scope?: string;
-    };
     try {
-      payload = JSON.parse(this.base64UrlDecode(encodedPayload).toString('utf-8')) as {
-        sub?: string;
-        userId?: string;
-        fingerprint?: string;
-        exp?: number;
-        scope?: string;
-      };
+      const { payload } = await jwtVerify(token, this.getDeviceSessionSecret(), {
+        subject: userId,
+      });
+
+      if (payload.scope !== 'device_session') {
+        return false;
+      }
+
+      if (payload.fingerprint !== fingerprint) {
+        return false;
+      }
+
+      return true;
     } catch {
       return false;
     }
-
-    const tokenUserId = payload.sub ?? payload.userId;
-    if (!tokenUserId || tokenUserId !== userId) {
-      return false;
-    }
-
-    if (payload.scope !== 'device_session') {
-      return false;
-    }
-
-    if (payload.fingerprint !== fingerprint) {
-      return false;
-    }
-
-    if (typeof payload.exp !== 'number' || payload.exp < Date.now()) {
-      return false;
-    }
-
-    return true;
   }
 
   async verifyDeviceFingerprint(

@@ -17,6 +17,7 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().optional(),
   DISCORD_CLIENT_ID: z.string().optional(),
   DISCORD_CLIENT_SECRET: z.string().optional(),
+  DEVICE_SESSION_SECRET: z.string().optional(),
   // Add other required env vars as needed
 });
 

@@ -42,7 +42,8 @@
     "remark-math": "^6.0.0",
     "sentiment": "^5.0.1",
     "uuid": "^14.0.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "jose": "^5.3.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
