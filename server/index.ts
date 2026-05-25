@@ -42,12 +42,39 @@ async function getSessionUserId(request: FastifyRequest): Promise<string | null>
     });
 
     if (!token || typeof token !== 'object') {
+      logger.warn('Session token missing or invalid', {
+        hasCookie: Boolean(request.raw.headers.cookie),
+        hasAuthorization: Boolean(request.raw.headers.authorization),
+      });
       return null;
     }
 
-    return (token.id as string) || (token.sub as string) || null;
+    const debugToken = {
+      id: token.id,
+      sub: token.sub,
+      email: token.email,
+      name: token.name,
+    };
+    const userId = (token.id as string) || (token.sub as string) || null;
+
+    if (!userId) {
+      logger.warn('Decoded token has no user id/sub', {
+        debugToken,
+        hasCookie: Boolean(request.raw.headers.cookie),
+      });
+      return null;
+    }
+
+    logger.info('Decoded session token', {
+      debugToken,
+      hasCookie: Boolean(request.raw.headers.cookie),
+    });
+    return userId;
   } catch (error) {
-    logger.error('Failed to decode session token:', error);
+    logger.error('Failed to decode session token:', error, {
+      hasCookie: Boolean(request.raw.headers.cookie),
+      hasAuthorization: Boolean(request.raw.headers.authorization),
+    });
     return null;
   }
 }
@@ -932,6 +959,10 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       const userId = await getSessionUserId(request);
 
       if (!userId) {
+        logger.warn('Unauthenticated request to /api/device/session/create', {
+          hasCookie: Boolean(request.headers.cookie),
+          hasAuthorization: Boolean(request.headers.authorization),
+        });
         return reply.status(401).send({ error: 'Unauthorized' });
       }
       if (!fingerprint || typeof fingerprint !== 'string') {
@@ -997,9 +1028,14 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       const userId = await getSessionUserId(request);
 
       if (!userId) {
+        logger.warn('Unauthenticated request to /api/device/reset', {
+          hasCookie: Boolean(request.headers.cookie),
+          hasAuthorization: Boolean(request.headers.authorization),
+        });
         return reply.status(401).send({ error: 'Unauthorized' });
       }
 
+      logger.info('Resetting device fingerprints for user', { userId });
       await ugcService.resetDeviceFingerprints(userId);
       reply.send({ success: true, message: 'Device fingerprints reset successfully' });
     } catch (error) {

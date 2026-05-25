@@ -34,6 +34,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const targetUrl = `${backendUrl.replace(/\/$/, '')}/api/device/reset`;
+  console.log('[API DEVICE PROXY] /api/device/reset', {
+    targetUrl,
+    hasCookie: Boolean(req.headers.cookie),
+    hasAuthorization: Boolean(req.headers.authorization),
+  });
 
   const response = await fetch(targetUrl, {
     method: 'POST',
@@ -46,6 +51,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   });
 
   const responseText = await response.text();
+  console.log('[API DEVICE PROXY] /api/device/reset response', {
+    status: response.status,
+    body: responseText,
+  });
   res.status(response.status);
 
   try {
