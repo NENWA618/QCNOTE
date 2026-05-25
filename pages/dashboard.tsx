@@ -88,6 +88,7 @@ const Dashboard: React.FC = () => {
       .join('');
   }, []);
 
+  const CHANNEL_NAME = 'qcnote-session-channel';
   const BROADCAST_KEY = 'qcnote:deviceSessionTokenBroadcast';
   const REQUEST_KEY = 'qcnote:deviceSessionTokenRequest';
   const RESPONSE_KEY = 'qcnote:deviceSessionTokenResponse';
@@ -98,24 +99,158 @@ const Dashboard: React.FC = () => {
     resolve: (granted: boolean) => void;
     timeoutId: number;
   } | null>(null);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  const broadcastFallbackRef = useRef<boolean>(false);
   const loadNotesRef = useRef<(() => Promise<void>) | null>(null);
 
-  const clearDeviceSessionToken = useCallback((userId?: string, broadcast = true) => {
-    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return;
-    sessionStorage.removeItem(DEVICE_SESSION_TOKEN_KEY);
-    if (broadcast && userId && typeof localStorage !== 'undefined') {
-      localStorage.setItem(
-        BROADCAST_KEY,
-        JSON.stringify({
+  type DeviceSessionBroadcastMessage =
+    | {
+        type: 'token:set';
+        sourceId: string;
+        userId: string;
+        token: string;
+        timestamp: number;
+      }
+    | {
+        type: 'token:remove';
+        sourceId: string;
+        userId: string;
+        timestamp: number;
+      }
+    | {
+        type: 'token:request';
+        sourceId: string;
+        requestId: string;
+        userId: string;
+        timestamp: number;
+      }
+    | {
+        type: 'token:response';
+        sourceId: string;
+        requestId: string;
+        userId: string;
+        token: string;
+        timestamp: number;
+      };
+
+  const postDeviceSessionBroadcastMessage = useCallback(
+    (message: DeviceSessionBroadcastMessage) => {
+      if (typeof window === 'undefined') return;
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.postMessage(message);
+        return;
+      }
+      if (typeof localStorage === 'undefined') return;
+
+      let key = '';
+      if (message.type === 'token:set' || message.type === 'token:remove') {
+        key = BROADCAST_KEY;
+      } else if (message.type === 'token:request') {
+        key = REQUEST_KEY;
+      } else {
+        key = RESPONSE_KEY;
+      }
+
+      localStorage.setItem(key, JSON.stringify(message));
+      window.setTimeout(() => localStorage.removeItem(key), 300);
+    },
+    [],
+  );
+
+  const parseDeviceSessionBroadcastMessage = useCallback(
+    (raw: string): DeviceSessionBroadcastMessage | null => {
+      try {
+        const parsed = JSON.parse(raw) as DeviceSessionBroadcastMessage;
+        if (!parsed || typeof parsed !== 'object' || typeof parsed.type !== 'string') {
+          return null;
+        }
+        return parsed;
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
+
+  const handleDeviceSessionMessage = useCallback(
+    async (message: DeviceSessionBroadcastMessage) => {
+      if (message.sourceId === tabIdRef.current) return;
+
+      const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
+
+      if (message.type === 'token:set' || message.type === 'token:remove') {
+        if (!currentUserId || message.userId !== currentUserId) return;
+      }
+
+      if (message.type === 'token:set') {
+        setDeviceSessionToken(currentUserId, message.token, false);
+        return;
+      }
+
+      if (message.type === 'token:remove') {
+        clearDeviceSessionToken(undefined, false);
+        if (deviceVerificationStatus === 'verified') {
+          setDeviceVerificationStatus('failed');
+          setDeviceVerificationMessage('当前设备会话已在其他标签页失效，请重新验证。');
+          if (storageRef.current && loadNotesRef.current) {
+            await storageRef.current.setCurrentUser(null);
+            await loadNotesRef.current();
+          }
+        }
+        return;
+      }
+
+      if (message.type === 'token:request') {
+        if (!currentUserId || message.userId !== currentUserId) return;
+        const token = getDeviceSessionToken();
+        if (token) {
+          postDeviceSessionBroadcastMessage({
+            type: 'token:response',
+            sourceId: tabIdRef.current,
+            requestId: message.requestId,
+            userId: currentUserId,
+            token,
+            timestamp: Date.now(),
+          });
+        }
+        return;
+      }
+
+      if (message.type === 'token:response') {
+        if (!pendingDeviceSessionResponseRef.current) return;
+        if (message.requestId !== pendingDeviceSessionResponseRef.current.requestId) return;
+        if (message.userId !== pendingDeviceSessionResponseRef.current.userId) return;
+        setDeviceSessionToken(message.userId, message.token);
+        pendingDeviceSessionResponseRef.current.resolve(true);
+        window.clearTimeout(pendingDeviceSessionResponseRef.current.timeoutId);
+        pendingDeviceSessionResponseRef.current = null;
+      }
+    },
+    [
+      session,
+      setDeviceSessionToken,
+      clearDeviceSessionToken,
+      deviceVerificationStatus,
+      getDeviceSessionToken,
+      postDeviceSessionBroadcastMessage,
+    ],
+  );
+
+  const clearDeviceSessionToken = useCallback(
+    (userId?: string, broadcast = true) => {
+      if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return;
+      sessionStorage.removeItem(DEVICE_SESSION_TOKEN_KEY);
+      if (broadcast && userId) {
+        postDeviceSessionBroadcastMessage({
+          type: 'token:remove',
           sourceId: tabIdRef.current,
           userId,
-          action: 'remove',
           timestamp: Date.now(),
-        }),
-      );
-      window.setTimeout(() => localStorage.removeItem(BROADCAST_KEY), 300);
-    }
-  }, []);
+        });
+      }
+    },
+    [postDeviceSessionBroadcastMessage],
+  );
 
   const setDeviceSessionToken = useCallback(
     (userId: string | null, token: string | null, broadcast = true) => {
@@ -125,21 +260,17 @@ const Dashboard: React.FC = () => {
         return;
       }
       sessionStorage.setItem(DEVICE_SESSION_TOKEN_KEY, JSON.stringify({ userId, token }));
-      if (broadcast && typeof localStorage !== 'undefined') {
-        localStorage.setItem(
-          BROADCAST_KEY,
-          JSON.stringify({
-            sourceId: tabIdRef.current,
-            userId,
-            action: 'set',
-            token,
-            timestamp: Date.now(),
-          }),
-        );
-        window.setTimeout(() => localStorage.removeItem(BROADCAST_KEY), 300);
+      if (broadcast) {
+        postDeviceSessionBroadcastMessage({
+          type: 'token:set',
+          sourceId: tabIdRef.current,
+          userId,
+          token,
+          timestamp: Date.now(),
+        });
       }
     },
-    [],
+    [postDeviceSessionBroadcastMessage],
   );
 
   const getDeviceSessionToken = useCallback((): string | null => {
@@ -163,7 +294,7 @@ const Dashboard: React.FC = () => {
 
   const requestDeviceSessionTokenFromOtherTabs = useCallback(
     (userId: string): Promise<boolean> => {
-      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      if (typeof window === 'undefined') {
         return Promise.resolve(false);
       }
 
@@ -188,107 +319,61 @@ const Dashboard: React.FC = () => {
           timeoutId,
         };
 
-        localStorage.setItem(
-          REQUEST_KEY,
-          JSON.stringify({ sourceId: tabIdRef.current, requestId, userId, timestamp: Date.now() }),
-        );
-        window.setTimeout(() => localStorage.removeItem(REQUEST_KEY), 300);
+        postDeviceSessionBroadcastMessage({
+          type: 'token:request',
+          sourceId: tabIdRef.current,
+          requestId,
+          userId,
+          timestamp: Date.now(),
+        });
       });
     },
-    [getDeviceSessionToken],
+    [getDeviceSessionToken, postDeviceSessionBroadcastMessage],
   );
 
   const handleDeviceSessionStorageEvent = useCallback(
     async (event: StorageEvent) => {
-      if (!event.key || event.storageArea !== localStorage) return;
-      if (event.key === BROADCAST_KEY && event.newValue) {
-        try {
-          const payload = JSON.parse(event.newValue) as {
-            sourceId: string;
-            userId: string;
-            action: 'set' | 'remove';
-            token?: string;
-          };
-          if (payload.sourceId === tabIdRef.current) return;
-          const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
-          if (!currentUserId || payload.userId !== currentUserId) return;
-          if (payload.action === 'set' && payload.token) {
-            setDeviceSessionToken(currentUserId, payload.token, false);
-          }
-          if (payload.action === 'remove') {
-            clearDeviceSessionToken(undefined, false);
-            if (deviceVerificationStatus === 'verified') {
-              setDeviceVerificationStatus('failed');
-              setDeviceVerificationMessage('当前设备会话已在其他标签页失效，请重新验证。');
-              if (storageRef.current && loadNotesRef.current) {
-                await storageRef.current.setCurrentUser(null);
-                await loadNotesRef.current();
-              }
-            }
-          }
-        } catch {
-          // ignore malformed payloads
-        }
-      }
-
-      if (event.key === REQUEST_KEY && event.newValue) {
-        try {
-          const payload = JSON.parse(event.newValue) as {
-            sourceId: string;
-            requestId: string;
-            userId: string;
-          };
-          if (payload.sourceId === tabIdRef.current) return;
-          const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
-          if (!currentUserId || payload.userId !== currentUserId) return;
-          const token = getDeviceSessionToken();
-          if (token && typeof localStorage !== 'undefined') {
-            localStorage.setItem(
-              RESPONSE_KEY,
-              JSON.stringify({
-                sourceId: tabIdRef.current,
-                requestId: payload.requestId,
-                userId: currentUserId,
-                token,
-                timestamp: Date.now(),
-              }),
-            );
-            window.setTimeout(() => localStorage.removeItem(RESPONSE_KEY), 300);
-          }
-        } catch {
-          // ignore malformed payloads
-        }
-      }
-
-      if (event.key === RESPONSE_KEY && event.newValue) {
-        try {
-          const payload = JSON.parse(event.newValue) as {
-            sourceId: string;
-            requestId: string;
-            userId: string;
-            token: string;
-          };
-          if (payload.sourceId === tabIdRef.current) return;
-          if (!pendingDeviceSessionResponseRef.current) return;
-          if (payload.requestId !== pendingDeviceSessionResponseRef.current.requestId) return;
-          if (payload.userId !== pendingDeviceSessionResponseRef.current.userId) return;
-          setDeviceSessionToken(payload.userId, payload.token);
-          pendingDeviceSessionResponseRef.current.resolve(true);
-          window.clearTimeout(pendingDeviceSessionResponseRef.current.timeoutId);
-          pendingDeviceSessionResponseRef.current = null;
-        } catch {
-          // ignore malformed payloads
-        }
-      }
+      if (!event.key || event.storageArea !== localStorage || !event.newValue) return;
+      const payload = parseDeviceSessionBroadcastMessage(event.newValue);
+      if (!payload) return;
+      await handleDeviceSessionMessage(payload);
     },
-    [session, setDeviceSessionToken, clearDeviceSessionToken, deviceVerificationStatus],
+    [handleDeviceSessionMessage, parseDeviceSessionBroadcastMessage],
   );
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.addEventListener('storage', handleDeviceSessionStorageEvent);
-    return () => window.removeEventListener('storage', handleDeviceSessionStorageEvent);
-  }, [handleDeviceSessionStorageEvent]);
+
+    let channel: BroadcastChannel | null = null;
+    if ('BroadcastChannel' in window) {
+      try {
+        channel = new BroadcastChannel(CHANNEL_NAME);
+        broadcastChannelRef.current = channel;
+        broadcastFallbackRef.current = false;
+        channel.onmessage = (event) => {
+          handleDeviceSessionMessage(event.data as DeviceSessionBroadcastMessage);
+        };
+      } catch {
+        broadcastFallbackRef.current = true;
+      }
+    } else {
+      broadcastFallbackRef.current = true;
+    }
+
+    if (broadcastFallbackRef.current) {
+      window.addEventListener('storage', handleDeviceSessionStorageEvent);
+    }
+
+    return () => {
+      if (channel) {
+        channel.close();
+        broadcastChannelRef.current = null;
+      }
+      if (broadcastFallbackRef.current) {
+        window.removeEventListener('storage', handleDeviceSessionStorageEvent);
+      }
+    };
+  }, [handleDeviceSessionMessage, handleDeviceSessionStorageEvent]);
 
   const sentimentStats = useMemo(() => {
     const activeNotes = notes.filter((note) => !note.isDeleted);
