@@ -1312,7 +1312,7 @@ export class NoteStorage {
         sentimentScore: sentimentData.score,
         sentimentComparative: sentimentData.comparative,
         sentimentCategory,
-        updatedAt: Date.now(),
+        updatedAt: Math.max(Date.now(), existing.updatedAt + 1),
         versions: updatedVersionList,
       };
 

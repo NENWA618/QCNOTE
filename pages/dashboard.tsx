@@ -76,6 +76,7 @@ const Dashboard: React.FC = () => {
   >('idle');
   const [deviceVerificationMessage, setDeviceVerificationMessage] = useState('');
   const { data: session } = useSession();
+  const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
 
   const DEVICE_SESSION_TOKEN_KEY = 'qcnote:deviceSessionToken';
 
@@ -272,7 +273,6 @@ const Dashboard: React.FC = () => {
 
     try {
       const parsed = JSON.parse(raw) as { userId: string; token: string };
-      const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
       if (!parsed?.userId || !parsed?.token || parsed.userId !== currentUserId) {
         sessionStorage.removeItem(DEVICE_SESSION_TOKEN_KEY);
         return null;
@@ -282,13 +282,11 @@ const Dashboard: React.FC = () => {
       sessionStorage.removeItem(DEVICE_SESSION_TOKEN_KEY);
       return null;
     }
-  }, [session]);
+  }, [currentUserId]);
 
   const handleDeviceSessionMessage = useCallback(
     async (message: DeviceSessionBroadcastMessageInternal) => {
       if (message.sourceId === tabIdRef.current) return;
-
-      const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
 
       if (message.type === 'token:set' || message.type === 'token:remove') {
         if (!currentUserId || message.userId !== currentUserId) return;
@@ -296,6 +294,14 @@ const Dashboard: React.FC = () => {
 
       if (message.type === 'token:set') {
         setDeviceSessionToken(currentUserId, message.token, false);
+        if (
+          pendingDeviceSessionResponseRef.current &&
+          pendingDeviceSessionResponseRef.current.userId === currentUserId
+        ) {
+          pendingDeviceSessionResponseRef.current.resolve(true);
+          window.clearTimeout(pendingDeviceSessionResponseRef.current.timeoutId);
+          pendingDeviceSessionResponseRef.current = null;
+        }
         return;
       }
 
@@ -342,7 +348,7 @@ const Dashboard: React.FC = () => {
       }
     },
     [
-      session,
+      currentUserId,
       setDeviceSessionToken,
       clearDeviceSessionToken,
       deviceVerificationStatus,
@@ -366,8 +372,12 @@ const Dashboard: React.FC = () => {
         const requestId = createDeviceSessionToken();
         const timeoutId = window.setTimeout(() => {
           if (pendingDeviceSessionResponseRef.current?.requestId === requestId) {
+            if (getDeviceSessionToken()) {
+              pendingDeviceSessionResponseRef.current.resolve(true);
+            } else {
+              pendingDeviceSessionResponseRef.current.resolve(false);
+            }
             pendingDeviceSessionResponseRef.current = null;
-            resolve(false);
           }
         }, 400);
 
@@ -392,7 +402,7 @@ const Dashboard: React.FC = () => {
 
   const handleDeviceSessionStorageEvent = useCallback(
     async (event: StorageEvent) => {
-      if (!event.key || event.storageArea !== localStorage || !event.newValue) return;
+      if (!event.key || !event.newValue) return;
       const payload = parseDeviceSessionBroadcastMessage(event.newValue, event.key);
       if (!payload) return;
       await handleDeviceSessionMessage(payload);
@@ -543,10 +553,17 @@ const Dashboard: React.FC = () => {
       .join('');
   }, []);
 
+  const getApiUrl = useCallback((path: string) => {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return new URL(path, window.location.origin).toString();
+    }
+    return path;
+  }, []);
+
   const validateDeviceSessionToken = useCallback(
     async (token: string, fingerprint: string): Promise<boolean> => {
       try {
-        const response = await fetch('/api/device/session/validate', {
+        const response = await fetch(getApiUrl('/api/device/session/validate'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token, fingerprint }),
@@ -558,7 +575,7 @@ const Dashboard: React.FC = () => {
         return false;
       }
     },
-    [],
+    [getApiUrl],
   );
 
   const createDeviceSessionTokenOnServer = useCallback(
@@ -566,7 +583,7 @@ const Dashboard: React.FC = () => {
       fingerprint: string,
     ): Promise<{ token?: string; firstTime?: boolean; error?: string }> => {
       try {
-        const response = await fetch('/api/device/session/create', {
+        const response = await fetch(getApiUrl('/api/device/session/create'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ fingerprint }),
@@ -585,7 +602,7 @@ const Dashboard: React.FC = () => {
         return { error: '设备会话令牌创建失败，请检查网络后重试。' };
       }
     },
-    [],
+    [getApiUrl],
   );
 
   const verifyDeviceFingerprint = useCallback(async () => {

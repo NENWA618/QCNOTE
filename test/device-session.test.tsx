@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { QCRuntime, QCDb } from '../qcruntime/qcnote-runtime';
 import { NoteStorage } from '../lib/storage';
 
@@ -11,8 +11,36 @@ const RESPONSE_KEY = 'qcnote:deviceSessionTokenResponse';
 const userId = 'user1';
 const originalFetch = globalThis.fetch;
 
+const mockFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+  const url = typeof input === 'string' ? input : input.toString();
+
+  if (url.includes('/api/device/session/validate')) {
+    return {
+      ok: true,
+      json: async () => ({ success: true }),
+    } as Response;
+  }
+
+  if (url.includes('/api/device/session/create')) {
+    return {
+      ok: true,
+      json: async () => ({ success: true, token: 'token-created' }),
+    } as Response;
+  }
+
+  return {
+    ok: false,
+    json: async () => ({ success: false }),
+  } as Response;
+});
+
+const mockSession = {
+  data: { user: { id: userId }, expires: '9999-01-01T00:00:00.000Z' },
+  status: 'authenticated',
+};
+
 vi.mock('next-auth/react', () => ({
-  useSession: vi.fn(() => ({ data: { user: { id: userId } } })),
+  useSession: vi.fn(() => mockSession),
 }));
 
 vi.mock('../components/Layout', () => ({ default: () => <div data-testid="layout" /> }));
@@ -41,9 +69,28 @@ vi.mock('../lib/webdavSyncManager', () => ({
 }));
 vi.mock('../lib/storage', async () => {
   const actual = await vi.importActual<typeof import('../lib/storage')>('../lib/storage');
+  const mockUserStorage = {
+    setCurrentUser: vi.fn(async () => undefined),
+    getDataAsync: vi.fn(async () => []),
+    getCategoriesAsync: vi.fn(async () => []),
+    getStatsAsync: vi.fn(async () => ({
+      totalNotes: 0,
+      favoriteNotes: 0,
+      archivedNotes: 0,
+      categories: {},
+      totalTags: 0,
+      createdToday: 0,
+    })),
+    getWebDAVConfigAsync: vi.fn(async () => null),
+    getOneDriveConfigAsync: vi.fn(async () => null),
+    getTrashNotesAsync: vi.fn(async () => []),
+    getConflictsAsync: vi.fn(async () => []),
+    migrateGuestDataToUser: vi.fn(async () => undefined),
+  };
+
   return {
     ...actual,
-    initWindowStorage: vi.fn(() => null),
+    initWindowStorage: vi.fn(() => mockUserStorage),
   };
 });
 
@@ -157,21 +204,79 @@ describe('Device session token and runtime gating', () => {
 });
 
 describe('Dashboard cross-tab device session consistency', () => {
+  let storageListener: ((event: StorageEvent) => void) | null = null;
+  let originalAddEventListener: typeof window.addEventListener;
+  let originalRemoveEventListener: typeof window.removeEventListener;
+  const activeStorageListeners = new Set<(event: StorageEvent) => void>();
+
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+    globalThis.fetch = mockFetch;
+    (global as any).fetch = mockFetch;
+    vi.stubGlobal('fetch', mockFetch);
+    if (typeof window !== 'undefined') {
+      window.fetch = mockFetch as any;
+    }
+    originalAddEventListener = window.addEventListener;
+    originalRemoveEventListener = window.removeEventListener;
+    storageListener = null;
+    activeStorageListeners.clear();
+
+    window.addEventListener = ((type, listener, options) => {
+      if (type === 'storage') {
+        const listenerFn = listener as (event: StorageEvent) => void;
+        storageListener = listenerFn;
+        activeStorageListeners.add(listenerFn);
+      }
+      return originalAddEventListener.call(window, type, listener, options);
+    }) as typeof window.addEventListener;
+
+    window.removeEventListener = ((type, listener, options) => {
+      if (type === 'storage') {
+        activeStorageListeners.delete(listener as (event: StorageEvent) => void);
+      }
+      return originalRemoveEventListener.call(window, type, listener, options);
+    }) as typeof window.removeEventListener;
+
     if (!window.crypto.randomUUID) {
       (window.crypto as any).randomUUID = vi.fn(() => 'tab-uuid');
     }
   });
 
   afterEach(() => {
+    globalThis.fetch = originalFetch;
+    (global as any).fetch = originalFetch;
+    window.fetch = originalFetch as any;
+    vi.unstubAllGlobals();
+    window.addEventListener = originalAddEventListener;
+    window.removeEventListener = originalRemoveEventListener;
     vi.restoreAllMocks();
   });
 
   const renderDashboard = async () => {
     const { default: Dashboard } = await import('../pages/dashboard');
-    return render(<Dashboard />);
+    const result = render(<Dashboard />);
+    await waitFor(() => expect(result.getByTestId('layout')).toBeInTheDocument());
+    await waitFor(() => expect(storageListener).not.toBeNull());
+    return result;
+  };
+
+  const dispatchStorageEvent = async (key: string, newValue: string) => {
+    const listener = storageListener || activeStorageListeners.values().next().value;
+    if (!listener) {
+      throw new Error('Storage listener not attached');
+    }
+    await act(async () => {
+      const event = {
+        key,
+        newValue,
+        oldValue: null,
+        storageArea: window.localStorage,
+      } as unknown as StorageEvent;
+      listener.call(window, event);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
   };
 
   it('accepts a session token broadcast from another tab and stores it in sessionStorage', async () => {
@@ -185,22 +290,11 @@ describe('Dashboard cross-tab device session consistency', () => {
       timestamp: Date.now(),
     });
 
-    const simulatedEvent = new Event('storage') as StorageEvent & {
-      key?: string;
-      newValue?: string | null;
-      storageArea?: Storage;
-    };
-    simulatedEvent.key = BROADCAST_KEY;
-    simulatedEvent.newValue = payload;
-    simulatedEvent.storageArea = localStorage as unknown as Storage;
-    window.dispatchEvent(simulatedEvent);
+    await dispatchStorageEvent(BROADCAST_KEY, payload);
 
-    await waitFor(() => {
-      expect(sessionStorage.getItem(SESSION_TOKEN_KEY)).not.toBeNull();
-      const stored = JSON.parse(sessionStorage.getItem(SESSION_TOKEN_KEY) as string);
-      expect(stored.token).toBe('token-broadcast');
-      expect(stored.userId).toBe(userId);
-    });
+    const stored = JSON.parse(sessionStorage.getItem(SESSION_TOKEN_KEY) as string);
+    expect(stored.token).toBe('token-broadcast');
+    expect(stored.userId).toBe(userId);
   });
 
   it('responds to a session token request from another tab when the current tab already has the token', async () => {
@@ -214,23 +308,13 @@ describe('Dashboard cross-tab device session consistency', () => {
       timestamp: Date.now(),
     });
 
-    const simulatedEvent = new Event('storage') as StorageEvent & {
-      key?: string;
-      newValue?: string | null;
-      storageArea?: Storage;
-    };
-    simulatedEvent.key = REQUEST_KEY;
-    simulatedEvent.newValue = requestPayload;
-    simulatedEvent.storageArea = localStorage as unknown as Storage;
-    window.dispatchEvent(simulatedEvent);
+    await dispatchStorageEvent(REQUEST_KEY, requestPayload);
 
-    await waitFor(() => {
-      const response = localStorage.getItem(RESPONSE_KEY);
-      expect(response).not.toBeNull();
-      const parsed = JSON.parse(response as string);
-      expect(parsed.requestId).toBe('request-1');
-      expect(parsed.userId).toBe(userId);
-      expect(parsed.token).toBe('current-token');
-    });
+    const response = localStorage.getItem(RESPONSE_KEY);
+    expect(response).not.toBeNull();
+    const parsed = JSON.parse(response as string);
+    expect(parsed.requestId).toBe('request-1');
+    expect(parsed.userId).toBe(userId);
+    expect(parsed.token).toBe('current-token');
   });
 });
