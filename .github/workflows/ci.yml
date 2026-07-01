@@ -44,7 +44,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Restore Next.js cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .next/cache
           key: ${{ runner.os }}-next-${{ hashFiles('**/package-lock.json') }}
@@ -108,7 +108,7 @@ jobs:
         run: npm ci --include=dev
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-ms-playwright-${{ hashFiles('**/package-lock.json') }}
