@@ -180,13 +180,13 @@ QCNOTE 以用户或访客为命名空间隔离存储：
 
 ## 9. 版本与依赖
 
-- Next.js 16.2.6
+- Next.js 16.2.12
 - React 18.3.1
 - TypeScript 5.2.0
 - Tailwind CSS 3.4.1
 - Lunr.js 2.3.9
-- KaTeX 0.16.45
-- Fastify 5.8.5
+- KaTeX 0.18.1
+- Fastify 4.24.0
 - PostgreSQL / Redis（可选）
 
 ## 10. 设计总结
