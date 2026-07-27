@@ -3,7 +3,7 @@
 一个现代化、隐私优先的个人笔记应用，采用离线优先架构，具有强大的搜索功能、知识管理和社区功能。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Next.js](https://img.shields.io/badge/Next.js-16.2.6-black)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2.12-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.2.0-blue)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3.1-61dafb?logo=react)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4.1-38b2ac?logo=tailwindcss)](https://tailwindcss.com/)
