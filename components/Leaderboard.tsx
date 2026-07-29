@@ -40,7 +40,16 @@ const Leaderboard: React.FC = () => {
       }
     };
 
+    const refreshLeaderboard = () => {
+      fetchLeaderboard();
+    };
+
+    window.addEventListener('maze-submission-updated', refreshLeaderboard);
     fetchLeaderboard();
+
+    return () => {
+      window.removeEventListener('maze-submission-updated', refreshLeaderboard);
+    };
   }, []);
 
   const title = '🧭 叠界排行榜';

@@ -785,7 +785,17 @@ export class UGCService {
       await this.db.query(
         `INSERT INTO maze_submissions (user_id, day, steps, time_ms, username, avatar, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (user_id, day) DO NOTHING`,
+         ON CONFLICT (user_id, day) DO UPDATE
+         SET steps = CASE
+           WHEN EXCLUDED.steps < maze_submissions.steps THEN EXCLUDED.steps
+           ELSE maze_submissions.steps
+         END,
+         time_ms = CASE
+           WHEN EXCLUDED.time_ms < maze_submissions.time_ms THEN EXCLUDED.time_ms
+           ELSE maze_submissions.time_ms
+         END,
+         username = EXCLUDED.username,
+         avatar = EXCLUDED.avatar`,
         [userId, day, steps, timeMs, username, avatar, Date.now()],
       );
     }

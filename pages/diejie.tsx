@@ -318,8 +318,10 @@ const DiejiePage: NextPage = () => {
         const result = await response.json();
         if (result.success) {
           statusEl.textContent = '已提交排行榜，首通成绩已保存';
+          window.dispatchEvent(new Event('maze-submission-updated'));
         } else if (result.message === 'Already submitted for today') {
           statusEl.textContent = '今天已提交过首通成绩，已保留首次通关记录';
+          window.dispatchEvent(new Event('maze-submission-updated'));
         } else {
           statusEl.textContent = '排行榜提交失败，请稍后重试';
         }

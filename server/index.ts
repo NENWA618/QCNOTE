@@ -467,9 +467,6 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       logger.info('[Maze Submit] checking existing submission', { leaderboardKey, userId });
       const alreadySubmitted = await ugcService.hasGameSubmission(leaderboardKey, userId);
       logger.info('[Maze Submit] submission exists', { leaderboardKey, userId, alreadySubmitted });
-      if (alreadySubmitted) {
-        return reply.send({ success: false, message: 'Already submitted for today' });
-      }
 
       const pool = await initPostgresClient();
       const userResult = await pool.query('SELECT id, username, image FROM users WHERE id = $1', [
