@@ -393,6 +393,24 @@ function registerRoutes(app: ExtendedFastifyInstance) {
 
   // ==================== UGC 排行榜路由 ====================
 
+  // Maze leaderboard for current UTC+8 day
+  app.get('/api/ugc/leaderboard/maze', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const now = new Date();
+      const utc8Ms = now.getTime() + (now.getTimezoneOffset() + 480) * 60000;
+      const day = new Date(utc8Ms).toISOString().slice(0, 10);
+      const leaderboardKey = `leaderboard:maze:${day}`;
+      const leaderboard = await ugcService.getGameLeaderboard(
+        leaderboardKey,
+        Number(request.query.limit) || 50,
+      );
+
+      reply.send({ success: true, leaderboard, day });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
   // 获取排行榜
   app.get('/api/ugc/leaderboard/:type', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -403,21 +421,6 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       const leaderboard = await ugcService.getLeaderboard(leaderboardKey, limit);
 
       reply.send({ success: true, leaderboard });
-    } catch (error) {
-      reply.status(400).send({ success: false, error: (error as Error).message });
-    }
-  });
-
-  // Maze leaderboard for current UTC+8 day
-  app.get('/api/ugc/leaderboard/maze', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const now = new Date();
-      const utc8Ms = now.getTime() + (now.getTimezoneOffset() + 480) * 60000;
-      const day = new Date(utc8Ms).toISOString().slice(0, 10);
-      const leaderboardKey = `leaderboard:maze:${day}`;
-      const leaderboard = await ugcService.getGameLeaderboard(leaderboardKey, Number(request.query.limit) || 50);
-
-      reply.send({ success: true, leaderboard, day });
     } catch (error) {
       reply.status(400).send({ success: false, error: (error as Error).message });
     }
@@ -447,13 +450,22 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       }
 
       const pool = await initPostgresClient();
-      const userResult = await pool.query('SELECT id, username, image FROM users WHERE id = $1', [userId]);
+      const userResult = await pool.query('SELECT id, username, image FROM users WHERE id = $1', [
+        userId,
+      ]);
       const user = userResult.rows[0];
       if (!user) {
         return reply.status(404).send({ success: false, error: 'User not found' });
       }
 
-      await ugcService.addGameSubmission(leaderboardKey, userId, steps, timeMs, user.username, user.image);
+      await ugcService.addGameSubmission(
+        leaderboardKey,
+        userId,
+        steps,
+        timeMs,
+        user.username,
+        user.image,
+      );
       reply.send({ success: true, submitted: true, day });
     } catch (error) {
       reply.status(400).send({ success: false, error: (error as Error).message });
@@ -498,7 +510,9 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       if (!adminUserId) return;
 
       const pool = await initPostgresClient();
-      const [{ rows: userRows }] = await Promise.all([pool.query('SELECT COUNT(*) as count FROM users')]);
+      const [{ rows: userRows }] = await Promise.all([
+        pool.query('SELECT COUNT(*) as count FROM users'),
+      ]);
 
       reply.send({
         success: true,
