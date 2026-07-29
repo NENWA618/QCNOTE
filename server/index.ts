@@ -440,7 +440,16 @@ function registerRoutes(app: ExtendedFastifyInstance) {
   app.post('/api/ugc/maze/submit', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = await getSessionUserId(request);
+      logger.info('[Maze Submit] start', {
+        hasCookie: Boolean(request.raw.headers.cookie),
+        userId,
+        body: request.body,
+      });
       if (!userId) {
+        logger.warn('[Maze Submit] unauthorized', {
+          hasCookie: Boolean(request.raw.headers.cookie),
+          cookieHeader: request.raw.headers.cookie,
+        });
         return reply.status(401).send({ success: false, error: 'Unauthorized' });
       }
 
@@ -455,7 +464,9 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       }
 
       const leaderboardKey = `leaderboard:maze:${day}`;
+      logger.info('[Maze Submit] checking existing submission', { leaderboardKey, userId });
       const alreadySubmitted = await ugcService.hasGameSubmission(leaderboardKey, userId);
+      logger.info('[Maze Submit] submission exists', { leaderboardKey, userId, alreadySubmitted });
       if (alreadySubmitted) {
         return reply.send({ success: false, message: 'Already submitted for today' });
       }
@@ -469,6 +480,13 @@ function registerRoutes(app: ExtendedFastifyInstance) {
         return reply.status(404).send({ success: false, error: 'User not found' });
       }
 
+      logger.info('[Maze Submit] writing submission', {
+        leaderboardKey,
+        userId,
+        steps,
+        timeMs,
+        username: user.username,
+      });
       await ugcService.addGameSubmission(
         leaderboardKey,
         userId,
@@ -477,6 +495,7 @@ function registerRoutes(app: ExtendedFastifyInstance) {
         user.username,
         user.image,
       );
+      logger.info('[Maze Submit] write complete', { leaderboardKey, userId });
       reply.send({ success: true, submitted: true, day });
     } catch (error) {
       reply.status(400).send({ success: false, error: (error as Error).message });

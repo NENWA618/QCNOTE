@@ -733,7 +733,40 @@ export class UGCService {
     });
   }
 
+  private extractDayFromLeaderboardKey(leaderboardKey: string): string | null {
+    const match = leaderboardKey.match(/:(\d{4}-\d{2}-\d{2})$/);
+    return match ? match[1] : null;
+  }
+
+  private async ensureMazeSubmissionTable(): Promise<void> {
+    await this.db.query(`
+      CREATE TABLE IF NOT EXISTS maze_submissions (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        day TEXT NOT NULL,
+        steps INTEGER NOT NULL,
+        time_ms INTEGER NOT NULL,
+        username TEXT NOT NULL,
+        avatar TEXT,
+        created_at BIGINT NOT NULL,
+        UNIQUE (user_id, day)
+      )
+    `);
+  }
+
   async hasGameSubmission(leaderboardKey: string, userId: string): Promise<boolean> {
+    const day = this.extractDayFromLeaderboardKey(leaderboardKey);
+    if (day) {
+      await this.ensureMazeSubmissionTable();
+      const result = await this.db.query(
+        'SELECT 1 FROM maze_submissions WHERE user_id = $1 AND day = $2 LIMIT 1',
+        [userId, day],
+      );
+      if (result.rowCount) {
+        return true;
+      }
+    }
+
     const exists = await this.redis.exists(`${leaderboardKey}:user:${userId}`);
     return exists === 1;
   }
@@ -746,6 +779,17 @@ export class UGCService {
     username: string,
     avatar: string,
   ): Promise<void> {
+    const day = this.extractDayFromLeaderboardKey(leaderboardKey);
+    if (day) {
+      await this.ensureMazeSubmissionTable();
+      await this.db.query(
+        `INSERT INTO maze_submissions (user_id, day, steps, time_ms, username, avatar, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (user_id, day) DO NOTHING`,
+        [userId, day, steps, timeMs, username, avatar, Date.now()],
+      );
+    }
+
     const score = 1000000 - (steps * 1000 + Math.floor(timeMs / 1000));
     await this.redis.zAdd(leaderboardKey, { score, value: userId });
     await this.redis.set(
@@ -772,6 +816,35 @@ export class UGCService {
       badge?: string;
     }>
   > {
+    const day = this.extractDayFromLeaderboardKey(leaderboardKey);
+    if (day) {
+      await this.ensureMazeSubmissionTable();
+      const result = await this.db.query(
+        `SELECT user_id, username, avatar, steps, time_ms
+         FROM maze_submissions
+         WHERE day = $1
+         ORDER BY steps ASC, time_ms ASC, created_at ASC
+         LIMIT $2`,
+        [day, limit],
+      );
+
+      if (result.rowCount) {
+        return result.rows.map((row: any, index: number) => {
+          const score = 1000000 - (row.steps * 1000 + Math.floor(row.time_ms / 1000));
+          return {
+            userId: row.user_id,
+            username: row.username || 'Unknown',
+            avatar: row.avatar || '',
+            score,
+            steps: Number(row.steps),
+            timeMs: Number(row.time_ms),
+            rank: index + 1,
+            badge: this.getBadgeByRank(index + 1),
+          };
+        });
+      }
+    }
+
     const entries = await this.redis.zRangeWithScores(leaderboardKey, 0, limit - 1, { REV: true });
     if (entries.length === 0) {
       return [];
