@@ -24,16 +24,23 @@ const DiejiePage: NextPage = () => {
     const rawMaskCtx = maskCanvas.getContext('2d');
     const revealCanvas = document.createElement('canvas');
     const rawRevealCtx = revealCanvas.getContext('2d');
-    if (!rawDecorCtx || !rawMaskCtx || !rawRevealCtx) return;
+    const bgCanvas = document.createElement('canvas');
+    const rawBgCtx = bgCanvas.getContext('2d');
+    if (!rawDecorCtx || !rawMaskCtx || !rawRevealCtx || !rawBgCtx) return;
     const decorCtx = rawDecorCtx;
     const maskCtx = rawMaskCtx;
     const revealCtx = rawRevealCtx;
+    const bgCtx = rawBgCtx;
 
     let CELL = 56;
     let W = 11 * CELL;
     let H = 7 * CELL;
     let LIGHT_RADIUS = CELL * 2.3;
     let SELF_RADIUS = CELL * 0.82;
+    // 记录上一次构建装饰层/背景层时使用的 CELL 尺寸，避免尺寸没变时重复做昂贵的重绘
+    let lastBuiltCell = 0;
+    // 缓存 canvas 的位置信息，避免每次 mousemove/touchmove 都强制触发同步布局回流
+    let canvasRect = canvas.getBoundingClientRect();
 
     function resizeOffscreenLayers() {
       decorCanvas.width = W;
@@ -42,6 +49,21 @@ const DiejiePage: NextPage = () => {
       maskCanvas.height = H;
       revealCanvas.width = W;
       revealCanvas.height = H;
+      bgCanvas.width = W;
+      bgCanvas.height = H;
+    }
+
+    // 背景（地板 + 暗角渐变）是静态的，只在 CELL 变化时重新生成一次，
+    // 而不是像之前那样每一帧都重新创建渐变对象并两次 fillRect 整个画布。
+    function buildBackgroundLayer() {
+      bgCtx.clearRect(0, 0, W, H);
+      bgCtx.fillStyle = '#d9d4c9';
+      bgCtx.fillRect(0, 0, W, H);
+      const vg = bgCtx.createRadialGradient(W / 2, H / 2, CELL * 1.5, W / 2, H / 2, W * 0.75);
+      vg.addColorStop(0, 'rgba(217,212,201,0)');
+      vg.addColorStop(1, 'rgba(185,179,165,0.55)');
+      bgCtx.fillStyle = vg;
+      bgCtx.fillRect(0, 0, W, H);
     }
 
     function layoutCanvas() {
@@ -61,13 +83,22 @@ const DiejiePage: NextPage = () => {
       canvas.height = H * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      resizeOffscreenLayers();
+      // 只有当 CELL 真正变化时才重建离屏图层，避免 resize 抖动、移动端地址栏
+      // 收起展开等场景下反复触发昂贵的重绘（大量渐变 + 阴影绘制）造成卡顿
+      if (CELL !== lastBuiltCell) {
+        resizeOffscreenLayers();
+        buildBackgroundLayer();
+        if (maze) {
+          buildDecorLayer();
+        }
+        lastBuiltCell = CELL;
+      }
       if (maze) {
-        buildDecorLayer();
         const c = cellCenter(player.r, player.c);
         player.x = player.tx = c.x;
         player.y = player.ty = c.y;
       }
+      canvasRect = canvas.getBoundingClientRect();
     }
 
     let maze: Array<Array<Record<string, boolean>>>;
@@ -340,7 +371,7 @@ const DiejiePage: NextPage = () => {
     }
 
     function handleMouseMove(e: MouseEvent) {
-      const rect = canvas.getBoundingClientRect();
+      const rect = canvasRect;
       mouse.x = ((e.clientX - rect.left) * (canvas.width / dpr)) / rect.width;
       mouse.y = ((e.clientY - rect.top) * (canvas.height / dpr)) / rect.height;
     }
@@ -348,7 +379,7 @@ const DiejiePage: NextPage = () => {
     function handleTouchMove(e: TouchEvent) {
       e.preventDefault();
       const t = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
+      const rect = canvasRect;
       mouse.x = ((t.clientX - rect.left) * (canvas.width / dpr)) / rect.width;
       mouse.y = ((t.clientY - rect.top) * (canvas.height / dpr)) / rect.height;
     }
@@ -392,12 +423,38 @@ const DiejiePage: NextPage = () => {
     startBtn?.addEventListener('click', handleStartClick);
     loginSubmitBtn?.addEventListener('click', handleLoginClick);
 
+    // 用 rAF 把同一帧内可能连续触发多次的 resize / ResizeObserver 回调合并成一次，
+    // 避免布局抖动（例如移动端地址栏收起展开）时反复触发昂贵的 layoutCanvas 重建
+    let layoutScheduled = false;
+    function scheduleLayout() {
+      if (layoutScheduled) return;
+      layoutScheduled = true;
+      window.requestAnimationFrame(() => {
+        layoutScheduled = false;
+        layoutCanvas();
+      });
+    }
+
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(() => layoutCanvas());
+      resizeObserver = new ResizeObserver(() => scheduleLayout());
       resizeObserver.observe(stageEl);
     }
-    window.addEventListener('resize', layoutCanvas);
+    window.addEventListener('resize', scheduleLayout);
+
+    // 页面切到后台时暂停动画循环，避免不必要的 CPU/GPU 消耗，
+    // 回到前台时再恢复渲染
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        if (rafId) {
+          window.cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+      } else if (!rafId) {
+        rafId = window.requestAnimationFrame(render);
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     function mulberry32(seed: number) {
       let a = seed >>> 0;
@@ -603,21 +660,8 @@ const DiejiePage: NextPage = () => {
         revealCtx.globalCompositeOperation = 'destination-in';
         revealCtx.drawImage(maskCanvas, 0, 0);
       }
-      ctx.clearRect(0, 0, 11 * CELL, 7 * CELL);
-      ctx.fillStyle = '#d9d4c9';
-      ctx.fillRect(0, 0, 11 * CELL, 7 * CELL);
-      const vg = ctx.createRadialGradient(
-        (11 * CELL) / 2,
-        (7 * CELL) / 2,
-        CELL * 1.5,
-        (11 * CELL) / 2,
-        (7 * CELL) / 2,
-        11 * CELL * 0.75,
-      );
-      vg.addColorStop(0, 'rgba(217,212,201,0)');
-      vg.addColorStop(1, 'rgba(185,179,165,0.55)');
-      ctx.fillStyle = vg;
-      ctx.fillRect(0, 0, 11 * CELL, 7 * CELL);
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(bgCanvas, 0, 0);
       if (lightActive) {
         ctx.drawImage(revealCanvas, 0, 0);
       }
@@ -675,8 +719,11 @@ const DiejiePage: NextPage = () => {
     }
 
     let rafId = 0;
-    reset();
+    // 先根据窗口尺寸算出正确的 CELL，再生成迷宫/装饰层，
+    // 这样只需构建一次装饰层，而不是先用默认 CELL=56 建一次、
+    // 紧接着 layoutCanvas 又用正确尺寸重建一次
     layoutCanvas();
+    reset();
     rafId = window.requestAnimationFrame(render);
 
     return () => {
@@ -684,7 +731,8 @@ const DiejiePage: NextPage = () => {
       canvas.removeEventListener('mouseleave', handleMouseLeave);
       canvas.removeEventListener('touchmove', handleTouchMove as EventListener);
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', layoutCanvas);
+      window.removeEventListener('resize', scheduleLayout);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       playAgainBtn?.removeEventListener('click', handlePlayAgainClick);
       storyNextBtn?.removeEventListener('click', advanceDialogue);
       startBtn?.removeEventListener('click', handleStartClick);
