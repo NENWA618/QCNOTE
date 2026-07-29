@@ -18,7 +18,16 @@ const GA_MEASUREMENT_ID = 'G-QVMDWL1WC1';
 export default function App({ Component, pageProps }: AppProps) {
   const [ready, setReady] = useState(false);
   const router = useRouter();
-  const noLive2DRoutes = ['/', '/signin', '/contact', '/privacy', '/terms', '/admin'];
+  const noLive2DRoutes = [
+    '/',
+    '/signin',
+    '/contact',
+    '/privacy',
+    '/terms',
+    '/admin',
+    '/leaderboard',
+    '/diejie',
+  ];
   const shouldLoadLive2d =
     typeof window !== 'undefined' &&
     !noLive2DRoutes.includes(router.pathname) &&
