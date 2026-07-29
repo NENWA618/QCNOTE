@@ -323,10 +323,12 @@ const DiejiePage: NextPage = () => {
           statusEl.textContent = '今天已提交过首通成绩，已保留首次通关记录';
           window.dispatchEvent(new Event('maze-submission-updated'));
         } else {
-          statusEl.textContent = '排行榜提交失败，请稍后重试';
+          const detail = result?.error || result?.message || '未知错误';
+          statusEl.textContent = `排行榜提交失败：${detail}`;
         }
-      } catch {
-        statusEl.textContent = '排行榜提交失败，请检查网络后重试';
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : '网络异常';
+        statusEl.textContent = `排行榜提交失败：${detail}`;
       }
     }
 
