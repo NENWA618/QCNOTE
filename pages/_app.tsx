@@ -1,7 +1,6 @@
 import type { AppProps } from 'next/app';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import Script from 'next/script';
 import { SessionProvider } from 'next-auth/react';
 import '../styles/globals.css';
 import 'katex/dist/katex.min.css';
@@ -13,34 +12,114 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import PushNotificationPrompt from '../components/PushNotificationPrompt';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
-const GA_MEASUREMENT_ID = 'G-QVMDWL1WC1';
+
+const noLive2DRoutes = [
+  '/',
+  '/admin',
+  '/contact',
+  '/diejie',
+  '/leaderboard',
+  '/models',
+  '/privacy',
+  '/signin',
+  '/terms',
+];
+
+const LIVE2D_SCRIPTS = [
+  '/js/jquery.min.js',
+  '/js/jquery-ui.min.js',
+  '/js/live2d.min.js',
+  '/js/waifu-tips.min.js',
+  '/js/waifu.js',
+];
+
+const shouldLoadLive2dForPath = (path: string) => {
+  return (
+    typeof window !== 'undefined' && !noLive2DRoutes.includes(path) && !path.startsWith('/api')
+  );
+};
+
+const isScriptPresent = (src: string) => Boolean(document.querySelector(`script[src="${src}"]`));
+
+const loadScript = (src: string) =>
+  new Promise<void>((resolve, reject) => {
+    if (isScriptPresent(src)) return resolve();
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = false;
+    s.onload = () => resolve();
+    s.onerror = (e) => reject(e);
+    document.body.appendChild(s);
+  });
+
+const loadLive2d = async () => {
+  try {
+    for (const src of LIVE2D_SCRIPTS) {
+      await loadScript(src);
+    }
+  } catch (e) {
+    console.error('加载 Live2D 脚本出错', e);
+  }
+};
+
+const removeLive2d = () => {
+  try {
+    const selectors = ['.waifu', '.waifu-tips', '#live2d', '.waifu-loading', '.waifu-tool'];
+    selectors.forEach((sel) => {
+      document.querySelectorAll(sel).forEach((el) => el.remove());
+    });
+
+    const win = window as Window & {
+      jQuery?: any;
+      live2d?: unknown;
+      waifu?: unknown;
+    };
+
+    if (win.jQuery) {
+      try {
+        const $ = win.jQuery;
+        $(document).off('mouseover', '.waifu #live2d');
+        $(document).off('click', '.waifu #live2d');
+        $('.waifu').off();
+        $('.waifu-tips').off();
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    LIVE2D_SCRIPTS.forEach((src) => {
+      const s = document.querySelector(`script[src="${src}"]`);
+      if (s && s.parentNode) s.parentNode.removeChild(s);
+    });
+
+    if ('live2d' in win) {
+      try {
+        delete win.live2d;
+      } catch (e) {
+        // ignore
+      }
+    }
+    if ('waifu' in win) {
+      try {
+        delete win.waifu;
+      } catch (e) {
+        // ignore
+      }
+    }
+  } catch (err) {
+    console.error('removeLive2d 错误', err);
+  }
+};
 
 export default function App({ Component, pageProps }: AppProps) {
   const [ready, setReady] = useState(false);
   const router = useRouter();
-  const noLive2DRoutes = [
-    '/',
-    '/signin',
-    '/contact',
-    '/privacy',
-    '/terms',
-    '/admin',
-    '/leaderboard',
-    '/diejie',
-  ];
-  const shouldLoadLive2d =
-    typeof window !== 'undefined' &&
-    !noLive2DRoutes.includes(router.pathname) &&
-    !router.pathname.startsWith('/api');
 
   useEffect(() => {
-    // 获取或创建全局 storage 实例（单例）
     if (typeof window === 'undefined') return;
 
-    // Initialize global error handlers (Phase 1 improvement)
     setupGlobalErrorHandlers();
 
-    // 初始化暗黑模式
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
@@ -53,7 +132,6 @@ export default function App({ Component, pageProps }: AppProps) {
 
     const storage = initWindowStorage();
 
-    // 启用 IndexedDB 并迁移数据；等待结果再展示页面
     (async () => {
       const success = await storage?.enableIndexedDB();
       if (success) {
@@ -81,37 +159,24 @@ export default function App({ Component, pageProps }: AppProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const shouldLoad = shouldLoadLive2dForPath(router.pathname);
+
+    if (shouldLoad) {
+      loadLive2d();
+    } else {
+      removeLive2d();
+    }
+
+    return () => {
+      if (!shouldLoadLive2dForPath(window.location.pathname)) removeLive2d();
+    };
+  }, [router.pathname]);
+
   return (
     <>
-      {shouldLoadLive2d && (
-        <>
-          <Script
-            src="/js/jquery.min.js"
-            strategy="lazyOnload"
-            onError={(e) => console.error('jquery 加载失败', e)}
-          />
-          <Script
-            src="/js/jquery-ui.min.js"
-            strategy="lazyOnload"
-            onError={(e) => console.error('jquery-ui 加载失败', e)}
-          />
-          <Script
-            src="/js/live2d.min.js"
-            strategy="lazyOnload"
-            onError={(e) => console.error('live2d 加载失败', e)}
-          />
-          <Script
-            src="/js/waifu-tips.min.js"
-            strategy="lazyOnload"
-            onError={(e) => console.error('waifu-tips 加载失败', e)}
-          />
-          <Script
-            src="/js/waifu.js"
-            strategy="lazyOnload"
-            onError={(e) => console.error('waifu 脚本加载失败', e)}
-          />
-        </>
-      )}
       {!ready ? (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-dark via-primary to-accent-pink">
           <div className="text-center">
