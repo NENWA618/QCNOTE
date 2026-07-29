@@ -84,7 +84,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       ? process.env.NEXTAUTH_URL
       : `http://${context.req.headers.host}`;
     const roleUrl = new URL(
-      `/api/forum/roles?email=${encodeURIComponent(userEmail)}`,
+      `/api/admin/roles?email=${encodeURIComponent(userEmail)}`,
       baseUrl,
     ).toString();
 

@@ -59,7 +59,7 @@ export default function AdminPanel() {
 
   const updateUserRole = async (userId: string, role: 'user' | 'moderator' | 'admin') => {
     try {
-      await axios.put(withApiBaseUrl('/api/forum/roles'), {
+      await axios.put(withApiBaseUrl('/api/admin/roles'), {
         userId,
         role,
       });

@@ -11,7 +11,6 @@ import { UGCService } from './ugc-service';
 import { RecommendationService } from './recommendation-service';
 import { pushService } from './push-service';
 import logger from '../lib/logger';
-import { ForumService } from './forum-service';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -103,8 +102,9 @@ async function requireAdmin(request: FastifyRequest, reply: FastifyReply): Promi
     return null;
   }
 
-  const forumService = new ForumService(await initRedisClient(), await initPostgresClient());
-  const role = await forumService.getUserRole(userId);
+  const pool = await initPostgresClient();
+  const result = await pool.query('SELECT role FROM user_roles WHERE user_id = $1', [userId]);
+  const role = result.rows[0]?.role || 'user';
   if (role !== 'admin') {
     reply.status(403).send({ success: false, error: 'Forbidden' });
     return null;
@@ -408,6 +408,58 @@ function registerRoutes(app: ExtendedFastifyInstance) {
     }
   });
 
+  // Maze leaderboard for current UTC+8 day
+  app.get('/api/ugc/leaderboard/maze', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const now = new Date();
+      const utc8Ms = now.getTime() + (now.getTimezoneOffset() + 480) * 60000;
+      const day = new Date(utc8Ms).toISOString().slice(0, 10);
+      const leaderboardKey = `leaderboard:maze:${day}`;
+      const leaderboard = await ugcService.getGameLeaderboard(leaderboardKey, Number(request.query.limit) || 50);
+
+      reply.send({ success: true, leaderboard, day });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
+  app.post('/api/ugc/maze/submit', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userId = await getSessionUserId(request);
+      if (!userId) {
+        return reply.status(401).send({ success: false, error: 'Unauthorized' });
+      }
+
+      const { day, steps, timeMs } = request.body as {
+        day?: string;
+        steps?: number;
+        timeMs?: number;
+      };
+
+      if (!day || typeof steps !== 'number' || typeof timeMs !== 'number') {
+        return reply.status(400).send({ success: false, error: 'Invalid parameters' });
+      }
+
+      const leaderboardKey = `leaderboard:maze:${day}`;
+      const alreadySubmitted = await ugcService.hasGameSubmission(leaderboardKey, userId);
+      if (alreadySubmitted) {
+        return reply.send({ success: false, message: 'Already submitted for today' });
+      }
+
+      const pool = await initPostgresClient();
+      const userResult = await pool.query('SELECT id, username, image FROM users WHERE id = $1', [userId]);
+      const user = userResult.rows[0];
+      if (!user) {
+        return reply.status(404).send({ success: false, error: 'User not found' });
+      }
+
+      await ugcService.addGameSubmission(leaderboardKey, userId, steps, timeMs, user.username, user.image);
+      reply.send({ success: true, submitted: true, day });
+    } catch (error) {
+      reply.status(400).send({ success: false, error: (error as Error).message });
+    }
+  });
+
   // ==================== 后端管理路由 ====================
 
   app.get('/api/admin/users', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -416,7 +468,6 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       if (!adminUserId) return;
 
       const pool = await initPostgresClient();
-      const forumService = new ForumService(await initRedisClient(), pool);
       const usersResult = await pool.query(`
         SELECT u.id, u.name, u.email, u.created_at, COALESCE(ur.role, 'user') as role
         FROM users u
@@ -447,21 +498,15 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       if (!adminUserId) return;
 
       const pool = await initPostgresClient();
-      const [{ rows: userRows }, { rows: postRows }, { rows: replyRows }, { rows: categoryRows }] =
-        await Promise.all([
-          pool.query('SELECT COUNT(*) as count FROM users'),
-          pool.query('SELECT COUNT(*) as count FROM forum_posts'),
-          pool.query('SELECT COUNT(*) as count FROM forum_replies'),
-          pool.query('SELECT COUNT(*) as count FROM forum_categories'),
-        ]);
+      const [{ rows: userRows }] = await Promise.all([pool.query('SELECT COUNT(*) as count FROM users')]);
 
       reply.send({
         success: true,
         stats: {
           totalUsers: parseInt(userRows[0].count, 10),
-          totalPosts: parseInt(postRows[0].count, 10),
-          totalReplies: parseInt(replyRows[0].count, 10),
-          totalCategories: parseInt(categoryRows[0].count, 10),
+          totalPosts: 0,
+          totalReplies: 0,
+          totalCategories: 0,
         },
       });
     } catch (error) {
@@ -489,7 +534,6 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       }
 
       const pool = await initPostgresClient();
-      const forumService = new ForumService(await initRedisClient(), pool);
       let user;
 
       if (userId) {
@@ -520,7 +564,15 @@ function registerRoutes(app: ExtendedFastifyInstance) {
           .send({ success: false, error: 'User not found and could not be created' });
       }
 
-      await forumService.setUserRole(user.id, 'admin', user.id);
+      await pool.query(
+        `INSERT INTO user_roles (user_id, role, updated_by, updated_at)
+         VALUES ($1, $2, $1, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET
+           role = EXCLUDED.role,
+           updated_by = EXCLUDED.updated_by,
+           updated_at = NOW()`,
+        [user.id, 'admin'],
+      );
       reply.send({
         success: true,
         message: `User ${user.name || user.username} (${user.email}) has been set as admin`,
@@ -528,20 +580,6 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       });
     } catch (error) {
       logger.error('Admin set-admin error:', error);
-      reply
-        .status(500)
-        .send({ success: false, error: error instanceof Error ? error.message : String(error) });
-    }
-  });
-
-  app.get('/api/forum/stats', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const forumService = new ForumService(await initRedisClient(), await initPostgresClient());
-
-      const stats = await forumService.getForumStats();
-      reply.send({ success: true, stats });
-    } catch (error) {
-      logger.error('Forum stats error:', error);
       reply
         .status(500)
         .send({ success: false, error: error instanceof Error ? error.message : String(error) });
@@ -558,29 +596,12 @@ function registerRoutes(app: ExtendedFastifyInstance) {
         { loc: 'https://www.qcnote.com/contact', priority: 0.6, changefreq: 'monthly' },
         { loc: 'https://www.qcnote.com/privacy', priority: 0.4, changefreq: 'yearly' },
         { loc: 'https://www.qcnote.com/terms', priority: 0.4, changefreq: 'yearly' },
-        { loc: 'https://www.qcnote.com/forum', priority: 0.9, changefreq: 'daily' },
-        { loc: 'https://www.qcnote.com/forum-create', priority: 0.7, changefreq: 'weekly' },
         { loc: 'https://www.qcnote.com/leaderboard', priority: 0.8, changefreq: 'daily' },
         { loc: 'https://www.qcnote.com/models', priority: 0.8, changefreq: 'weekly' },
         { loc: 'https://www.qcnote.com/signin', priority: 0.5, changefreq: 'monthly' },
       ];
 
-      const postsResult = await pool.query(`
-        SELECT id, updated_at
-        FROM forum_posts
-        WHERE created_at > NOW() - INTERVAL '6 months'
-        ORDER BY updated_at DESC
-        LIMIT 1000
-      `);
-
-      const postUrls = postsResult.rows.map((post: any) => ({
-        loc: `https://www.qcnote.com/forum/post/${post.id}`,
-        lastmod: new Date(post.updated_at).toISOString(),
-        changefreq: 'weekly',
-        priority: 0.6,
-      }));
-
-      const allUrls = [...staticUrls, ...postUrls];
+      const allUrls = staticUrls;
       const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${allUrls.map((url) => `  <url>\n    <loc>${url.loc}</loc>\n${url.lastmod ? `    <lastmod>${url.lastmod}</lastmod>` : ''}\n${url.changefreq ? `    <changefreq>${url.changefreq}</changefreq>` : ''}\n${url.priority ? `    <priority>${url.priority}</priority>` : ''}\n  </url>`).join('\n')}\n</urlset>`;
 
       reply.header('Content-Type', 'application/xml').send(sitemapXml);
@@ -592,236 +613,84 @@ function registerRoutes(app: ExtendedFastifyInstance) {
     }
   });
 
-  // ==================== 论坛路由 ====================
+  // ==================== 管理角色路由 ====================
 
-  // 获取用户角色
-  app.get('/api/forum/roles', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.get('/api/admin/roles', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { userId, email } = request.query;
-      const forumService = new ForumService(await initRedisClient(), await initPostgresClient());
-
-      // 优先使用 email，因为它比 userId 更可靠
-      if (email && typeof email === 'string') {
-        const role = await forumService.getUserRoleByEmail(email);
-        return reply.send({
-          success: true,
-          role,
-        });
-      } else if (userId && typeof userId === 'string') {
-        // 备用：用户可以通过 userId 查询
-        const role = await forumService.getUserRole(userId);
-        return reply.send({
-          success: true,
-          role,
-        });
-      } else {
+      if (!userId && !email) {
         return reply.status(400).send({
+          success: false,
           error: 'Missing email or userId parameter',
         });
       }
+
+      const pool = await initPostgresClient();
+      let role = 'user';
+
+      if (email && typeof email === 'string') {
+        const result = await pool.query(
+          `SELECT ur.role
+           FROM users u
+           LEFT JOIN user_roles ur ON u.id = ur.user_id
+           WHERE LOWER(u.email) = LOWER($1)
+           LIMIT 1`,
+          [email],
+        );
+        role = result.rows[0]?.role || 'user';
+      } else if (userId && typeof userId === 'string') {
+        const result = await pool.query('SELECT role FROM user_roles WHERE user_id = $1', [userId]);
+        role = result.rows[0]?.role || 'user';
+      }
+
+      reply.send({ success: true, role });
     } catch (error) {
-      logger.error('Get user role error:', error);
+      logger.error('Get admin role error:', error);
       reply.status(500).send({
+        success: false,
         error: 'Internal server error',
         message: error instanceof Error ? error.message : String(error),
       });
     }
   });
 
-  // 修改用户角色
-  app.put('/api/forum/roles', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.put('/api/admin/roles', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { userId, role } = request.body;
 
       if (!userId || !role) {
         return reply.status(400).send({
+          success: false,
           error: 'Missing required fields',
         });
       }
 
       if (!['user', 'moderator', 'admin'].includes(role)) {
         return reply.status(400).send({
+          success: false,
           error: 'Invalid role',
         });
       }
 
-      const forumService = new ForumService(await initRedisClient(), await initPostgresClient());
+      const pool = await initPostgresClient();
+      await pool.query(
+        `INSERT INTO user_roles (user_id, role, updated_by, updated_at)
+         VALUES ($1, $2, $1, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET
+           role = EXCLUDED.role,
+           updated_by = EXCLUDED.updated_by,
+           updated_at = NOW()`,
+        [userId, role],
+      );
 
-      // 设置用户角色（updatedBy 使用userId本身，因为这是代理调用）
-      await forumService.setUserRole(userId, role, userId);
-
-      reply.send({
-        success: true,
-        message: 'User role updated successfully',
-      });
+      reply.send({ success: true, message: 'User role updated successfully' });
     } catch (error) {
-      logger.error('Update user role error:', error);
+      logger.error('Update admin role error:', error);
       reply.status(500).send({
+        success: false,
         error: 'Internal server error',
         message: error instanceof Error ? error.message : String(error),
       });
-    }
-  });
-
-  // ==================== 论坛帖子与互动路由 ====================
-
-  // 获取帖子列表
-  app.get('/api/forum/posts', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const categoryId =
-        typeof request.query.category === 'string' ? request.query.category : undefined;
-      const searchQuery = typeof request.query.q === 'string' ? request.query.q : '';
-      const sortBy = typeof request.query.sort === 'string' ? request.query.sort : 'newest';
-      const page = Number(request.query.page || 1);
-      const limit = Number(request.query.limit || 20);
-
-      const { posts, total } = await new ForumService(
-        await initRedisClient(),
-        await initPostgresClient(),
-      ).getPosts(categoryId, page, limit, searchQuery, sortBy);
-
-      reply.send({ success: true, posts, total });
-    } catch (error) {
-      logger.error('Get forum posts error:', error);
-      reply.status(500).send({
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
-
-  // 获取单篇帖子
-  app.get('/api/forum/posts/:postId', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { postId } = request.params as { postId: string };
-      const forumService = new ForumService(await initRedisClient(), await initPostgresClient());
-      const post = await forumService.getPost(postId);
-      if (!post) {
-        return reply.status(404).send({ success: false, error: 'Post not found' });
-      }
-      reply.send({ success: true, post });
-    } catch (error) {
-      logger.error('Get forum post error:', error);
-      reply.status(500).send({
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
-
-  // 发布新帖子
-  app.post('/api/forum/posts', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { userId, title, content, categoryId, tags } = request.body as {
-        userId?: string;
-        title?: string;
-        content?: string;
-        categoryId?: string;
-        tags?: string[];
-      };
-
-      if (!userId || !title || !content || !categoryId) {
-        return reply.status(400).send({ success: false, error: 'Missing required fields' });
-      }
-
-      const forumService = new ForumService(await initRedisClient(), await initPostgresClient());
-
-      const post = await forumService.createPost(userId, { title, content, categoryId, tags });
-      reply.send({ success: true, post });
-    } catch (error) {
-      logger.error('Create forum post error:', error);
-      reply.status(500).send({
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
-
-  // 获取论坛分类
-  app.get('/api/forum/categories', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const forumService = new ForumService(await initRedisClient(), await initPostgresClient());
-
-      const categories = await forumService.getCategories();
-      reply.send({ success: true, categories });
-    } catch (error) {
-      logger.error('Get forum categories error:', error);
-      reply
-        .status(500)
-        .send({ success: false, error: error instanceof Error ? error.message : String(error) });
-    }
-  });
-
-  // 创建回复
-  app.post('/api/forum/replies', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { userId, postId, content, parentReplyId } = request.body as {
-        userId?: string;
-        postId?: string;
-        content?: string;
-        parentReplyId?: string;
-      };
-
-      if (!userId || !postId || !content) {
-        return reply.status(400).send({ success: false, error: 'Missing required fields' });
-      }
-
-      const forumService = new ForumService(await initRedisClient(), await initPostgresClient());
-
-      const replyData = await forumService.createReply(userId, { postId, content, parentReplyId });
-      reply.send({ success: true, reply: replyData });
-    } catch (error) {
-      logger.error('Create forum reply error:', error);
-      reply
-        .status(500)
-        .send({ success: false, error: error instanceof Error ? error.message : String(error) });
-    }
-  });
-
-  app.get('/api/forum/replies', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const postId = typeof request.query.postId === 'string' ? request.query.postId : undefined;
-      const page = Number(request.query.page || 1);
-      const limit = Number(request.query.limit || 50);
-
-      if (!postId) {
-        return reply.status(400).send({ success: false, error: 'Missing postId' });
-      }
-
-      const forumService = new ForumService(await initRedisClient(), await initPostgresClient());
-
-      const { replies, total } = await forumService.getReplies(postId, page, limit);
-      reply.send({ success: true, replies, total });
-    } catch (error) {
-      logger.error('Get forum replies error:', error);
-      reply
-        .status(500)
-        .send({ success: false, error: error instanceof Error ? error.message : String(error) });
-    }
-  });
-
-  // 点赞帖子或回复
-  app.post('/api/forum/likes', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { userId, postId, replyId } = request.body as {
-        userId?: string;
-        postId?: string;
-        replyId?: string;
-      };
-
-      if (!userId || (!postId && !replyId)) {
-        return reply.status(400).send({ success: false, error: 'Missing required fields' });
-      }
-
-      const forumService = new ForumService(await initRedisClient(), await initPostgresClient());
-
-      const result = await forumService.toggleLike(userId, postId, replyId);
-      reply.send({ success: true, ...result });
-    } catch (error) {
-      logger.error('Toggle forum like error:', error);
-      reply
-        .status(500)
-        .send({ success: false, error: error instanceof Error ? error.message : String(error) });
     }
   });
 

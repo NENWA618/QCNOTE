@@ -213,13 +213,11 @@ QCNOTE/
 ├── pages/              # Next.js 页面
 │   ├── index.tsx       # 首页
 │   ├── dashboard.tsx   # 仪表盘
-│   ├── forum.tsx       # 论坛
 │   └── api/            # API 路由
 ├── qcruntime/          # 浏览器运行时与加密存储
 ├── styles/             # 全局样式
 ├── public/             # 静态资源
 ├── server/             # 后端服务
-│   ├── forum-service.ts    # 论坛业务逻辑
 │   ├── recommendation-service.ts # 推荐系统
 │   └── ...
 ├── docs/               # 文档

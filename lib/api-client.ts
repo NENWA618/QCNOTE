@@ -5,7 +5,7 @@
  *
  * 路径转换：
  * /api/ugc/* -> /api/proxy/ugc/*
- * /api/forum/* -> /api/proxy/forum/*
+ * /api/admin/* -> /api/proxy/admin/*
  *
  * 代理路由 (pages/api/proxy/[...path].ts) 负责：
  * 1. 读取 BACKEND_URL 环境变量
@@ -17,7 +17,7 @@ export function buildApiUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
   // 需要代理的路由前缀（UGC、论坛、管理后台等业务模块）
-  const proxyPrefixes = ['/api/ugc/', '/api/forum/', '/api/admin/'];
+  const proxyPrefixes = ['/api/ugc/', '/api/admin/'];
 
   const shouldProxy = proxyPrefixes.some((prefix) => normalizedPath.startsWith(prefix));
 

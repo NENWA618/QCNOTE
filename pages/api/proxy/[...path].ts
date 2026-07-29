@@ -4,8 +4,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
  * API 代理路由 - 转发请求到 Render 后端
  *
  * 路径转换：
- * /api/proxy/forum/posts -> BACKEND_URL/api/forum/posts
  * /api/proxy/ugc/user/credit -> BACKEND_URL/api/ugc/user/credit
+ * /api/proxy/admin/roles -> BACKEND_URL/api/admin/roles
  */
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

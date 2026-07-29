@@ -54,11 +54,8 @@ export async function initPostgresClient(): Promise<Pool> {
           if (sql.includes('COUNT(*)')) {
             return { rows: [{ count: '2' }] };
           }
-          if (sql.includes('forum_posts') && sql.includes('SELECT p.id')) {
+          if (sql.includes('SELECT p.id')) {
             return { rows: [] }; // Return empty for actual posts query
-          }
-          if (sql.includes('forum_categories')) {
-            return { rows: [] };
           }
           return { rows: [] };
         },
@@ -159,7 +156,6 @@ async function initializeSchema(pool: Pool): Promise<void> {
       CONSTRAINT fk_follows_followee FOREIGN KEY(followee_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    -- Forum tables
     CREATE TABLE IF NOT EXISTS user_roles (
       user_id TEXT PRIMARY KEY,
       role TEXT NOT NULL DEFAULT 'user',
@@ -168,64 +164,6 @@ async function initializeSchema(pool: Pool): Promise<void> {
       CONSTRAINT fk_user_roles_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    CREATE TABLE IF NOT EXISTS forum_categories (
-      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-      name TEXT NOT NULL,
-      description TEXT,
-      icon TEXT,
-      post_count INTEGER DEFAULT 0,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS forum_posts (
-      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-      title TEXT NOT NULL,
-      content TEXT NOT NULL,
-      category_id TEXT,
-      author_id TEXT NOT NULL,
-      tags JSONB DEFAULT '[]',
-      view_count INTEGER DEFAULT 0,
-      reply_count INTEGER DEFAULT 0,
-      like_count INTEGER DEFAULT 0,
-      is_deleted BOOLEAN DEFAULT false,
-      deleted_at TIMESTAMP WITH TIME ZONE,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-      CONSTRAINT fk_forum_post_author FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE,
-      CONSTRAINT fk_forum_post_category FOREIGN KEY(category_id) REFERENCES forum_categories(id) ON DELETE SET NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS forum_replies (
-      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-      post_id TEXT NOT NULL,
-      content TEXT NOT NULL,
-      author_id TEXT NOT NULL,
-      parent_reply_id TEXT,
-      like_count INTEGER DEFAULT 0,
-      is_deleted BOOLEAN DEFAULT false,
-      deleted_at TIMESTAMP WITH TIME ZONE,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-      CONSTRAINT fk_forum_reply_post FOREIGN KEY(post_id) REFERENCES forum_posts(id) ON DELETE CASCADE,
-      CONSTRAINT fk_forum_reply_author FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE,
-      CONSTRAINT fk_forum_reply_parent FOREIGN KEY(parent_reply_id) REFERENCES forum_replies(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS forum_likes (
-      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-      user_id TEXT NOT NULL,
-      post_id TEXT,
-      reply_id TEXT,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-      CONSTRAINT fk_forum_like_user FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-      CONSTRAINT fk_forum_like_post FOREIGN KEY(post_id) REFERENCES forum_posts(id) ON DELETE CASCADE,
-      CONSTRAINT fk_forum_like_reply FOREIGN KEY(reply_id) REFERENCES forum_replies(id) ON DELETE CASCADE,
-      CONSTRAINT forum_like_target_check CHECK (
-        (post_id IS NOT NULL AND reply_id IS NULL) OR
-        (post_id IS NULL AND reply_id IS NOT NULL)
-      ),
-      UNIQUE(user_id, post_id),
-      UNIQUE(user_id, reply_id)
-    );
   `);
 
   // CRITICAL INDEXES for query performance
@@ -237,23 +175,6 @@ async function initializeSchema(pool: Pool): Promise<void> {
 
     -- User roles (frequently checked in auth)
     CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
-
-    -- Forum posts (most query-heavy table)
-    CREATE INDEX IF NOT EXISTS idx_forum_posts_author_id ON forum_posts(author_id);
-    CREATE INDEX IF NOT EXISTS idx_forum_posts_category_id ON forum_posts(category_id);
-    CREATE INDEX IF NOT EXISTS idx_forum_posts_created_at_desc ON forum_posts(created_at DESC) WHERE is_deleted = false;
-    CREATE INDEX IF NOT EXISTS idx_forum_posts_is_deleted ON forum_posts(is_deleted) WHERE is_deleted = false;
-    CREATE INDEX IF NOT EXISTS idx_forum_posts_composite ON forum_posts(is_deleted, created_at DESC) INCLUDE (title, author_id);
-
-    -- Forum replies
-    CREATE INDEX IF NOT EXISTS idx_forum_replies_post_id ON forum_replies(post_id);
-    CREATE INDEX IF NOT EXISTS idx_forum_replies_author_id ON forum_replies(author_id);
-    CREATE INDEX IF NOT EXISTS idx_forum_replies_is_deleted ON forum_replies(is_deleted) WHERE is_deleted = false;
-    CREATE INDEX IF NOT EXISTS idx_forum_replies_created_at_post ON forum_replies(post_id, created_at) WHERE is_deleted = false;
-
-    -- Forum likes (unique + query checks)
-    CREATE INDEX IF NOT EXISTS idx_forum_likes_user_target ON forum_likes(user_id, post_id);
-    CREATE INDEX IF NOT EXISTS idx_forum_likes_user_reply ON forum_likes(user_id, reply_id);
 
     -- Follows table
     CREATE INDEX IF NOT EXISTS idx_follows_user_id ON follows(user_id);

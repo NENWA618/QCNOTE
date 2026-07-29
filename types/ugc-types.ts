@@ -135,7 +135,7 @@ export interface HeatmapData {
   longestStreak: number;
 }
 
-// ==================== 论坛系统类型 ====================
+// ==================== 用户角色类型 ====================
 
 // 用户角色
 export type UserRole = 'user' | 'moderator' | 'admin';
@@ -147,103 +147,6 @@ export interface UserRoleInfo {
   assignedAt: number;
   assignedBy: string;
   permissions: string[];
-}
-
-// 论坛帖子
-export interface ForumPost {
-  id: string;
-  postId?: string;
-  title: string;
-  content: string;
-  authorId: string;
-  authorName: string;
-  authorAvatar?: string;
-  categoryId: string;
-  category?: string;
-  tags: string[];
-  likeCount: number;
-  dislikeCount?: number;
-  likes?: number;
-  dislikes?: number;
-  replyCount: number;
-  viewCount: number;
-  isPinned?: boolean;
-  isLocked?: boolean;
-  createdAt: string | number;
-  updatedAt: string | number;
-  lastReplyAt?: number;
-  likedBy?: string[]; // 点赞用户ID列表
-  dislikedBy?: string[]; // 踩用户ID列表
-}
-
-export interface CreatePostRequest {
-  title: string;
-  content: string;
-  categoryId: string;
-  tags: string[];
-}
-
-export interface UpdatePostRequest {
-  title?: string;
-  content?: string;
-  categoryId?: string;
-  tags?: string[];
-  isPinned?: boolean;
-  isLocked?: boolean;
-}
-
-export interface CreateReplyRequest {
-  postId: string;
-  content: string;
-  parentReplyId?: string;
-}
-
-// 论坛回复
-export interface ForumReply {
-  id: string;
-  replyId?: string;
-  postId: string;
-  content: string;
-  authorId: string;
-  authorName: string;
-  authorAvatar?: string;
-  likeCount: number;
-  likes?: number;
-  dislikeCount?: number;
-  dislikes?: number;
-  createdAt: string | number;
-  updatedAt?: string | number;
-  parentReplyId?: string; // 回复其他回复时使用
-  likedBy?: string[];
-  dislikedBy?: string[];
-}
-
-// 论坛分类
-export interface ForumCategory {
-  id: string;
-  categoryId?: string;
-  name: string;
-  description: string;
-  icon?: string;
-  postCount: number;
-  lastPostAt?: number;
-  lastPostTitle?: string;
-  lastPostAuthor?: string;
-  order?: number;
-  isActive?: boolean;
-  createdAt?: string | number;
-}
-
-// 论坛统计
-export interface ForumStats {
-  totalPosts: number;
-  totalReplies: number;
-  totalUsers: number;
-  totalCategories?: number;
-  activeUsersToday?: number;
-  activeUsersWeek?: number;
-  activeUsersMonth?: number;
-  topCategories?: ForumCategory[];
 }
 
 // ==================== Live2D模型系统类型 ====================
@@ -397,8 +300,6 @@ export interface OperationalDashboard {
     totalModels: number;
     approvedModels: number;
     pendingModels: number;
-    forumPosts: number;
-    forumReplies: number;
   };
   engagement: {
     averageSessionTime: number;

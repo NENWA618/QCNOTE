@@ -22,7 +22,7 @@ const Header: React.FC = () => {
         return;
       }
 
-      fetch(withApiBaseUrl(`/api/forum/roles?email=${encodeURIComponent(userEmail)}`))
+      fetch(withApiBaseUrl(`/api/admin/roles?email=${encodeURIComponent(userEmail)}`))
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -154,11 +154,20 @@ const Header: React.FC = () => {
             <>
               <li>
                 <Link
-                  href="/forum"
+                  href="/diejie"
                   className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
                   onClick={() => setMenuOpen(false)}
                 >
-                  论坛
+                  叠界
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/leaderboard"
+                  className="block py-2 md:py-0 text-primary-dark font-medium no-underline transition-colors hover:text-accent-pink"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  排行榜
                 </Link>
               </li>
               {userRole === 'admin' && (

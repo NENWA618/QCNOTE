@@ -564,30 +564,6 @@ export class UGCService {
   }
 
   /**
-   * 论坛活动奖励
-   */
-  async rewardForumActivity(
-    userId: string,
-    activityType: 'post' | 'reply' | 'like' | 'helpful',
-  ): Promise<void> {
-    const rewards = {
-      post: 2, // 发帖
-      reply: 1, // 回复
-      like: 0, // 点赞（不给积分）
-      helpful: 3, // 被标记为有帮助
-    };
-
-    const reward = rewards[activityType];
-    if (reward > 0) {
-      await this.addCredit(
-        userId,
-        reward,
-        `论坛${activityType === 'post' ? '发帖' : activityType === 'reply' ? '回复' : '回答被赞'}奖励`,
-      );
-    }
-  }
-
-  /**
    * 获取用户积分
    */
   async getUserCredit(userId: string): Promise<number> {
@@ -751,6 +727,68 @@ export class UGCService {
         username: parsed.username || 'Unknown',
         avatar: parsed.avatar || '',
         score: entry.score,
+        rank: index + 1,
+        badge: this.getBadgeByRank(index + 1),
+      };
+    });
+  }
+
+  async hasGameSubmission(leaderboardKey: string, userId: string): Promise<boolean> {
+    const exists = await this.redis.exists(`${leaderboardKey}:user:${userId}`);
+    return exists === 1;
+  }
+
+  async addGameSubmission(
+    leaderboardKey: string,
+    userId: string,
+    steps: number,
+    timeMs: number,
+    username: string,
+    avatar: string,
+  ): Promise<void> {
+    const score = 1000000 - (steps * 1000 + Math.floor(timeMs / 1000));
+    await this.redis.zAdd(leaderboardKey, { score, value: userId });
+    await this.redis.set(
+      `leaderboard:${leaderboardKey}:${userId}:info`,
+      JSON.stringify({ username, avatar }),
+    );
+    await this.redis.set(
+      `${leaderboardKey}:user:${userId}`,
+      JSON.stringify({ steps, timeMs, submittedAt: Date.now() }),
+    );
+  }
+
+  async getGameLeaderboard(
+    leaderboardKey: string,
+    limit: number = 50,
+  ): Promise<Array<{ userId: string; username: string; avatar: string; steps: number; timeMs: number; rank: number; badge?: string }>> {
+    const entries = await this.redis.zRangeWithScores(leaderboardKey, 0, limit - 1, { REV: true });
+    if (entries.length === 0) {
+      return [];
+    }
+
+    const userIds = entries.map((entry) => entry.value as string);
+    const infoKeys = userIds.map((userId) => `leaderboard:${leaderboardKey}:${userId}:info`);
+    const submissionKeys = userIds.map((userId) => `${leaderboardKey}:user:${userId}`);
+
+    const [userInfos, submissions] = await Promise.all([
+      this.redis.mGet(infoKeys),
+      this.redis.mGet(submissionKeys),
+    ]);
+
+    return entries.map((entry, index) => {
+      const userId = entry.value as string;
+      const info = userInfos[index];
+      const submission = submissions[index];
+      const parsedInfo = info ? JSON.parse(info) : {};
+      const parsedSubmission = submission ? JSON.parse(submission) : {};
+
+      return {
+        userId,
+        username: parsedInfo.username || 'Unknown',
+        avatar: parsedInfo.avatar || '',
+        steps: parsedSubmission.steps ?? Math.max(0, 1000 - entry.score),
+        timeMs: parsedSubmission.timeMs ?? 0,
         rank: index + 1,
         badge: this.getBadgeByRank(index + 1),
       };

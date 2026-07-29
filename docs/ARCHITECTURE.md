@@ -22,7 +22,7 @@ QCNOTE 的架构可分为四个主要层级：
 
 ### 2.1 用户界面层（UI）
 
-- `pages/`：Next.js 页面入口，例如 `index.tsx`、`dashboard.tsx`、`forum.tsx`、`privacy.tsx`、`terms.tsx`。
+- `pages/`：Next.js 页面入口，例如 `index.tsx`、`dashboard.tsx`、`privacy.tsx`、`terms.tsx`。
 - `components/`：共享组件库，包括 `NoteEditor`、`NoteList`、`KnowledgeGraph`、`WebDAVSync`、`OneDriveSync`、`Footer` 等。
 - `Layout.tsx`：统一页面布局，负责 Header 与 Footer 渲染。
 
@@ -149,7 +149,6 @@ QCNOTE 以用户或访客为命名空间隔离存储：
 
 - `index.tsx`：首页介绍、核心功能卡片、快速上手。
 - `dashboard.tsx`：笔记仪表盘，显示笔记列表、统计与视图切换。
-- `forum.tsx`：社区论坛入口，支持帖子浏览和讨论。
 - `privacy.tsx` / `terms.tsx`：法律与隐私说明页面。
 - `contact.tsx`：联系与支持页面。
 
@@ -162,9 +161,8 @@ QCNOTE 以用户或访客为命名空间隔离存储：
 
 ## 8. 可选后端架构
 
-### 8.1 论坛与用户服务
+### 8.1 管理与用户服务
 
-- `server/forum-service.ts`：论坛帖子与评论逻辑。
 - `server/check-admin.ts`：管理员权限检查。
 - `server/` 目录下还包含推荐、认证和数据访问模块。
 
@@ -205,11 +203,6 @@ QCNOTE 的核心价值在于：
   user:{userId}:profile - 用户资料
   user:{userId}:credit - 用户积分
   user_role:{userId} - 用户角色
-
-论坛数据:
-  forum:posts:{postId} - 帖子缓存
-  forum:posts:list - 帖子列表
-  forum:categories - 分类缓存
 
 会话数据:
   sessions:{sessionId} - 认证会话
