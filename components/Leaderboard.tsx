@@ -1,54 +1,40 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
 import type { LeaderboardEntry } from '../types/ugc-types';
 
-interface LeaderboardProps {
-  type: 'creative' | 'activity' | 'influence';
-}
-
-const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
+const Leaderboard: React.FC = () => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchLeaderboard = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`/api/ugc/leaderboard/${type}?limit=50`);
-
-      if (response.data.success) {
-        setEntries(response.data.leaderboard);
-      }
-    } catch (error) {
-      console.error('Failed to fetch leaderboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [type]);
-
   useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`/api/ugc/leaderboard/maze?limit=50`);
+
+        if (response.data.success) {
+          setEntries(response.data.leaderboard);
+        }
+      } catch (error) {
+        console.error('Failed to fetch leaderboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchLeaderboard();
-  }, [fetchLeaderboard]);
+  }, []);
 
-  const typeConfig = {
-    creative: {
-      title: '🎨 创意排行榜',
-      subtitle: '最受欢迎的创意作品',
-      icon: '🏆',
-    },
-    activity: {
-      title: '⚡ 活跃度排行榜',
-      subtitle: '社区最活跃的创意者',
-      icon: '🔥',
-    },
-    influence: {
-      title: '👑 影响力排行榜',
-      subtitle: '最具影响力的创意领袖',
-      icon: '⭐',
-    },
+  const title = '🧭 叠界排行榜';
+  const subtitle = '仅展示当天首次通关记录';
+
+  const formatTime = (timeMs: number) => {
+    const seconds = Math.floor(timeMs / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remaining = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remaining.toString().padStart(2, '0')}`;
   };
-
-  const config = typeConfig[type];
 
   if (loading) {
     return (
@@ -60,16 +46,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-dark-bg p-8">
-      <div className="max-w-2xl mx-auto">
-        {/* 头部 */}
+      <div className="max-w-3xl mx-auto">
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-primary-dark dark:text-dark-text mb-2">
-            {config.title}
-          </h1>
-          <p className="text-text-light dark:text-dark-text-secondary">{config.subtitle}</p>
+          <h1 className="text-4xl font-bold text-primary-dark dark:text-dark-text mb-2">{title}</h1>
+          <p className="text-text-light dark:text-dark-text-secondary">{subtitle}</p>
         </div>
 
-        {/* 排行榜 */}
         <div className="space-y-4">
           {entries.map((entry, index) => (
             <div
@@ -84,17 +66,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
                       : 'card dark:bg-dark-surface dark:border-dark-border hover:shadow-medium'
               }`}
             >
-              {/* 排名 */}
               <div
                 className={`text-3xl font-bold w-16 text-center ${index < 3 ? 'text-white' : 'text-primary-dark dark:text-dark-text'}`}
               >
                 {entry.badge ? entry.badge : `#${entry.rank}`}
               </div>
 
-              {/* 用户信息 */}
               <div className="flex items-center gap-4 flex-1">
                 <Image
-                  src={entry.avatar}
+                  src={entry.avatar || '/images/default-avatar.png'}
                   alt={entry.username}
                   width={48}
                   height={48}
@@ -114,7 +94,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
                 </div>
               </div>
 
-              {/* 分数 */}
               <div
                 className={`text-right ${index < 3 ? 'text-white' : 'text-accent-pink dark:text-accent-purple'}`}
               >
@@ -124,6 +103,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
                 >
                   积分
                 </p>
+                <p
+                  className={`text-xs ${index < 3 ? 'text-gray-100' : 'text-text-light dark:text-dark-text-secondary'}`}
+                >
+                  {entry.steps} 步 · {formatTime(entry.timeMs)}
+                </p>
               </div>
             </div>
           ))}
@@ -131,7 +115,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ type }) => {
 
         {entries.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-text-light dark:text-dark-text-secondary text-lg">暂无排行数据</p>
+            <p className="text-text-light dark:text-dark-text-secondary text-lg">
+              暂无今日叠界排行数据
+            </p>
           </div>
         )}
       </div>

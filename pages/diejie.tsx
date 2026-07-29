@@ -9,20 +9,25 @@ const DiejiePage: NextPage = () => {
 
   useEffect(() => {
     const stageEl = document.getElementById('stage');
-    const canvas = document.getElementById('maze') as HTMLCanvasElement | null;
-    if (!stageEl || !canvas) return;
+    const canvasEl = document.getElementById('maze');
+    if (!stageEl || !(canvasEl instanceof HTMLCanvasElement)) return;
+    const canvas = canvasEl;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const rawCtx = canvas.getContext('2d');
+    if (!rawCtx) return;
+    const ctx = rawCtx;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const decorCanvas = document.createElement('canvas');
-    const decorCtx = decorCanvas.getContext('2d');
+    const rawDecorCtx = decorCanvas.getContext('2d');
     const maskCanvas = document.createElement('canvas');
-    const maskCtx = maskCanvas.getContext('2d');
+    const rawMaskCtx = maskCanvas.getContext('2d');
     const revealCanvas = document.createElement('canvas');
-    const revealCtx = revealCanvas.getContext('2d');
-    if (!decorCtx || !maskCtx || !revealCtx) return;
+    const rawRevealCtx = revealCanvas.getContext('2d');
+    if (!rawDecorCtx || !rawMaskCtx || !rawRevealCtx) return;
+    const decorCtx = rawDecorCtx;
+    const maskCtx = rawMaskCtx;
+    const revealCtx = rawRevealCtx;
 
     let CELL = 56;
     let W = 11 * CELL;
@@ -91,7 +96,8 @@ const DiejiePage: NextPage = () => {
       const cells: Array<Array<Record<string, boolean>>> = [];
       for (let r = 0; r < rows; r++) {
         const row: Array<Record<string, boolean>> = [];
-        for (let c = 0; c < cols; c++) row.push({ N: true, E: true, S: true, W: true, visited: false });
+        for (let c = 0; c < cols; c++)
+          row.push({ N: true, E: true, S: true, W: true, visited: false });
         cells.push(row);
       }
       const dirs = [
@@ -108,7 +114,8 @@ const DiejiePage: NextPage = () => {
         for (const d of dirs) {
           const nr = r + d.dr;
           const nc = c + d.dc;
-          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !cells[nr][nc].visited) options.push({ ...d, nr, nc });
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !cells[nr][nc].visited)
+            options.push({ ...d, nr, nc });
         }
         if (!options.length) {
           stack.pop();
@@ -131,10 +138,11 @@ const DiejiePage: NextPage = () => {
 
     function buildDecorLayer() {
       decorCtx.clearRect(0, 0, W, H);
+      const dirs: Array<'N' | 'E' | 'S' | 'W'> = ['N', 'E', 'S', 'W'];
       for (let r = 0; r < 7; r++) {
         for (let c = 0; c < 11; c++) {
           const cell = maze[r][c];
-          ['N', 'E', 'S', 'W'].forEach((dir) => {
+          dirs.forEach((dir) => {
             if (cell[dir]) drawTree(decorCtx, r, c, dir);
             else drawPlant(decorCtx, r, c, dir);
           });
@@ -402,12 +410,17 @@ const DiejiePage: NextPage = () => {
       };
     }
 
-    function seedFor(r: number, c: number, dir: string) {
-      const dirIdx = { N: 0, E: 1, S: 2, W: 3 }[dir as keyof typeof { N: 0; E: 1; S: 2; W: 3 }];
+    function seedFor(r: number, c: number, dir: 'N' | 'E' | 'S' | 'W') {
+      const dirIdx = { N: 0, E: 1, S: 2, W: 3 }[dir];
       return (r * 97 + c * 131 + dirIdx * 181 + 907) >>> 0;
     }
 
-    function qbez(p0: { x: number; y: number }, p1: { x: number; y: number }, p2: { x: number; y: number }, t: number) {
+    function qbez(
+      p0: { x: number; y: number },
+      p1: { x: number; y: number },
+      p2: { x: number; y: number },
+      t: number,
+    ) {
       const mt = 1 - t;
       return {
         x: mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x,
@@ -415,12 +428,19 @@ const DiejiePage: NextPage = () => {
       };
     }
 
-    function drawTree(tctx: CanvasRenderingContext2D, r: number, c: number, dir: string) {
-      const mid = wallMid(r, c, dir as 'N' | 'S' | 'E' | 'W');
+    function drawTree(
+      tctx: CanvasRenderingContext2D,
+      r: number,
+      c: number,
+      dir: 'N' | 'E' | 'S' | 'W',
+    ) {
+      const mid = wallMid(r, c, dir);
       const rand = mulberry32(seedFor(r, c, dir));
       const horizontal = dir === 'N' || dir === 'S';
       const along = horizontal ? { x: 1, y: 0 } : { x: 0, y: 1 };
-      const into = horizontal ? { x: 0, y: dir === 'N' ? 1 : -1 } : { x: dir === 'W' ? 1 : -1, y: 0 };
+      const into = horizontal
+        ? { x: 0, y: dir === 'N' ? 1 : -1 }
+        : { x: dir === 'W' ? 1 : -1, y: 0 };
 
       tctx.save();
       tctx.strokeStyle = '#3a2a4d';
@@ -465,8 +485,13 @@ const DiejiePage: NextPage = () => {
       tctx.restore();
     }
 
-    function drawPlant(tctx: CanvasRenderingContext2D, r: number, c: number, dir: string) {
-      const mid = wallMid(r, c, dir as 'N' | 'S' | 'E' | 'W');
+    function drawPlant(
+      tctx: CanvasRenderingContext2D,
+      r: number,
+      c: number,
+      dir: 'N' | 'E' | 'S' | 'W',
+    ) {
+      const mid = wallMid(r, c, dir);
       const rand = mulberry32(seedFor(r, c, dir) + 5000);
       const center = cellCenter(r, c);
       const into = { x: center.x - mid.x, y: center.y - mid.y };
@@ -485,7 +510,10 @@ const DiejiePage: NextPage = () => {
       const nStems = 3;
       for (let i = 0; i < nStems; i++) {
         const spread = (i / (nStems - 1) - 0.5) * 0.7;
-        const p0 = { x: mid.x + along.x * spread * CELL * 0.5, y: mid.y + along.y * spread * CELL * 0.5 };
+        const p0 = {
+          x: mid.x + along.x * spread * CELL * 0.5,
+          y: mid.y + along.y * spread * CELL * 0.5,
+        };
         const len = CELL * (0.34 + rand() * 0.22);
         const curve = (rand() - 0.5) * CELL * 0.5;
         const p2 = {
@@ -543,14 +571,28 @@ const DiejiePage: NextPage = () => {
         }
       }
       if (lightActive) {
-        const mg = maskCtx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, LIGHT_RADIUS);
+        const mg = maskCtx.createRadialGradient(
+          mouse.x,
+          mouse.y,
+          0,
+          mouse.x,
+          mouse.y,
+          LIGHT_RADIUS,
+        );
         mg.addColorStop(0, 'rgba(255,255,255,1)');
         mg.addColorStop(0.7, 'rgba(255,255,255,0.9)');
         mg.addColorStop(1, 'rgba(255,255,255,0)');
         maskCtx.fillStyle = mg;
         maskCtx.fillRect(0, 0, W, H);
         maskCtx.globalCompositeOperation = 'lighter';
-        const pg = maskCtx.createRadialGradient(player.x, player.y, 0, player.x, player.y, SELF_RADIUS);
+        const pg = maskCtx.createRadialGradient(
+          player.x,
+          player.y,
+          0,
+          player.x,
+          player.y,
+          SELF_RADIUS,
+        );
         pg.addColorStop(0, 'rgba(255,255,255,1)');
         pg.addColorStop(1, 'rgba(255,255,255,0)');
         maskCtx.fillStyle = pg;
@@ -564,7 +606,14 @@ const DiejiePage: NextPage = () => {
       ctx.clearRect(0, 0, 11 * CELL, 7 * CELL);
       ctx.fillStyle = '#d9d4c9';
       ctx.fillRect(0, 0, 11 * CELL, 7 * CELL);
-      const vg = ctx.createRadialGradient(11 * CELL / 2, 7 * CELL / 2, CELL * 1.5, 11 * CELL / 2, 7 * CELL / 2, 11 * CELL * 0.75);
+      const vg = ctx.createRadialGradient(
+        (11 * CELL) / 2,
+        (7 * CELL) / 2,
+        CELL * 1.5,
+        (11 * CELL) / 2,
+        (7 * CELL) / 2,
+        11 * CELL * 0.75,
+      );
       vg.addColorStop(0, 'rgba(217,212,201,0)');
       vg.addColorStop(1, 'rgba(185,179,165,0.55)');
       ctx.fillStyle = vg;
@@ -602,7 +651,14 @@ const DiejiePage: NextPage = () => {
       ctx.save();
       if (lightActive) {
         const pulse = 1 + Math.sin(now / 260) * 0.06;
-        const grad2 = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, 22 * pulse);
+        const grad2 = ctx.createRadialGradient(
+          player.x,
+          player.y,
+          0,
+          player.x,
+          player.y,
+          22 * pulse,
+        );
         grad2.addColorStop(0, 'rgba(255,192,138,0.55)');
         grad2.addColorStop(1, 'rgba(255,192,138,0)');
         ctx.fillStyle = grad2;
@@ -715,7 +771,11 @@ const DiejiePage: NextPage = () => {
             <button id="playAgainBtn" className="ghost">
               再走一次
             </button>
-            <button id="loginSubmitBtn" className="ghost" style={{ display: 'none', marginTop: '12px' }}>
+            <button
+              id="loginSubmitBtn"
+              className="ghost"
+              style={{ display: 'none', marginTop: '12px' }}
+            >
               登录后提交
             </button>
             <div id="submitStatus" className="submit-status">
@@ -751,7 +811,8 @@ const DiejiePage: NextPage = () => {
           padding: 0;
           background: var(--void);
           color: var(--ink);
-          font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+          font-family:
+            -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
           height: 100%;
           overflow: hidden;
         }
@@ -900,8 +961,8 @@ const DiejiePage: NextPage = () => {
           top: 10px;
           left: 50%;
           transform: translateX(-50%);
-          background: rgba(229,72,77,0.14);
-          border: 1px solid rgba(229,72,77,0.4);
+          background: rgba(229, 72, 77, 0.14);
+          border: 1px solid rgba(229, 72, 77, 0.4);
           color: #f2a3a5;
           font-size: 11px;
           padding: 4px 10px;
