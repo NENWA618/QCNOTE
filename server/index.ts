@@ -404,8 +404,19 @@ function registerRoutes(app: ExtendedFastifyInstance) {
         leaderboardKey,
         Number(request.query.limit) || 50,
       );
+      const count = leaderboard.length;
 
-      reply.send({ success: true, leaderboard, day });
+      reply.send({
+        success: true,
+        leaderboard,
+        day,
+        count,
+        debug: {
+          leaderboardKey,
+          count,
+          requestedDay: day,
+        },
+      });
     } catch (error) {
       reply.status(400).send({ success: false, error: (error as Error).message });
     }
