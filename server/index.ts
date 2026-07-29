@@ -463,6 +463,8 @@ function registerRoutes(app: ExtendedFastifyInstance) {
         return reply.status(400).send({ success: false, error: 'Invalid parameters' });
       }
 
+      const normalizedSteps = Math.round(steps);
+      const normalizedTimeMs = Math.round(timeMs);
       const leaderboardKey = `leaderboard:maze:${day}`;
       logger.info('[Maze Submit] checking existing submission', { leaderboardKey, userId });
       const alreadySubmitted = await ugcService.hasGameSubmission(leaderboardKey, userId);
@@ -487,8 +489,8 @@ function registerRoutes(app: ExtendedFastifyInstance) {
       await ugcService.addGameSubmission(
         leaderboardKey,
         userId,
-        steps,
-        timeMs,
+        normalizedSteps,
+        normalizedTimeMs,
         user.username,
         user.image,
       );

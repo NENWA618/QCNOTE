@@ -780,6 +780,8 @@ export class UGCService {
     avatar: string,
   ): Promise<void> {
     const day = this.extractDayFromLeaderboardKey(leaderboardKey);
+    const normalizedSteps = Math.round(steps);
+    const normalizedTimeMs = Math.round(timeMs);
     if (day) {
       await this.ensureMazeSubmissionTable();
       await this.db.query(
@@ -796,11 +798,11 @@ export class UGCService {
          END,
          username = EXCLUDED.username,
          avatar = EXCLUDED.avatar`,
-        [userId, day, steps, timeMs, username, avatar, Date.now()],
+        [userId, day, normalizedSteps, normalizedTimeMs, username, avatar, Date.now()],
       );
     }
 
-    const score = 1000000 - (steps * 1000 + Math.floor(timeMs / 1000));
+    const score = 1000000 - (normalizedSteps * 1000 + Math.floor(normalizedTimeMs / 1000));
     await this.redis.zAdd(leaderboardKey, { score, value: userId });
     await this.redis.set(
       `leaderboard:${leaderboardKey}:${userId}:info`,

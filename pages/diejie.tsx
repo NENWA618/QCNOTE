@@ -303,12 +303,14 @@ const DiejiePage: NextPage = () => {
         const now = new Date();
         const utc8Ms = now.getTime() + (now.getTimezoneOffset() + 480) * 60000;
         const day = new Date(utc8Ms).toISOString().slice(0, 10);
+        const normalizedSteps = Math.round(steps);
+        const normalizedTimeMs = Math.round(timeMs);
         const response = await fetch('/api/ugc/maze/submit', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ day, steps, timeMs }),
+          body: JSON.stringify({ day, steps: normalizedSteps, timeMs: normalizedTimeMs }),
         });
         if (response.status === 401) {
           statusEl.textContent = '未登录，正在跳转登录...';
