@@ -761,7 +761,17 @@ export class UGCService {
   async getGameLeaderboard(
     leaderboardKey: string,
     limit: number = 50,
-  ): Promise<Array<{ userId: string; username: string; avatar: string; steps: number; timeMs: number; rank: number; badge?: string }>> {
+  ): Promise<
+    Array<{
+      userId: string;
+      username: string;
+      avatar: string;
+      steps: number;
+      timeMs: number;
+      rank: number;
+      badge?: string;
+    }>
+  > {
     const entries = await this.redis.zRangeWithScores(leaderboardKey, 0, limit - 1, { REV: true });
     if (entries.length === 0) {
       return [];
@@ -787,6 +797,7 @@ export class UGCService {
         userId,
         username: parsedInfo.username || 'Unknown',
         avatar: parsedInfo.avatar || '',
+        score: entry.score,
         steps: parsedSubmission.steps ?? Math.max(0, 1000 - entry.score),
         timeMs: parsedSubmission.timeMs ?? 0,
         rank: index + 1,

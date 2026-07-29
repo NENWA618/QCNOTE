@@ -97,7 +97,7 @@ const Leaderboard: React.FC = () => {
               <div
                 className={`text-right ${index < 3 ? 'text-white' : 'text-accent-pink dark:text-accent-purple'}`}
               >
-                <p className="text-2xl font-bold">{entry.score.toFixed(0)}</p>
+                <p className="text-2xl font-bold">{(entry.score ?? 0).toFixed(0)}</p>
                 <p
                   className={`text-xs ${index < 3 ? 'text-gray-100' : 'text-text-light dark:text-dark-text-secondary'}`}
                 >
