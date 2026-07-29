@@ -63,6 +63,10 @@ export interface LeaderboardEntry {
   score: number;
   rank: number;
   badge?: string;
+  // For game/maze leaderboards: number of steps and completion time in ms.
+  // These are optional because other leaderboard types may not include them.
+  steps?: number;
+  timeMs?: number;
 }
 
 // 评论

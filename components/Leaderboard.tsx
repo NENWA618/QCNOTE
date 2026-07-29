@@ -106,7 +106,7 @@ const Leaderboard: React.FC = () => {
                 <p
                   className={`text-xs ${index < 3 ? 'text-gray-100' : 'text-text-light dark:text-dark-text-secondary'}`}
                 >
-                  {entry.steps} 步 · {formatTime(entry.timeMs)}
+                  {entry.steps ?? '-'} 步 · {formatTime(entry.timeMs ?? 0)}
                 </p>
               </div>
             </div>
