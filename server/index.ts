@@ -113,6 +113,18 @@ async function requireAdmin(request: FastifyRequest, reply: FastifyReply): Promi
   return userId;
 }
 
+function getUtc8DayString(date: Date = new Date()): string {
+  const utc8Ms = date.getTime() + (date.getTimezoneOffset() + 480) * 60000;
+  return new Date(utc8Ms).toISOString().slice(0, 10);
+}
+
+function getNextUtc8Midnight(date: Date = new Date()): Date {
+  const day = getUtc8DayString(date);
+  const midnight = new Date(`${day}T00:00:00+08:00`);
+  midnight.setTime(midnight.getTime() + 24 * 60 * 60 * 1000);
+  return midnight;
+}
+
 function buildFastify() {
   const fastify = Fastify({ logger: true });
   fastify.register(cors, { origin: true });
@@ -1013,6 +1025,35 @@ async function startServer() {
     ugcService = new UGCService(redis, postgres);
     recommendationService = new RecommendationService(redis, ugcService);
     logger.info('[Server] UGC services initialized');
+
+    const currentUtc8Day = getUtc8DayString();
+    const deletedCount = await ugcService.cleanupMazeLeaderboardEntries(currentUtc8Day);
+    logger.info('[Maze Cleanup] initial run completed', { currentUtc8Day, deletedCount });
+
+    const scheduleMazeLeaderboardCleanup = () => {
+      const now = new Date();
+      const nextMidnight = getNextUtc8Midnight(now);
+      const waitMs = Math.max(1000, nextMidnight.getTime() - now.getTime());
+
+      logger.info('[Maze Cleanup] scheduled', {
+        waitMs,
+        nextMidnight: nextMidnight.toISOString(),
+      });
+
+      setTimeout(async () => {
+        try {
+          const cleanupDay = getUtc8DayString();
+          const removedCount = await ugcService.cleanupMazeLeaderboardEntries(cleanupDay);
+          logger.info('[Maze Cleanup] executed', { cleanupDay, removedCount });
+        } catch (error) {
+          logger.error('[Maze Cleanup] failed', error);
+        } finally {
+          scheduleMazeLeaderboardCleanup();
+        }
+      }, waitMs);
+    };
+
+    scheduleMazeLeaderboardCleanup();
 
     // 仅保留现有笔记缓存加载逻辑，不影响新 PG 存储
     await loadNotesFromDisk();

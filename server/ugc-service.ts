@@ -754,6 +754,23 @@ export class UGCService {
     `);
   }
 
+  async cleanupMazeLeaderboardEntries(currentDay: string): Promise<number> {
+    await this.ensureMazeSubmissionTable();
+
+    const keepDays = new Set<string>([currentDay]);
+    const previousDay = new Date(`${currentDay}T00:00:00+08:00`);
+    previousDay.setDate(previousDay.getDate() - 1);
+    keepDays.add(previousDay.toISOString().slice(0, 10));
+
+    const result = await this.db.query(
+      `DELETE FROM maze_submissions WHERE day NOT IN (${Array.from(keepDays)
+        .map((_, index) => `$${index + 1}`)
+        .join(', ')})`,
+      Array.from(keepDays),
+    );
+    return result.rowCount ?? 0;
+  }
+
   async hasGameSubmission(leaderboardKey: string, userId: string): Promise<boolean> {
     const day = this.extractDayFromLeaderboardKey(leaderboardKey);
     if (day) {
@@ -841,7 +858,14 @@ export class UGCService {
       );
 
       if (result.rowCount) {
-        return result.rows.map((row: any, index: number) => {
+        const rows = result.rows as Array<{
+          user_id: string;
+          username: string;
+          avatar: string;
+          steps: number;
+          time_ms: number;
+        }>;
+        return rows.map((row, index) => {
           const score = 1000000 - (row.steps * 1000 + Math.floor(row.time_ms / 1000));
           return {
             userId: row.user_id,
