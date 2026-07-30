@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from './api/auth/authConfig';
+import { withApiBaseUrl } from '../lib/api-client';
 import AdminPanel from '../components/AdminPanel';
 import Layout from '../components/Layout';
 
@@ -80,21 +81,13 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL
-      ? process.env.NEXTAUTH_URL
-      : `http://${context.req.headers.host}`;
-    const roleUrl = new URL(
-      `/api/admin/roles?email=${encodeURIComponent(userEmail)}`,
-      baseUrl,
-    ).toString();
-
+    const roleUrl = withApiBaseUrl(`/api/admin/roles?email=${encodeURIComponent(userEmail)}`);
     const response = await fetch(roleUrl, {
       method: 'GET',
       headers: {
         cookie: context.req.headers.cookie || '',
       },
     });
-
     if (!response.ok) {
       console.error('Failed to fetch user role during SSR:', response.status, response.statusText);
       return {
