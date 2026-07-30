@@ -319,10 +319,10 @@ const DiejiePage: NextPage = () => {
         }
         const result = await response.json();
         if (result.success) {
-          statusEl.textContent = '已提交排行榜，首通成绩已保存';
+          statusEl.textContent = '已提交排行榜，今日最佳成绩已保存';
           window.dispatchEvent(new Event('maze-submission-updated'));
         } else if (result.message === 'Already submitted for today') {
-          statusEl.textContent = '今天已提交过首通成绩，已保留首次通关记录';
+          statusEl.textContent = '今日已记录过成绩，已保留更优成绩';
           window.dispatchEvent(new Event('maze-submission-updated'));
         } else {
           const detail = result?.error || result?.message || '未知错误';

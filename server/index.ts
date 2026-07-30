@@ -422,12 +422,6 @@ function registerRoutes(app: ExtendedFastifyInstance) {
         success: true,
         leaderboard,
         day,
-        count,
-        debug: {
-          leaderboardKey,
-          count,
-          requestedDay: day,
-        },
       });
     } catch (error) {
       reply.status(400).send({ success: false, error: (error as Error).message });

@@ -7,7 +7,7 @@ export default function LeaderboardPage() {
     <>
       <Head>
         <title>叠界排行榜 - QCNOTE</title>
-        <meta name="description" content="查看今日叠界迷宫首通排行榜，仅展示当天首次通关记录。" />
+        <meta name="description" content="查看今日叠界迷宫排行榜，展示当天最佳通关记录。" />
       </Head>
       <Layout>
         <div className="py-8">

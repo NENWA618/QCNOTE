@@ -5,8 +5,6 @@ import type { LeaderboardEntry } from '../types/ugc-types';
 
 const Leaderboard: React.FC = () => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [count, setCount] = useState<number | null>(null);
-  const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,11 +17,8 @@ const Leaderboard: React.FC = () => {
 
         if (response.data.success) {
           setEntries(response.data.leaderboard);
-          setCount(response.data.count ?? response.data.leaderboard?.length ?? 0);
-          setDebugInfo(response.data.debug || null);
         } else {
           setError(response.data.error || response.data.message || '加载排行榜失败');
-          setDebugInfo(response.data.debug || null);
           console.error('Failed to fetch leaderboard:', response.data);
         }
       } catch (error) {
@@ -53,7 +48,7 @@ const Leaderboard: React.FC = () => {
   }, []);
 
   const title = '🧭 叠界排行榜';
-  const subtitle = '仅展示当天首次通关记录';
+  const subtitle = '展示当天最佳通关记录';
 
   const formatTime = (timeMs: number) => {
     const seconds = Math.floor(timeMs / 1000);
@@ -142,28 +137,12 @@ const Leaderboard: React.FC = () => {
         {error ? (
           <div className="text-center py-12 text-red-500">
             <p className="text-lg">{error}</p>
-            {count !== null && <p className="mt-2 text-sm text-red-300">count: {count}</p>}
-            {debugInfo && (
-              <pre className="mt-2 text-xs text-left overflow-x-auto text-red-200 bg-black/10 p-2 rounded">
-                {JSON.stringify(debugInfo, null, 2)}
-              </pre>
-            )}
           </div>
         ) : entries.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-text-light dark:text-dark-text-secondary text-lg">
               暂无今日叠界排行数据
             </p>
-            {count !== null && (
-              <p className="mt-2 text-sm text-text-light dark:text-dark-text-secondary">
-                count: {count}
-              </p>
-            )}
-            {debugInfo && (
-              <pre className="mt-4 text-xs text-left overflow-x-auto text-text-light dark:text-dark-text-secondary bg-black/5 dark:bg-white/5 p-2 rounded">
-                {JSON.stringify(debugInfo, null, 2)}
-              </pre>
-            )}
           </div>
         ) : null}
       </div>
