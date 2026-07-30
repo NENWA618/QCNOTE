@@ -71,8 +71,9 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   const sessionUser = session.user as any;
   const userEmail = sessionUser.email as string | undefined;
+  const userId = sessionUser.id as string | undefined;
 
-  if (!userEmail) {
+  if (!userEmail && !userId) {
     return {
       props: {
         userRole: 'user',
@@ -81,7 +82,13 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   }
 
   try {
-    const roleUrl = withApiBaseUrl(`/api/admin/roles?email=${encodeURIComponent(userEmail)}`);
+    const query = userEmail
+      ? `email=${encodeURIComponent(userEmail)}`
+      : `userId=${encodeURIComponent(userId!)}`;
+    const rolePath = withApiBaseUrl(`/api/admin/roles?${query}`);
+    const baseUrl = process.env.NEXTAUTH_URL || `http://${context.req.headers.host}`;
+    const roleUrl = new URL(rolePath, baseUrl).toString();
+
     const response = await fetch(roleUrl, {
       method: 'GET',
       headers: {

@@ -16,13 +16,18 @@ const Header: React.FC = () => {
       // 获取用户角色 - 优先使用邮箱（最可靠的标识）
       const sessionUser = session.user as any;
       const userEmail = sessionUser.email;
+      const userId = sessionUser.id;
 
-      if (!userEmail) {
-        console.warn('No email found in session');
+      if (!userEmail && !userId) {
+        console.warn('No email or id found in session');
         return;
       }
 
-      fetch(withApiBaseUrl(`/api/admin/roles?email=${encodeURIComponent(userEmail)}`))
+      const query = userEmail
+        ? `email=${encodeURIComponent(userEmail)}`
+        : `userId=${encodeURIComponent(userId)}`;
+
+      fetch(withApiBaseUrl(`/api/admin/roles?${query}`))
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
