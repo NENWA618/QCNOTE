@@ -459,18 +459,18 @@ function registerRoutes(app: ExtendedFastifyInstance) {
         return reply.status(401).send({ success: false, error: 'Unauthorized' });
       }
 
-      const { day, steps, timeMs } = request.body as {
-        day?: string;
+      const { steps, timeMs } = request.body as {
         steps?: number;
         timeMs?: number;
       };
 
-      if (!day || typeof steps !== 'number' || typeof timeMs !== 'number') {
+      if (typeof steps !== 'number' || typeof timeMs !== 'number') {
         return reply.status(400).send({ success: false, error: 'Invalid parameters' });
       }
 
       const normalizedSteps = Math.round(steps);
       const normalizedTimeMs = Math.round(timeMs);
+      const day = getUtc8DayString();
       const leaderboardKey = `leaderboard:maze:${day}`;
       logger.info('[Maze Submit] checking existing submission', { leaderboardKey, userId });
       const alreadySubmitted = await ugcService.hasGameSubmission(leaderboardKey, userId);

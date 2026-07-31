@@ -300,9 +300,6 @@ const DiejiePage: NextPage = () => {
       if (!statusEl) return;
       statusEl.textContent = '正在提交排行榜...';
       try {
-        const now = new Date();
-        const utc8Ms = now.getTime() + (now.getTimezoneOffset() + 480) * 60000;
-        const day = new Date(utc8Ms).toISOString().slice(0, 10);
         const normalizedSteps = Math.round(steps);
         const normalizedTimeMs = Math.round(timeMs);
         const response = await fetch('/api/ugc/maze/submit', {
@@ -311,7 +308,7 @@ const DiejiePage: NextPage = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ day, steps: normalizedSteps, timeMs: normalizedTimeMs }),
+          body: JSON.stringify({ steps: normalizedSteps, timeMs: normalizedTimeMs }),
         });
         const responseText = await response.text();
         let result: any = {};
@@ -320,6 +317,7 @@ const DiejiePage: NextPage = () => {
         } catch (parseError) {
           console.warn('Maze submit returned invalid JSON', responseText);
         }
+        console.debug('Maze submit response', { status: response.status, responseText, result });
         if (response.status === 401) {
           statusEl.textContent = '未登录，正在跳转登录...';
           signIn(undefined, { callbackUrl: '/diejie' });
