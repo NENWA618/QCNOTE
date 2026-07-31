@@ -401,6 +401,7 @@ const DiejiePage: NextPage = () => {
       lightActive = true;
       movementAllowed = false;
       lightExpiry = performance.now() + 7000;
+      mouse = { x: player.x, y: player.y };
       document.getElementById('countdownText')?.setAttribute('style', '');
       startTime = performance.now();
     }
@@ -417,6 +418,7 @@ const DiejiePage: NextPage = () => {
     const playAgainBtn = document.getElementById('playAgainBtn');
     const startBtn = document.getElementById('startBtn');
     const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+    const introOverlayEl = document.getElementById('introOverlay');
 
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseleave', handleMouseLeave);
@@ -426,8 +428,18 @@ const DiejiePage: NextPage = () => {
     window.addEventListener('keydown', handleKeyDown);
 
     playAgainBtn?.addEventListener('click', handlePlayAgainClick);
+    playAgainBtn?.addEventListener('touchstart', handlePlayAgainClick, { passive: false });
+    playAgainBtn?.addEventListener('pointerdown', handlePlayAgainClick);
     startBtn?.addEventListener('click', handleStartClick);
+    startBtn?.addEventListener('touchstart', handleStartClick, { passive: false });
+    startBtn?.addEventListener('pointerdown', handleStartClick);
     loginSubmitBtn?.addEventListener('click', handleLoginClick);
+    loginSubmitBtn?.addEventListener('touchstart', handleLoginClick, { passive: false });
+    loginSubmitBtn?.addEventListener('pointerdown', handleLoginClick);
+    introOverlayEl?.addEventListener('pointerdown', (e) => {
+      const active = e.target === startBtn;
+      if (active) handleStartClick();
+    });
 
     // 用 rAF 把同一帧内可能连续触发多次的 resize / ResizeObserver 回调合并成一次，
     // 避免布局抖动（例如移动端地址栏收起展开）时反复触发昂贵的 layoutCanvas 重建
@@ -729,10 +741,19 @@ const DiejiePage: NextPage = () => {
     // 这样只需构建一次装饰层，而不是先用默认 CELL=56 建一次、
     // 紧接着 layoutCanvas 又用正确尺寸重建一次
     window.setTimeout(() => {
-      layoutCanvas();
-      reset();
-      setReady(true);
-      rafId = window.requestAnimationFrame(render);
+      let initialized = false;
+      try {
+        layoutCanvas();
+        reset();
+        initialized = true;
+      } catch (error) {
+        console.error('diejie 初始化出错', error);
+      } finally {
+        setReady(true);
+        if (initialized) {
+          rafId = window.requestAnimationFrame(render);
+        }
+      }
     }, 0);
 
     return () => {
@@ -745,8 +766,14 @@ const DiejiePage: NextPage = () => {
       window.removeEventListener('resize', scheduleLayout);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       playAgainBtn?.removeEventListener('click', handlePlayAgainClick);
+      playAgainBtn?.removeEventListener('touchstart', handlePlayAgainClick as EventListener);
+      playAgainBtn?.removeEventListener('pointerdown', handlePlayAgainClick as EventListener);
       startBtn?.removeEventListener('click', handleStartClick);
+      startBtn?.removeEventListener('touchstart', handleStartClick as EventListener);
+      startBtn?.removeEventListener('pointerdown', handleStartClick as EventListener);
       loginSubmitBtn?.removeEventListener('click', handleLoginClick);
+      loginSubmitBtn?.removeEventListener('touchstart', handleLoginClick as EventListener);
+      loginSubmitBtn?.removeEventListener('pointerdown', handleLoginClick as EventListener);
       if (resizeObserver) resizeObserver.disconnect();
       if (rafId) window.cancelAnimationFrame(rafId);
     };
@@ -774,73 +801,75 @@ const DiejiePage: NextPage = () => {
       <Head>
         <title>叠界 · 光域迷宫</title>
       </Head>
-      {!ready ? (
-        <div className="page-loading">
-          <div className="spinner"></div>
-          <div className="loading-title">QCNOTE · 初始化迷宫</div>
-          <div className="loading-subtitle">正在准备光域迷宫，避免一次性加载过多内容导致卡顿。</div>
+      <div className="stage" id="stage">
+        <canvas id="maze"></canvas>
+        <div className="bump-toast" id="bumpToast">
+          撞上了树木 · 坍焦失败
         </div>
-      ) : (
-        <div className="stage" id="stage">
-          <canvas id="maze"></canvas>
-          <div className="bump-toast" id="bumpToast">
-            撞上了树木 · 坍焦失败
-          </div>
 
-          <div id="introOverlay" className="overlay show">
-            <div className="mark">光域迷宫</div>
-            <div id="introText">
-              <p className="story-line">按下开始后，先用光源观察迷宫，7秒后即可移动。</p>
-            </div>
-            <button id="startBtn">开始</button>
-            <div className="submit-status" id="countdownText" style={{ display: 'none' }}>
-              光源倒计时：7s
+        {!ready && (
+          <div className="page-loading">
+            <div className="spinner"></div>
+            <div className="loading-title">QCNOTE · 初始化迷宫</div>
+            <div className="loading-subtitle">
+              正在准备光域迷宫，避免一次性加载过多内容导致卡顿。
             </div>
           </div>
+        )}
 
-          <div id="winOverlay" className="overlay">
-            <div className="mark" id="winMark">
-              已找到出口
-            </div>
-            <div id="statsBox" style={{ display: 'none' }}>
-              <h2>迷宫已完成</h2>
-              <div className="stats-final">
-                <div>
-                  <div className="n" id="finalSteps">
-                    0
-                  </div>
-                  <div className="l">步数</div>
-                </div>
-                <div>
-                  <div className="n" id="finalBumps">
-                    0
-                  </div>
-                  <div className="l">撞墙次数</div>
-                </div>
-                <div>
-                  <div className="n" id="finalTime">
-                    00:00
-                  </div>
-                  <div className="l">用时</div>
-                </div>
-              </div>
-              <button id="playAgainBtn" className="ghost">
-                再走一次
-              </button>
-              <button
-                id="loginSubmitBtn"
-                className="ghost"
-                style={{ display: 'none', marginTop: '12px' }}
-              >
-                登录后提交
-              </button>
-              <div id="submitStatus" className="submit-status">
-                排行榜结果将自动提交
-              </div>
-            </div>
+        <div id="introOverlay" className="overlay show">
+          <div className="mark">光域迷宫</div>
+          <div id="introText">
+            <p className="story-line">按下开始后，先用光源观察迷宫，7秒后即可移动。</p>
+          </div>
+          <button id="startBtn">开始</button>
+          <div className="submit-status" id="countdownText" style={{ display: 'none' }}>
+            光源倒计时：7s
           </div>
         </div>
-      )}
+
+        <div id="winOverlay" className="overlay">
+          <div className="mark" id="winMark">
+            已找到出口
+          </div>
+          <div id="statsBox" style={{ display: 'none' }}>
+            <h2>迷宫已完成</h2>
+            <div className="stats-final">
+              <div>
+                <div className="n" id="finalSteps">
+                  0
+                </div>
+                <div className="l">步数</div>
+              </div>
+              <div>
+                <div className="n" id="finalBumps">
+                  0
+                </div>
+                <div className="l">撞墙次数</div>
+              </div>
+              <div>
+                <div className="n" id="finalTime">
+                  00:00
+                </div>
+                <div className="l">用时</div>
+              </div>
+            </div>
+            <button id="playAgainBtn" className="ghost">
+              再走一次
+            </button>
+            <button
+              id="loginSubmitBtn"
+              className="ghost"
+              style={{ display: 'none', marginTop: '12px' }}
+            >
+              登录后提交
+            </button>
+            <div id="submitStatus" className="submit-status">
+              排行榜结果将自动提交
+            </div>
+          </div>
+        </div>
+      </div>
       <style jsx global>{`
         :root {
           --void: #0a0a0d;
