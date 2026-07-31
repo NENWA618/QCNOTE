@@ -1,11 +1,11 @@
 import Head from 'next/head';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import type { NextPage } from 'next';
 
 const DiejiePage: NextPage = () => {
   const { status } = useSession();
-  const isAuthenticated = status === 'authenticated';
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const stageEl = document.getElementById('stage');
@@ -114,14 +114,14 @@ const DiejiePage: NextPage = () => {
     let lightActive = false;
     let movementAllowed = false;
     let lightExpiry = 0;
-    let dialogueIndex = 0;
 
-    const endingDialogue = [
-      { speaker: '引路人', line: '……你看见了，对吧？' },
-      { speaker: '你', line: '藤蔓。还有光。别人好像都看不见。' },
-      { speaker: '引路人', line: '很少有人能同时站在两个世界的地面上。' },
-      { speaker: '引路人', line: '你是「隧行者」——从今天起，这既是天赋，也是一种孤立。' },
-    ];
+    function getCanvasCoords(clientX: number, clientY: number) {
+      const rect = canvasRect;
+      return {
+        x: ((clientX - rect.left) * (canvas.width / dpr)) / rect.width,
+        y: ((clientY - rect.top) * (canvas.height / dpr)) / rect.height,
+      };
+    }
 
     function generateMaze(rows: number, cols: number) {
       const cells: Array<Array<Record<string, boolean>>> = [];
@@ -287,11 +287,8 @@ const DiejiePage: NextPage = () => {
     }
 
     function showWin() {
-      dialogueIndex = 0;
-      document.getElementById('storyBox')?.setAttribute('style', '');
-      document.getElementById('statsBox')?.setAttribute('style', 'display:none;');
-      renderDialogueLine();
       document.getElementById('winOverlay')?.classList.add('show');
+      document.getElementById('statsBox')?.setAttribute('style', '');
       submitMazeResult(steps, performance.now() - startTime);
     }
 
@@ -334,30 +331,6 @@ const DiejiePage: NextPage = () => {
       }
     }
 
-    function renderDialogueLine() {
-      const d = endingDialogue[dialogueIndex];
-      const speakerEl = document.getElementById('storySpeaker');
-      const lineEl = document.getElementById('storyLine');
-      const buttonEl = document.getElementById('storyNextBtn');
-      if (speakerEl) speakerEl.textContent = d.speaker;
-      if (lineEl) lineEl.textContent = d.line;
-      if (buttonEl)
-        buttonEl.textContent = dialogueIndex === endingDialogue.length - 1 ? '……' : '继续';
-    }
-
-    function advanceDialogue() {
-      dialogueIndex++;
-      if (dialogueIndex >= endingDialogue.length) {
-        document.getElementById('storyBox')?.setAttribute('style', 'display:none;');
-        document.getElementById('finalSteps')!.textContent = String(steps);
-        document.getElementById('finalBumps')!.textContent = String(bumps);
-        document.getElementById('finalTime')!.textContent = fmtTime(performance.now() - startTime);
-        document.getElementById('statsBox')?.setAttribute('style', '');
-      } else {
-        renderDialogueLine();
-      }
-    }
-
     const keyMap: Record<string, 'N' | 'S' | 'E' | 'W'> = {
       ArrowUp: 'N',
       KeyW: 'N',
@@ -382,12 +355,39 @@ const DiejiePage: NextPage = () => {
       mouse.y = ((e.clientY - rect.top) * (canvas.height / dpr)) / rect.height;
     }
 
+    function handleTouchStart(e: TouchEvent) {
+      const t = e.touches[0];
+      if (!t) return;
+      const coord = getCanvasCoords(t.clientX, t.clientY);
+      if (lightActive) {
+        mouse.x = coord.x;
+        mouse.y = coord.y;
+      }
+    }
+
     function handleTouchMove(e: TouchEvent) {
       e.preventDefault();
       const t = e.touches[0];
-      const rect = canvasRect;
-      mouse.x = ((t.clientX - rect.left) * (canvas.width / dpr)) / rect.width;
-      mouse.y = ((t.clientY - rect.top) * (canvas.height / dpr)) / rect.height;
+      if (!t) return;
+      const coord = getCanvasCoords(t.clientX, t.clientY);
+      if (lightActive) {
+        mouse.x = coord.x;
+        mouse.y = coord.y;
+      }
+    }
+
+    function handleTouchEnd(e: TouchEvent) {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const coord = getCanvasCoords(t.clientX, t.clientY);
+      if (!lightActive && movementAllowed) {
+        const dx = coord.x - player.x;
+        const dy = coord.y - player.y;
+        if (Math.hypot(dx, dy) < CELL * 0.2) return;
+        const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'E' : 'W') : dy > 0 ? 'S' : 'N';
+        tryMove(dir);
+      }
     }
 
     function handleMouseLeave() {
@@ -415,17 +415,17 @@ const DiejiePage: NextPage = () => {
     }
 
     const playAgainBtn = document.getElementById('playAgainBtn');
-    const storyNextBtn = document.getElementById('storyNextBtn');
     const startBtn = document.getElementById('startBtn');
     const loginSubmitBtn = document.getElementById('loginSubmitBtn');
 
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseleave', handleMouseLeave);
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
     window.addEventListener('keydown', handleKeyDown);
 
     playAgainBtn?.addEventListener('click', handlePlayAgainClick);
-    storyNextBtn?.addEventListener('click', advanceDialogue);
     startBtn?.addEventListener('click', handleStartClick);
     loginSubmitBtn?.addEventListener('click', handleLoginClick);
 
@@ -728,19 +728,23 @@ const DiejiePage: NextPage = () => {
     // 先根据窗口尺寸算出正确的 CELL，再生成迷宫/装饰层，
     // 这样只需构建一次装饰层，而不是先用默认 CELL=56 建一次、
     // 紧接着 layoutCanvas 又用正确尺寸重建一次
-    layoutCanvas();
-    reset();
-    rafId = window.requestAnimationFrame(render);
+    window.setTimeout(() => {
+      layoutCanvas();
+      reset();
+      setReady(true);
+      rafId = window.requestAnimationFrame(render);
+    }, 0);
 
     return () => {
       canvas.removeEventListener('mousemove', handleMouseMove);
       canvas.removeEventListener('mouseleave', handleMouseLeave);
       canvas.removeEventListener('touchmove', handleTouchMove as EventListener);
+      canvas.removeEventListener('touchstart', handleTouchStart as EventListener);
+      canvas.removeEventListener('touchend', handleTouchEnd as EventListener);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('resize', scheduleLayout);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       playAgainBtn?.removeEventListener('click', handlePlayAgainClick);
-      storyNextBtn?.removeEventListener('click', advanceDialogue);
       startBtn?.removeEventListener('click', handleStartClick);
       loginSubmitBtn?.removeEventListener('click', handleLoginClick);
       if (resizeObserver) resizeObserver.disconnect();
@@ -770,74 +774,73 @@ const DiejiePage: NextPage = () => {
       <Head>
         <title>叠界 · 光域迷宫</title>
       </Head>
-      <div className="stage" id="stage">
-        <canvas id="maze"></canvas>
-        <div className="bump-toast" id="bumpToast">
-          撞上了树木 · 坍焦失败
+      {!ready ? (
+        <div className="page-loading">
+          <div className="spinner"></div>
+          <div className="loading-title">QCNOTE · 初始化迷宫</div>
+          <div className="loading-subtitle">正在准备光域迷宫，避免一次性加载过多内容导致卡顿。</div>
         </div>
+      ) : (
+        <div className="stage" id="stage">
+          <canvas id="maze"></canvas>
+          <div className="bump-toast" id="bumpToast">
+            撞上了树木 · 坍焦失败
+          </div>
 
-        <div id="introOverlay" className="overlay show">
-          <div className="mark">第一幕 · 学校</div>
-          <div id="introText">
-            <p className="story-line">某天开始，你瞥见墙缝里长出会发光的藤蔓。</p>
-            <p className="story-line">其他同学径直穿过它们，浑然不觉——只有你看得见。</p>
-            <p className="story-line">雾很浓，脚下的路看不真切。但你必须往前走。</p>
+          <div id="introOverlay" className="overlay show">
+            <div className="mark">光域迷宫</div>
+            <div id="introText">
+              <p className="story-line">按下开始后，先用光源观察迷宫，7秒后即可移动。</p>
+            </div>
+            <button id="startBtn">开始</button>
+            <div className="submit-status" id="countdownText" style={{ display: 'none' }}>
+              光源倒计时：7s
+            </div>
           </div>
-          <button id="startBtn">睁开眼，走进雾里</button>
-          <div className="submit-status" id="countdownText" style={{ display: 'none' }}>
-            光源倒计时：7s
-          </div>
-        </div>
 
-        <div id="winOverlay" className="overlay">
-          <div className="mark" id="winMark">
-            局部失衡 · 已稳定
-          </div>
-          <div id="storyBox">
-            <div className="story-speaker" id="storySpeaker">
-              引路人
+          <div id="winOverlay" className="overlay">
+            <div className="mark" id="winMark">
+              已找到出口
             </div>
-            <p id="storyLine"></p>
-            <button id="storyNextBtn">继续</button>
-          </div>
-          <div id="statsBox" style={{ display: 'none' }}>
-            <h2>你走出了唯一的出口</h2>
-            <div className="stats-final">
-              <div>
-                <div className="n" id="finalSteps">
-                  0
+            <div id="statsBox" style={{ display: 'none' }}>
+              <h2>迷宫已完成</h2>
+              <div className="stats-final">
+                <div>
+                  <div className="n" id="finalSteps">
+                    0
+                  </div>
+                  <div className="l">步数</div>
                 </div>
-                <div className="l">步数</div>
-              </div>
-              <div>
-                <div className="n" id="finalBumps">
-                  0
+                <div>
+                  <div className="n" id="finalBumps">
+                    0
+                  </div>
+                  <div className="l">撞墙次数</div>
                 </div>
-                <div className="l">撞墙次数</div>
-              </div>
-              <div>
-                <div className="n" id="finalTime">
-                  00:00
+                <div>
+                  <div className="n" id="finalTime">
+                    00:00
+                  </div>
+                  <div className="l">用时</div>
                 </div>
-                <div className="l">用时</div>
               </div>
-            </div>
-            <button id="playAgainBtn" className="ghost">
-              再走一次
-            </button>
-            <button
-              id="loginSubmitBtn"
-              className="ghost"
-              style={{ display: 'none', marginTop: '12px' }}
-            >
-              登录后提交
-            </button>
-            <div id="submitStatus" className="submit-status">
-              排行榜结果将自动提交
+              <button id="playAgainBtn" className="ghost">
+                再走一次
+              </button>
+              <button
+                id="loginSubmitBtn"
+                className="ghost"
+                style={{ display: 'none', marginTop: '12px' }}
+              >
+                登录后提交
+              </button>
+              <div id="submitStatus" className="submit-status">
+                排行榜结果将自动提交
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
       <style jsx global>{`
         :root {
           --void: #0a0a0d;
@@ -995,20 +998,47 @@ const DiejiePage: NextPage = () => {
           align-items: center;
           justify-content: center;
         }
-        .story-speaker {
-          font-size: 11px;
-          letter-spacing: 0.2em;
-          color: var(--path-glow-soft);
-          margin: 0 0 10px;
-          text-transform: uppercase;
+        .page-loading {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #18131f 0%, #3e2b55 45%, #d38aa5 100%);
+          color: white;
+          z-index: 10;
+          padding: 24px;
+          text-align: center;
         }
-        #storyLine {
-          font-family: 'Songti SC', 'STSong', 'Noto Serif SC', serif;
-          font-size: 17px;
-          line-height: 1.9;
-          color: var(--ink);
-          margin: 0 0 24px;
-          min-height: 64px;
+        .page-loading .spinner {
+          width: 72px;
+          height: 72px;
+          border: 6px solid rgba(255, 255, 255, 0.18);
+          border-top-color: rgba(255, 255, 255, 0.95);
+          border-radius: 999px;
+          animation: spin 0.9s linear infinite;
+          margin: 0 auto 18px;
+        }
+        .page-loading .loading-title {
+          font-size: 20px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          margin-bottom: 8px;
+        }
+        .page-loading .loading-subtitle {
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.72);
+          line-height: 1.7;
+          max-width: 320px;
+          margin: 0 auto;
+        }
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
         }
         .bump-toast {
           position: absolute;
