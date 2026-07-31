@@ -287,6 +287,9 @@ const DiejiePage: NextPage = () => {
     }
 
     function showWin() {
+      document.getElementById('finalSteps')!.textContent = String(steps);
+      document.getElementById('finalBumps')!.textContent = String(bumps);
+      document.getElementById('finalTime')!.textContent = fmtTime(performance.now() - startTime);
       document.getElementById('winOverlay')?.classList.add('show');
       document.getElementById('statsBox')?.setAttribute('style', '');
       submitMazeResult(steps, performance.now() - startTime);
