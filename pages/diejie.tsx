@@ -307,17 +307,24 @@ const DiejiePage: NextPage = () => {
         const normalizedTimeMs = Math.round(timeMs);
         const response = await fetch('/api/ugc/maze/submit', {
           method: 'POST',
+          credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ day, steps: normalizedSteps, timeMs: normalizedTimeMs }),
         });
+        const responseText = await response.text();
+        let result: any = {};
+        try {
+          result = JSON.parse(responseText);
+        } catch (parseError) {
+          console.warn('Maze submit returned invalid JSON', responseText);
+        }
         if (response.status === 401) {
           statusEl.textContent = '未登录，正在跳转登录...';
           signIn(undefined, { callbackUrl: '/diejie' });
           return;
         }
-        const result = await response.json();
         if (result.success) {
           statusEl.textContent = '已提交排行榜，今日最佳成绩已保存';
           window.dispatchEvent(new Event('maze-submission-updated'));

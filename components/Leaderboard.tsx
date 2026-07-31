@@ -13,7 +13,9 @@ const Leaderboard: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await axios.get(`/api/ugc/leaderboard/maze?limit=50`);
+        const response = await axios.get(`/api/ugc/leaderboard/maze?limit=50`, {
+          withCredentials: true,
+        });
 
         if (response.data.success) {
           setEntries(response.data.leaderboard);
