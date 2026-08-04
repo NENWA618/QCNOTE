@@ -22,7 +22,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@testing-library/user-event": "^14.6.1",
-    "axios": "^1.18.1",
+    "axios": "^1.19.0",
     "isomorphic-fetch": "^3.0.0",
     "jose": "^6.2.5",
     "katex": "^0.18.1",
