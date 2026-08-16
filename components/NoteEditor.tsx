@@ -282,15 +282,10 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                 <textarea
                   ref={contentTextareaRef}
                   value={localNote.content}
-                  onChange={(e) => {
-                    handleFieldChange('content', e.target.value);
-                    // Re-check selection after content change
-                    setTimeout(handleTextSelection, 0);
-                  }}
+                  onChange={(e) => handleFieldChange('content', e.target.value)}
+                  onSelect={handleTextSelection}
                   onMouseUp={handleTextSelection}
-                  onMouseDown={handleTextSelection}
                   onKeyUp={handleTextSelection}
-                  onTouchEnd={handleTextSelection}
                   placeholder="开始记录您的想法... (支持 Markdown 语法)"
                   className="w-full h-64 resize-none border rounded p-2 outline-none bg-white font-mono text-sm"
                 />
