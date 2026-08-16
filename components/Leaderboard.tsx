@@ -71,7 +71,7 @@ const Leaderboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-dark-bg p-8">
       <div className="max-w-3xl mx-auto">
-        <div className="mb-8 text-center">
+        <div className="mb-8 p-8 text-center bg-gradient-to-br from-accent-pink/10 to-accent-purple/10 dark:from-accent-purple/20 dark:to-accent-pink/20 rounded-lg border border-accent-pink/20 dark:border-accent-purple/30 shadow-light dark:shadow-sm">
           <h1 className="text-4xl font-bold text-primary-dark dark:text-dark-text mb-2">{title}</h1>
           <p className="text-text-light dark:text-dark-text-secondary">{subtitle}</p>
         </div>
