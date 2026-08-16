@@ -1454,19 +1454,37 @@ export class NoteStorage {
       reader.onload = async (e: ProgressEvent<FileReader>) => {
         try {
           const result = e.target?.result as string;
-          const notes = JSON.parse(result);
-          if (!Array.isArray(notes)) {
+          const importedNotes = JSON.parse(result);
+          if (!Array.isArray(importedNotes)) {
             reject('无效的JSON格式');
             return;
           }
 
-          const normalizedNotes = notes.map((note) => this.normalizeNote(note as NoteItem));
-          const success = await this.setDataAsync(normalizedNotes);
+          // Get existing notes
+          const existingNotes = (await this.getDataAsync()) || [];
+          const existingIds = new Set(existingNotes.map((note) => note.id));
+
+          // Normalize and merge notes
+          const normalizedImportedNotes = importedNotes.map((note) => {
+            const normalized = this.normalizeNote(note as NoteItem);
+
+            // If note with same ID exists, generate new ID to avoid conflicts
+            if (existingIds.has(normalized.id)) {
+              normalized.id = `${normalized.id}_imported_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            }
+
+            return normalized;
+          });
+
+          // Merge: existing notes + new imported notes
+          const mergedNotes = [...existingNotes, ...normalizedImportedNotes];
+
+          const success = await this.setDataAsync(mergedNotes);
           if (!success) {
             reject('导入失败：写入存储失败');
             return;
           }
-          resolve(normalizedNotes.length);
+          resolve(normalizedImportedNotes.length);
         } catch (error: unknown) {
           const msg = error instanceof Error ? error.message : String(error);
           reject('导入失败: ' + msg);
