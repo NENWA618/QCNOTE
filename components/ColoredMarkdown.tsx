@@ -1,0 +1,88 @@
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import type { Pluggable } from 'unified';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import { ColoredRange } from '../lib/storage';
+import TextColorUtils from '../lib/textColorUtils';
+
+interface ColoredMarkdownProps {
+  content: string;
+  coloredRanges?: ColoredRange[];
+}
+
+const katexSanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    span: [...(defaultSchema.attributes?.span || []), ['className'], ['style']],
+    div: [...(defaultSchema.attributes?.div || []), ['className'], ['style']],
+  },
+};
+
+/**
+ * Component that renders markdown content with mixed text colors
+ * It wraps colored text ranges in span elements with style attributes
+ */
+export const ColoredMarkdown: React.FC<ColoredMarkdownProps> = ({ content, coloredRanges }) => {
+  // If no colored ranges, just render normally
+  if (!coloredRanges || coloredRanges.length === 0) {
+    return <NormalMarkdown content={content} />;
+  }
+
+  // Get the colored segments
+  const segments = TextColorUtils.renderWithColors(content, coloredRanges);
+
+  // Build content with HTML span tags for colored text
+  let processedContent = '';
+  for (const segment of segments) {
+    if (segment.color) {
+      // Escape any special markdown characters in colored segments
+      const escaped = segment.text.replace(/[*_`[\]]/g, '\\$&');
+      processedContent += `<span style="color: ${segment.color}">${escaped}</span>`;
+    } else {
+      processedContent += segment.text;
+    }
+  }
+
+  return <NormalMarkdown content={processedContent} />;
+};
+
+interface NormalMarkdownProps {
+  content: string;
+}
+
+export const NormalMarkdown: React.FC<NormalMarkdownProps> = ({ content }) => {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkMath, remarkGfm]}
+      rehypePlugins={[rehypeKatex as Pluggable, [rehypeSanitize, katexSanitizeSchema] as Pluggable]}
+      components={{
+        h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
+        p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
+        ul: ({ children }) => <ul className="mb-4 ml-6 list-disc">{children}</ul>,
+        ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal">{children}</ol>,
+        li: ({ children }) => <li className="mb-1">{children}</li>,
+        code: ({ children }) => (
+          <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">{children}</code>
+        ),
+        pre: ({ children }) => (
+          <pre className="bg-gray-100 p-4 rounded overflow-x-auto mb-4">{children}</pre>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-4 border-primary pl-4 italic text-gray-600 mb-4">
+            {children}
+          </blockquote>
+        ),
+      }}
+    >
+      {content || '*暂无内容*'}
+    </ReactMarkdown>
+  );
+};
+
+export default ColoredMarkdown;

@@ -1180,6 +1180,7 @@ const Dashboard: React.FC = () => {
       category: version.category,
       tags: version.tags,
       color: version.color,
+      coloredRanges: version.coloredRanges,
       isFavorite: version.isFavorite,
       isArchived: version.isArchived,
       updatedAt: Date.now(),

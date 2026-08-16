@@ -2,6 +2,12 @@
  * Storage Module Type Definitions
  */
 
+export interface ColoredRange {
+  startIndex: number;
+  endIndex: number;
+  color: string;
+}
+
 export interface NoteVersion {
   versionId: string;
   title: string;
@@ -9,6 +15,7 @@ export interface NoteVersion {
   category: string;
   tags: string[];
   color: string;
+  coloredRanges?: ColoredRange[];
   isFavorite: boolean;
   isArchived: boolean;
   updatedAt: number;
@@ -21,6 +28,7 @@ export interface NoteItem {
   category: string;
   tags: string[];
   color: string;
+  coloredRanges?: ColoredRange[];
   isFavorite: boolean;
   createdAt: number;
   updatedAt: number;

@@ -1,22 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Pluggable } from 'unified';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import SentimentUtil from '../lib/sentiment';
-import { NoteItem, NoteVersion } from '../lib/storage';
+import { NoteItem, NoteVersion, ColoredRange } from '../lib/storage';
+import TextColorUtils from '../lib/textColorUtils';
 import { VersionHistory } from './VersionHistory';
-
-const katexSanitizeSchema = {
-  ...defaultSchema,
-  attributes: {
-    ...defaultSchema.attributes,
-    span: [...(defaultSchema.attributes?.span || []), ['className'], ['style']],
-    div: [...(defaultSchema.attributes?.div || []), ['className'], ['style']],
-  },
-};
+import ColoredMarkdown from './ColoredMarkdown';
 
 interface NoteEditorProps {
   note: NoteItem | null;
@@ -51,6 +39,10 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 }) => {
   const [localNote, setLocalNote] = useState<NoteItem | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [selectedColor, setSelectedColor] = useState<string>('#ff6b6b');
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setLocalNote(note);
@@ -90,6 +82,58 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
     const updatedNote = { ...localNote, [field]: value };
     setLocalNote(updatedNote);
     onChange(field, value);
+  };
+
+  // Handle text selection in the content textarea
+  const handleTextSelection = () => {
+    if (!contentTextareaRef.current) return;
+
+    const start = contentTextareaRef.current.selectionStart;
+    const end = contentTextareaRef.current.selectionEnd;
+
+    if (start !== end) {
+      setSelectionStart(start);
+      setSelectionEnd(end);
+    }
+  };
+
+  // Apply color to selected text
+  const applyColorToSelection = (color: string) => {
+    if (selectionStart === null || selectionEnd === null || selectionStart === selectionEnd) {
+      return;
+    }
+
+    if (!localNote) return;
+
+    const updatedRanges = TextColorUtils.applyColorToSelection(
+      selectionStart,
+      selectionEnd,
+      color,
+      localNote.coloredRanges || [],
+    );
+
+    handleFieldChange('coloredRanges', updatedRanges);
+    setSelectionStart(null);
+    setSelectionEnd(null);
+  };
+
+  // Clear color from selected text
+  const clearColorFromSelection = () => {
+    if (selectionStart === null || selectionEnd === null || selectionStart === selectionEnd) {
+      return;
+    }
+
+    if (!localNote) return;
+
+    const updatedRanges = TextColorUtils.clearColorInSelection(
+      selectionStart,
+      selectionEnd,
+      localNote.coloredRanges || [],
+    );
+
+    handleFieldChange('coloredRanges', updatedRanges);
+    setSelectionStart(null);
+    setSelectionEnd(null);
   };
 
   const categories = ['生活', '工作', '学习', '灵感', '其他'];
@@ -199,11 +243,46 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 
               {/* Content */}
               <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    内容 (支持 Markdown 语法)
+                  </label>
+                  {selectionStart !== null &&
+                    selectionEnd !== null &&
+                    selectionStart !== selectionEnd && (
+                      <div className="flex gap-1 items-center">
+                        <span className="text-xs text-gray-500">
+                          已选中 {selectionEnd - selectionStart} 字符
+                        </span>
+                        <div className="flex gap-1 ml-2">
+                          {colors.map((color) => (
+                            <button
+                              key={color}
+                              onClick={() => applyColorToSelection(color)}
+                              className="w-6 h-6 rounded border border-gray-300 hover:border-gray-800 transition"
+                              style={{ backgroundColor: color }}
+                              title={`应用${color}颜色`}
+                            />
+                          ))}
+                          <button
+                            onClick={clearColorFromSelection}
+                            className="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded transition"
+                            title="清除颜色"
+                          >
+                            清除
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                </div>
                 <textarea
+                  ref={contentTextareaRef}
                   value={localNote.content}
                   onChange={(e) => handleFieldChange('content', e.target.value)}
+                  onMouseUp={handleTextSelection}
+                  onKeyUp={handleTextSelection}
                   placeholder="开始记录您的想法... (支持 Markdown 语法)"
-                  className="w-full h-64 resize-none border-none outline-none bg-transparent font-mono text-sm"
+                  className="w-full h-64 resize-none border rounded p-2 outline-none bg-white font-mono text-sm"
                 />
               </div>
 
@@ -364,37 +443,10 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
               )}
 
               <div className="prose prose-lg max-w-none">
-                <ReactMarkdown
-                  remarkPlugins={[remarkMath, remarkGfm]}
-                  rehypePlugins={[
-                    rehypeKatex as Pluggable,
-                    [rehypeSanitize, katexSanitizeSchema] as Pluggable,
-                  ]}
-                  components={{
-                    h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
-                    h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
-                    p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
-                    ul: ({ children }) => <ul className="mb-4 ml-6 list-disc">{children}</ul>,
-                    ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal">{children}</ol>,
-                    li: ({ children }) => <li className="mb-1">{children}</li>,
-                    code: ({ children }) => (
-                      <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
-                        {children}
-                      </code>
-                    ),
-                    pre: ({ children }) => (
-                      <pre className="bg-gray-100 p-4 rounded overflow-x-auto mb-4">{children}</pre>
-                    ),
-                    blockquote: ({ children }) => (
-                      <blockquote className="border-l-4 border-primary pl-4 italic text-gray-600 mb-4">
-                        {children}
-                      </blockquote>
-                    ),
-                  }}
-                >
-                  {localNote.content || '*暂无内容*'}
-                </ReactMarkdown>
+                <ColoredMarkdown
+                  content={localNote.content}
+                  coloredRanges={localNote.coloredRanges}
+                />
               </div>
 
               {/* Metadata in Preview */}
@@ -433,6 +485,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
             handleFieldChange('category', version.category);
             handleFieldChange('tags', version.tags);
             handleFieldChange('color', version.color);
+            handleFieldChange('coloredRanges', version.coloredRanges);
             handleFieldChange('isFavorite', version.isFavorite);
             handleFieldChange('isArchived', version.isArchived);
           }
