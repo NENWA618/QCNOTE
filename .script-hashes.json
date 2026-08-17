@@ -1,0 +1,7 @@
+{
+  "public/js/jquery.min.js": "sha384-8tYNOTebnBsu2uJVL89aGq4s0p73VUEaMvb3UQfF9BGauCt8ily7xALBZZDhBkIq",
+  "public/js/jquery-ui.min.js": "sha384-oKkTl2UWSGSDmIdF+GN3eHs+wOECTTceypjA+YqGPihcGrunduu8bSi4x5mZUzhx",
+  "public/js/live2d.min.js": "sha384-/twJSH1D7X7bd6Lv/j6n5sZNemnl0t/uymDkaQgnKK9y34ktwVvG+VQIzOt81HQf",
+  "public/js/waifu-tips.min.js": "sha384-xYwKAXPtOWVhbSC3GpxeM13RuX5UEt9lehsWIud4k791FOjxAgthgFPg6KigGvqU",
+  "public/js/waifu.js": "sha384-w7BTgyFulOnNNbf5FHggbGHiNt32hxgwQKpCdLT0Ar2BW78s7Mbiieyxw0j2oga/"
+}

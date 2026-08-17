@@ -25,12 +25,28 @@ const noLive2DRoutes = [
   '/terms',
 ];
 
-const LIVE2D_SCRIPTS = [
-  '/js/jquery.min.js',
-  '/js/jquery-ui.min.js',
-  '/js/live2d.min.js',
-  '/js/waifu-tips.min.js',
-  '/js/waifu.js',
+// Script configuration with SRI hashes for integrity checking
+const LIVE2D_SCRIPTS: { src: string; integrity?: string; async?: boolean }[] = [
+  {
+    src: '/js/jquery.min.js',
+    integrity: 'sha384-8tYNOTebnBsu2uJVL89aGq4s0p73VUEaMvb3UQfF9BGauCt8ily7xALBZZDhBkIq',
+  },
+  {
+    src: '/js/jquery-ui.min.js',
+    integrity: 'sha384-oKkTl2UWSGSDmIdF+GN3eHs+wOECTTceypjA+YqGPihcGrunduu8bSi4x5mZUzhx',
+  },
+  {
+    src: '/js/live2d.min.js',
+    integrity: 'sha384-/twJSH1D7X7bd6Lv/j6n5sZNemnl0t/uymDkaQgnKK9y34ktwVvG+VQIzOt81HQf',
+  },
+  {
+    src: '/js/waifu-tips.min.js',
+    integrity: 'sha384-xYwKAXPtOWVhbSC3GpxeM13RuX5UEt9lehsWIud4k791FOjxAgthgFPg6KigGvqU',
+  },
+  {
+    src: '/js/waifu.js',
+    integrity: 'sha384-w7BTgyFulOnNNbf5FHggbGHiNt32hxgwQKpCdLT0Ar2BW78s7Mbiieyxw0j2oga/',
+  },
 ];
 
 const shouldLoadLive2dForPath = (path: string) => {
@@ -41,12 +57,17 @@ const shouldLoadLive2dForPath = (path: string) => {
 
 const isScriptPresent = (src: string) => Boolean(document.querySelector(`script[src="${src}"]`));
 
-const loadScript = (src: string) =>
+const loadScript = (config: { src: string; integrity?: string; async?: boolean }) =>
   new Promise<void>((resolve, reject) => {
-    if (isScriptPresent(src)) return resolve();
+    if (isScriptPresent(config.src)) return resolve();
     const s = document.createElement('script');
-    s.src = src;
-    s.async = false;
+    s.src = config.src;
+    s.async = config.async !== false;
+    // Add security attributes
+    s.setAttribute('crossorigin', 'anonymous');
+    if (config.integrity) {
+      s.setAttribute('integrity', config.integrity);
+    }
     s.onload = () => resolve();
     s.onerror = (e) => reject(e);
     document.body.appendChild(s);
@@ -54,8 +75,8 @@ const loadScript = (src: string) =>
 
 const loadLive2d = async () => {
   try {
-    for (const src of LIVE2D_SCRIPTS) {
-      await loadScript(src);
+    for (const config of LIVE2D_SCRIPTS) {
+      await loadScript(config);
     }
   } catch (e) {
     console.error('加载 Live2D 脚本出错', e);
@@ -87,8 +108,8 @@ const removeLive2d = () => {
       }
     }
 
-    LIVE2D_SCRIPTS.forEach((src) => {
-      const s = document.querySelector(`script[src="${src}"]`);
+    LIVE2D_SCRIPTS.forEach((config) => {
+      const s = document.querySelector(`script[src="${config.src}"]`);
       if (s && s.parentNode) s.parentNode.removeChild(s);
     });
 

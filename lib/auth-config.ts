@@ -151,5 +151,46 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60,
   },
 
+  cookies: {
+    sessionToken: {
+      name: `${process.env.NEXTAUTH_URL?.split('//')[1]?.split(':')[0] || 'qcnote'}.sessionToken`,
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      },
+    },
+    callbackUrl: {
+      name: `${process.env.NEXTAUTH_URL?.split('//')[1]?.split(':')[0] || 'qcnote'}.callbackUrl`,
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      },
+    },
+    csrfToken: {
+      name: `${process.env.NEXTAUTH_URL?.split('//')[1]?.split(':')[0] || 'qcnote'}.csrf`,
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      },
+    },
+    pkceCodeVerifier: {
+      name: `${process.env.NEXTAUTH_URL?.split('//')[1]?.split(':')[0] || 'qcnote'}.pkce.code_verifier`,
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 15 * 60, // 15 minutes
+      },
+    },
+  },
+
   debug: process.env.NODE_ENV === 'development',
 };
