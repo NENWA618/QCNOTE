@@ -3,7 +3,7 @@
 一个现代化、隐私优先的个人笔记应用，采用离线优先架构，具有强大的搜索功能、知识管理和社区功能。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Next.js](https://img.shields.io/badge/Next.js-16.2.12-black)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.3.1-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.2.0-blue)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3.1-61dafb?logo=react)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4.1-38b2ac?logo=tailwindcss)](https://tailwindcss.com/)
@@ -159,7 +159,7 @@ QCNOTE 采用浏览器优先的本地存储架构，核心功能在客户端运�
 
 ### 前端与运行时
 
-- **Next.js 16.2.12**: 构建页面与路由
+- **Next.js 16.3.1**: 构建页面与路由
 - **React 18.3.1**: UI 组件与交互
 - **TypeScript 5.2.0**: 类型安全
 - **Tailwind CSS 3.4.1**: 响应式样式
@@ -252,7 +252,7 @@ npm run lint
 ### 核心依赖
 
 - `react` 18.3.1 - UI 框架
-- `next` 16.2.12 - 服务器框架
+- `next` 16.3.1 - 服务器框架
 - `typescript` 5.2.0 - 类型系统
 - `tailwindcss` 3.4.1 - 样式框架
 - `lunr` 2.3.9 - 搜索引擎
