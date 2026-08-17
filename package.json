@@ -71,7 +71,7 @@
     "prettier": "^3.9.6",
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
-    "tsx": "^4.23.11",
+    "tsx": "^4.23.12",
     "typescript": "^5.2.0",
     "vitest": "^4.1.8"
   },
