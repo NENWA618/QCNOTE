@@ -168,4 +168,36 @@ export const authOptions: NextAuthOptions = {
   },
 
   debug: process.env.NODE_ENV === 'development',
+
+  cookies: {
+    sessionToken: {
+      name: `${process.env.NEXTAUTH_COOKIE_PREFIX ?? 'next-auth'}.session-token`,
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60,
+      },
+    },
+    callbackUrl: {
+      name: `${process.env.NEXTAUTH_COOKIE_PREFIX ?? 'next-auth'}.callback-url`,
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 15 * 60,
+      },
+    },
+    csrfToken: {
+      name: `${process.env.NEXTAUTH_COOKIE_PREFIX ?? 'next-auth'}.csrf-token`,
+      options: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      },
+    },
+  },
 };
