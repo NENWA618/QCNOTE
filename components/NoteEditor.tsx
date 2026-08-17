@@ -236,6 +236,9 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
             <div className="flex-1 p-6 overflow-y-auto">
               {/* Title */}
               <div className="mb-4">
+                <label className="text-sm font-medium text-gray-700">
+                  标题
+                </label>
                 <input
                   type="text"
                   value={localNote.title}
@@ -249,7 +252,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-gray-700">
-                    内容 (支持 Markdown 语法)
+                    内容 (支持 Markdown 和 LaTeX 公式语法)
                   </label>
                   {selectionStart !== null &&
                     selectionEnd !== null &&
@@ -286,7 +289,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                   onSelect={handleTextSelection}
                   onMouseUp={handleTextSelection}
                   onKeyUp={handleTextSelection}
-                  placeholder="开始记录您的想法... (支持 Markdown 语法)"
+                  placeholder="开始记录您的想法... (支持 Markdown 和 LaTeX 公式语法)"
                   className="w-full h-64 resize-none border rounded p-2 outline-none bg-white font-mono text-sm"
                 />
               </div>
