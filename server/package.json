@@ -6,24 +6,29 @@
   "scripts": {
     "start": "tsx --tsconfig tsconfig.server.json index.ts",
     "dev": "tsx --watch --tsconfig tsconfig.server.json index.ts",
-    "postinstall": "if [ -n \"$ADMIN_SET_EMAIL\" ]; then npm run set-admin -- \"$ADMIN_SET_EMAIL\"; elif [ -n \"$ADMIN_CHECK_EMAIL\" ]; then npm run check-admin -- \"$ADMIN_CHECK_EMAIL\"; else echo \"ADMIN_CHECK_EMAIL not set, skipping admin check\"; fi",
+    "postinstall": "node postinstall.js",
     "check-admin": "tsx --tsconfig tsconfig.server.json check-admin.ts",
     "set-admin": "tsx --tsconfig tsconfig.server.json set-admin.ts"
   },
   "dependencies": {
     "@fastify/cors": "^8.2.0",
-    "@fastify/jwt": "^7.2.4",
-    "bull": "^4.11.5",
-    "fastify": "^4.24.0",
-    "next-auth": "^4.24.14",
+    "@fastify/jwt": "^10.2.2",
+    "bull": "^4.16.5",
+    "fastify": "^5.12.0",
+    "next-auth": "^4.24.15",
     "pg": "^8.11.1",
     "redis": "^4.6.12",
-    "tsx": "^4.21.0",
-    "uuid": "^9.0.1",
+    "tsx": "^4.23.12",
+    "uuid": "^14.0.1",
     "web-push": "^3.6.7"
   },
+  "overrides": {
+    "bull": {
+      "uuid": "^14.0.1"
+    }
+  },
   "devDependencies": {
-    "@types/node": "^20.19.37",
+    "@types/node": "^26.2.0",
     "@types/uuid": "^9.0.7"
   }
 }
