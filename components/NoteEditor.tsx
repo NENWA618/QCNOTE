@@ -181,14 +181,16 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white dark:bg-dark-surface rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-gray-200 dark:border-dark-border">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-dark-border">
           <div>
-            <h2 className="text-2xl font-bold text-primary-dark">
+            <h2 className="text-2xl font-bold text-primary-dark dark:text-dark-text">
               {localNote.id ? '编辑笔记' : '新建笔记'}
             </h2>
-            <div className="text-sm text-gray-500 mt-1">{sentimentLabel}</div>
+            <div className="text-sm text-gray-500 dark:text-dark-text-secondary mt-1">
+              {sentimentLabel}
+            </div>
           </div>
           <div className="flex gap-2 flex-wrap">
             {localNote.versions && localNote.versions.length > 0 && (
@@ -202,7 +204,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
             )}
             <button
               onClick={onTogglePreview}
-              className={`btn-secondary btn-sm ${isPreview ? 'bg-primary-dark text-white' : ''}`}
+              className={`btn-secondary btn-sm ${isPreview ? 'bg-primary-dark dark:bg-accent-pink text-white' : ''}`}
             >
               {isPreview ? '编辑' : '预览'}
             </button>
@@ -233,10 +235,10 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
         <div className="flex h-[calc(90vh-120px)]">
           {/* Editor Panel */}
           {!isPreview && (
-            <div className="flex-1 p-6 overflow-y-auto">
+            <div className="flex-1 p-6 overflow-y-auto dark:bg-dark-surface">
               {/* Title */}
               <div className="mb-4">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 dark:text-dark-text">
                   标题
                 </label>
                 <input
@@ -244,21 +246,21 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                   value={localNote.title}
                   onChange={(e) => handleFieldChange('title', e.target.value)}
                   placeholder="笔记标题"
-                  className="w-full text-2xl font-bold border-none outline-none bg-transparent"
+                  className="w-full text-2xl font-bold border-none outline-none bg-transparent dark:text-dark-text dark:placeholder-dark-text-secondary"
                 />
               </div>
 
               {/* Content */}
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-gray-700 dark:text-dark-text">
                     内容 (支持 Markdown 和 LaTeX 公式语法)
                   </label>
                   {selectionStart !== null &&
                     selectionEnd !== null &&
                     selectionStart !== selectionEnd && (
                       <div className="flex gap-1 items-center">
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-dark-text-secondary">
                           已选中 {selectionEnd - selectionStart} 字符
                         </span>
                         <div className="flex gap-1 ml-2">
@@ -266,14 +268,14 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                             <button
                               key={color}
                               onClick={() => applyColorToSelection(color)}
-                              className="w-6 h-6 rounded border border-gray-300 hover:border-gray-800 transition"
+                              className="w-6 h-6 rounded border border-gray-300 dark:border-dark-border hover:border-gray-800 dark:hover:border-gray-400 transition"
                               style={{ backgroundColor: color }}
                               title={`应用${color}颜色`}
                             />
                           ))}
                           <button
                             onClick={clearColorFromSelection}
-                            className="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded transition"
+                            className="text-xs px-2 py-1 bg-gray-200 dark:bg-dark-surface-light hover:bg-gray-300 dark:hover:bg-dark-border rounded transition"
                             title="清除颜色"
                           >
                             清除
@@ -290,14 +292,16 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                   onMouseUp={handleTextSelection}
                   onKeyUp={handleTextSelection}
                   placeholder="开始记录您的想法... (支持 Markdown 和 LaTeX 公式语法)"
-                  className="w-full h-64 resize-none border rounded p-2 outline-none bg-white font-mono text-sm"
+                  className="w-full h-64 resize-none border rounded p-2 outline-none bg-white dark:bg-dark-surface-light font-mono text-sm border-gray-300 dark:border-dark-border text-gray-800 dark:text-dark-text"
                 />
               </div>
 
               {/* Metadata */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">分类</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                    分类
+                  </label>
                   <select
                     value={localNote.category}
                     onChange={(e) => handleFieldChange('category', e.target.value)}

@@ -26,36 +26,45 @@ const Conflicts: React.FC<ConflictsProps> = ({ conflicts, onResolve }) => {
   };
 
   if (conflicts.length === 0) {
-    return <div className="p-4 text-center text-gray-500">No conflicts detected.</div>;
+    return (
+      <div className="p-4 text-center text-gray-500 dark:text-dark-text-secondary">
+        No conflicts detected.
+      </div>
+    );
   }
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Sync Conflicts</h2>
+    <div className="p-4 bg-white dark:bg-dark-surface rounded-lg border border-gray-200 dark:border-dark-border">
+      <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-dark-text">Sync Conflicts</h2>
       <div className="space-y-4">
         {conflicts.map((conflict) => (
-          <div key={conflict.id} className="border rounded p-4 bg-yellow-50">
-            <h3 className="font-semibold">{conflict.local.title || 'Untitled'}</h3>
-            <p className="text-sm text-gray-600">
+          <div
+            key={conflict.id}
+            className="border rounded p-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700 dark:text-dark-text"
+          >
+            <h3 className="font-semibold text-gray-800 dark:text-dark-text">
+              {conflict.local.title || 'Untitled'}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-dark-text-secondary">
               Local updated: {new Date(conflict.local.updatedAt).toLocaleString()} | Remote updated:{' '}
               {new Date(conflict.remote.updatedAt).toLocaleString()}
             </p>
             <div className="mt-2 flex space-x-2">
               <button
                 onClick={() => setSelectedConflict(conflict)}
-                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="px-3 py-1 bg-blue-500 dark:bg-blue-600 text-white rounded hover:bg-blue-600 dark:hover:bg-blue-700"
               >
                 Review & Merge
               </button>
               <button
                 onClick={() => handleResolve(conflict, 'local')}
-                className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                className="px-3 py-1 bg-green-500 dark:bg-green-600 text-white rounded hover:bg-green-600 dark:hover:bg-green-700"
               >
                 Keep Local
               </button>
               <button
                 onClick={() => handleResolve(conflict, 'remote')}
-                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                className="px-3 py-1 bg-red-500 dark:bg-red-600 text-white rounded hover:bg-red-600 dark:hover:bg-red-700"
               >
                 Use Remote
               </button>
@@ -66,8 +75,8 @@ const Conflicts: React.FC<ConflictsProps> = ({ conflicts, onResolve }) => {
 
       {selectedConflict && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded max-w-6xl w-full max-h-screen overflow-auto">
-            <h3 className="text-lg font-bold mb-4">
+          <div className="bg-white dark:bg-dark-surface p-6 rounded max-w-6xl w-full max-h-screen overflow-auto border border-gray-200 dark:border-dark-border">
+            <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-dark-text">
               Resolve Conflict: {selectedConflict.local.title}
             </h3>
 

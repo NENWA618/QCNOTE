@@ -50,10 +50,10 @@ const Sidebar: React.FC<Props> = ({
 
         <div className="p-4 space-y-4">
           {/* Filters Section */}
-          <div className="bg-gray-50 rounded-lg p-3">
+          <div className="bg-gray-50 dark:bg-dark-surface-light rounded-lg p-3">
             <button
               onClick={() => setFiltersOpen(!filtersOpen)}
-              className="flex items-center justify-between w-full text-left text-sm font-medium text-gray-700 hover:text-primary-dark transition-colors"
+              className="flex items-center justify-between w-full text-left text-sm font-medium text-gray-700 dark:text-dark-text hover:text-primary-dark dark:hover:text-accent-pink transition-colors"
             >
               <span className="flex items-center gap-2">
                 <span className="text-accent-pink">📂</span>
@@ -117,7 +117,7 @@ const Sidebar: React.FC<Props> = ({
                 <div>
                   <label
                     htmlFor="sidebar-search"
-                    className="block text-xs font-medium text-gray-600 mb-1"
+                    className="block text-xs font-medium text-gray-600 dark:text-dark-text-secondary mb-1"
                   >
                     搜索笔记
                   </label>
@@ -127,7 +127,7 @@ const Sidebar: React.FC<Props> = ({
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}
                     placeholder="搜索笔记..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-dark-surface text-gray-900 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary"
                   />
                 </div>
               </div>
@@ -160,19 +160,19 @@ const Sidebar: React.FC<Props> = ({
             </button>
             {statsOpen && (
               <div className="mt-3 grid grid-cols-1 gap-2">
-                <div className="bg-white bg-opacity-20 rounded-lg p-3 text-center">
+                <div className="bg-white dark:bg-dark-surface-light bg-opacity-20 dark:bg-opacity-20 rounded-lg p-3 text-center">
                   <div className="text-xl font-bold">{stats.totalNotes}</div>
                   <div className="text-xs opacity-90">总笔记</div>
                 </div>
-                <div className="bg-white bg-opacity-20 rounded-lg p-3 text-center">
+                <div className="bg-white dark:bg-dark-surface-light bg-opacity-20 dark:bg-opacity-20 rounded-lg p-3 text-center">
                   <div className="text-xl font-bold">{stats.createdToday}</div>
                   <div className="text-xs opacity-90">今日创建</div>
                 </div>
-                <div className="bg-white bg-opacity-20 rounded-lg p-3 text-center">
+                <div className="bg-white dark:bg-dark-surface-light bg-opacity-20 dark:bg-opacity-20 rounded-lg p-3 text-center">
                   <div className="text-xl font-bold">{stats.favoriteNotes}</div>
                   <div className="text-xs opacity-90">收藏</div>
                 </div>
-                <div className="bg-white bg-opacity-20 rounded-lg p-3 text-center">
+                <div className="bg-white dark:bg-dark-surface-light bg-opacity-20 dark:bg-opacity-20 rounded-lg p-3 text-center">
                   <div className="text-xl font-bold">{stats.totalTags}</div>
                   <div className="text-xs opacity-90">标签</div>
                 </div>

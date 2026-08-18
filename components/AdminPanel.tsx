@@ -123,20 +123,20 @@ export default function AdminPanel() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:from-dark-bg dark:via-dark-surface dark:to-dark-surface-light">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-pink dark:border-accent-pink"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg">
+    <div className="min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg dark:text-dark-text">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-primary-dark dark:text-dark-text mb-2">
             管理员面板
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">管理系统用户和内容</p>
+          <p className="text-gray-600 dark:text-dark-text-secondary">管理系统用户和内容</p>
         </div>
 
         {/* 统计卡片 */}

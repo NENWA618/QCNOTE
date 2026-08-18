@@ -43,23 +43,25 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-dark via-primary to-accent-pink p-4">
-          <div className="bg-white p-8 rounded-lg max-w-md w-full shadow-lg">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-dark via-primary to-accent-pink dark:from-dark-bg dark:via-dark-surface dark:to-dark-surface-light p-4">
+          <div className="bg-white dark:bg-dark-surface p-8 rounded-lg max-w-md w-full shadow-lg border border-gray-200 dark:border-dark-border">
             <div className="text-center">
               <div className="text-6xl mb-4">⚠️</div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-2">出错了</h1>
-              <p className="text-gray-600 mb-4">应用程序遇到了一个意外错误。请刷新页面重试。</p>
+              <h1 className="text-2xl font-bold text-gray-800 dark:text-dark-text mb-2">出错了</h1>
+              <p className="text-gray-600 dark:text-dark-text-secondary mb-4">
+                应用程序遇到了一个意外错误。请刷新页面重试。
+              </p>
 
               {process.env.NODE_ENV !== 'production' && this.state.error && (
-                <div className="bg-gray-100 p-4 rounded text-left mt-4 max-h-48 overflow-auto">
-                  <p className="text-xs font-mono text-red-600 mb-2">
+                <div className="bg-gray-100 dark:bg-dark-surface-light p-4 rounded text-left mt-4 max-h-48 overflow-auto border border-gray-200 dark:border-dark-border">
+                  <p className="text-xs font-mono text-red-600 dark:text-red-400 mb-2">
                     <strong>错误详情：</strong>
                   </p>
-                  <p className="text-xs font-mono text-gray-700 whitespace-pre-wrap break-words">
+                  <p className="text-xs font-mono text-gray-700 dark:text-dark-text whitespace-pre-wrap break-words">
                     {this.state.error.toString()}
                   </p>
                   {this.state.errorInfo && (
-                    <p className="text-xs font-mono text-gray-700 mt-2 whitespace-pre-wrap break-words">
+                    <p className="text-xs font-mono text-gray-700 dark:text-dark-text mt-2 whitespace-pre-wrap break-words">
                       {this.state.errorInfo.componentStack}
                     </p>
                   )}

@@ -59,26 +59,26 @@ export const Timeline: React.FC<TimelineProps> = ({ notes, onSelectNote }) => {
   }, [groupedByDate]);
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 max-h-96 overflow-y-auto">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">📅 时间线视图</h2>
+    <div className="bg-white dark:bg-dark-surface rounded-lg shadow p-6 max-h-96 overflow-y-auto border border-gray-200 dark:border-dark-border">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-dark-text">📅 时间线视图</h2>
 
       {monthGroups.length === 0 ? (
-        <div className="flex items-center justify-center py-12 text-gray-500">
+        <div className="flex items-center justify-center py-12 text-gray-500 dark:text-dark-text-secondary">
           <p>暂无笔记</p>
         </div>
       ) : (
         <div className="space-y-6">
           {monthGroups.map(([monthStr, dateEntries]) => (
             <div key={monthStr}>
-              <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-dark-text mb-3 flex items-center">
                 <span className="text-2xl mr-2">📆</span>
                 {monthStr}
               </h3>
 
-              <div className="ml-4 space-y-2 border-l-2 border-blue-300">
+              <div className="ml-4 space-y-2 border-l-2 border-blue-300 dark:border-accent-pink">
                 {dateEntries.map(([dateStr, items]) => (
                   <div key={dateStr}>
-                    <p className="text-sm text-gray-500 font-semibold px-4">
+                    <p className="text-sm text-gray-500 dark:text-dark-text-secondary font-semibold px-4">
                       {new Date(dateStr).toLocaleDateString('zh-CN', {
                         weekday: 'short',
                         month: 'short',
@@ -92,24 +92,24 @@ export const Timeline: React.FC<TimelineProps> = ({ notes, onSelectNote }) => {
                         <button
                           key={note.id}
                           onClick={() => onSelectNote?.(note)}
-                          className={`w-full text-left px-4 py-2 rounded hover:bg-blue-50 transition border-l-4 ${
+                          className={`w-full text-left px-4 py-2 rounded transition border-l-4 ${
                             selectedDate === dateStr
-                              ? 'bg-blue-50 border-blue-500'
-                              : 'border-transparent'
+                              ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 dark:border-accent-pink'
+                              : 'hover:bg-blue-50 dark:hover:bg-dark-surface-light border-transparent dark:text-dark-text'
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-medium text-gray-800 truncate">
+                            <span className="font-medium text-gray-800 dark:text-dark-text truncate">
                               {note.title || '无标题'}
                             </span>
-                            <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+                            <span className="text-xs text-gray-500 dark:text-dark-text-secondary ml-2 flex-shrink-0">
                               {new Date(note.updatedAt).toLocaleTimeString('zh-CN', {
                                 hour: '2-digit',
                                 minute: '2-digit',
                               })}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1 truncate">
+                          <p className="text-xs text-gray-500 dark:text-dark-text-secondary mt-1 truncate">
                             {note.content.slice(0, 80)}
                             {note.content.length > 80 ? '...' : ''}
                           </p>

@@ -128,9 +128,9 @@ const WebDAVSync: React.FC<WebDAVSyncProps> = ({
     if (!syncStatus) return null;
 
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 mb-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold text-blue-900">📡 自动同步状态</h3>
+          <h3 className="font-semibold text-blue-900 dark:text-blue-300">📡 自动同步状态</h3>
           {syncStatus.isRunning && (
             <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -186,8 +186,8 @@ const WebDAVSync: React.FC<WebDAVSyncProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <h2 className="text-xl font-bold mb-3">🌐 WebDAV 同步</h2>
+    <div className="bg-white dark:bg-dark-surface rounded-lg shadow p-4 border border-gray-200 dark:border-dark-border">
+      <h2 className="text-xl font-bold mb-3 text-gray-800 dark:text-dark-text">🌐 WebDAV 同步</h2>
 
       {/* Status Indicator */}
       <StatusIndicator />
@@ -198,39 +198,39 @@ const WebDAVSync: React.FC<WebDAVSyncProps> = ({
           value={localConfig.url || ''}
           onChange={(e) => setLocalConfig({ ...localConfig, url: e.target.value })}
           placeholder="WebDAV 地址 (https://example.com/remote.php/dav/files/用户/)"
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded bg-white dark:bg-dark-surface-light border-gray-300 dark:border-dark-border text-gray-800 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary"
         />
         <input
           value={localConfig.remotePath || ''}
           onChange={(e) => setLocalConfig({ ...localConfig, remotePath: e.target.value })}
           placeholder="远程文件路径 (notes.json)"
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded bg-white dark:bg-dark-surface-light border-gray-300 dark:border-dark-border text-gray-800 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary"
         />
         <input
           value={localConfig.username || ''}
           onChange={(e) => setLocalConfig({ ...localConfig, username: e.target.value })}
           placeholder="用户名"
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded bg-white dark:bg-dark-surface-light border-gray-300 dark:border-dark-border text-gray-800 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary"
         />
         <input
           type="password"
           value={localConfig.password || ''}
           onChange={(e) => setLocalConfig({ ...localConfig, password: e.target.value })}
           placeholder="密码"
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded bg-white dark:bg-dark-surface-light border-gray-300 dark:border-dark-border text-gray-800 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary"
         />
         <input
           type="password"
           value={localConfig.encryptionKey || ''}
           onChange={(e) => setLocalConfig({ ...localConfig, encryptionKey: e.target.value })}
           placeholder="加密密钥（可选）"
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded bg-white dark:bg-dark-surface-light border-gray-300 dark:border-dark-border text-gray-800 dark:text-dark-text placeholder-gray-400 dark:placeholder-dark-text-secondary"
         />
 
         {/* Auto-sync settings */}
-        <div className="mt-4 p-3 bg-gray-50 rounded">
-          <h4 className="font-semibold mb-2">自动同步设置</h4>
-          <label className="flex items-center mb-2">
+        <div className="mt-4 p-3 bg-gray-50 dark:bg-dark-surface-light rounded border border-gray-200 dark:border-dark-border">
+          <h4 className="font-semibold mb-2 text-gray-800 dark:text-dark-text">自动同步设置</h4>
+          <label className="flex items-center mb-2 text-gray-800 dark:text-dark-text">
             <input
               type="checkbox"
               checked={localConfig.autoSyncEnabled || false}
@@ -246,7 +246,7 @@ const WebDAVSync: React.FC<WebDAVSyncProps> = ({
             onChange={(e) =>
               setLocalConfig({ ...localConfig, syncInterval: parseInt(e.target.value) })
             }
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-white dark:bg-dark-surface border-gray-300 dark:border-dark-border text-gray-800 dark:text-dark-text"
             disabled={!localConfig.autoSyncEnabled}
           >
             {SYNC_INTERVALS.map((interval) => (

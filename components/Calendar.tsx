@@ -64,17 +64,17 @@ export const Calendar: React.FC<CalendarProps> = ({ notes, onSelectDate }) => {
   });
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white dark:bg-dark-surface rounded-lg shadow p-6 border border-gray-200/80 dark:border-dark-border">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">📆 日历热力图</h2>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-dark-text">📆 日历热力图</h2>
         <div className="flex gap-2">
           <button
             onClick={prevMonth}
-            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded transition"
+            className="px-3 py-1 bg-gray-200 dark:bg-dark-surface-light hover:bg-gray-300 dark:hover:bg-dark-border rounded transition"
           >
             ◀
           </button>
-          <span className="px-4 py-1 font-semibold text-gray-700 min-w-48 text-center">
+          <span className="px-4 py-1 font-semibold text-gray-700 dark:text-dark-text min-w-48 text-center">
             {currentDate.toLocaleDateString('zh-CN', {
               year: 'numeric',
               month: 'long',
@@ -82,7 +82,7 @@ export const Calendar: React.FC<CalendarProps> = ({ notes, onSelectDate }) => {
           </span>
           <button
             onClick={nextMonth}
-            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded transition"
+            className="px-3 py-1 bg-gray-200 dark:bg-dark-surface-light hover:bg-gray-300 dark:hover:bg-dark-border rounded transition"
           >
             ▶
           </button>
@@ -91,7 +91,10 @@ export const Calendar: React.FC<CalendarProps> = ({ notes, onSelectDate }) => {
 
       <div className="grid grid-cols-7 gap-1 mb-4">
         {['日', '一', '二', '三', '四', '五', '六'].map((day) => (
-          <div key={day} className="text-center font-semibold text-gray-600 py-2 text-sm">
+          <div
+            key={day}
+            className="text-center font-semibold text-gray-600 dark:text-dark-text-secondary py-2 text-sm"
+          >
             {day}
           </div>
         ))}

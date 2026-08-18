@@ -10,7 +10,7 @@ interface TrashProps {
 export const Trash: React.FC<TrashProps> = ({ trashNotes, onRestore, onPermanentlyDelete }) => {
   if (trashNotes.length === 0) {
     return (
-      <div className="flex items-center justify-center h-96 text-gray-500">
+      <div className="flex items-center justify-center h-96 text-gray-500 dark:text-dark-text-secondary">
         <div className="text-center">
           <p className="text-lg">🗑️ 回收站是空的</p>
           <p className="text-sm mt-2">已删除的笔记将在这里显示</p>
@@ -22,9 +22,11 @@ export const Trash: React.FC<TrashProps> = ({ trashNotes, onRestore, onPermanent
   return (
     <div className="space-y-3">
       <div className="mb-4">
-        <h2 className="text-2xl font-bold text-gray-800">🗑️ 回收站 ({trashNotes.length})</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          删除的笔记可在 <span className="text-red-500">30天后</span>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-dark-text">
+          🗑️ 回收站 ({trashNotes.length})
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-dark-text-secondary mt-1">
+          删除的笔记可在 <span className="text-red-500 dark:text-red-400">30天后</span>
           永久删除
         </p>
       </div>
@@ -33,11 +35,13 @@ export const Trash: React.FC<TrashProps> = ({ trashNotes, onRestore, onPermanent
         {trashNotes.map((note) => (
           <div
             key={note.id}
-            className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+            className="flex items-center justify-between p-3 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-dark-surface-light transition"
           >
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-gray-800 truncate">{note.title}</h3>
-              <p className="text-xs text-gray-400 mt-1">
+              <h3 className="font-medium text-gray-800 dark:text-dark-text truncate">
+                {note.title}
+              </h3>
+              <p className="text-xs text-gray-400 dark:text-dark-text-secondary mt-1">
                 {note.category} •{' '}
                 {note.deletedAt
                   ? new Date(note.deletedAt).toLocaleDateString('zh-CN', {
