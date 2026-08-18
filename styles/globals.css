@@ -2,10 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Browser compatibility: Fallback for older browsers that don't support CSS variables */
+@supports not (--test: 0) {
+  :root {
+    --shadow-1: 0 1px 2px rgba(154, 52, 107, 0.10);
+    --shadow-2: 0 2px 6px rgba(154, 52, 107, 0.12), 0 1px 2px rgba(154, 52, 107, 0.08);
+  }
+}
+
+:root {
+  /* Elevation scale — every "raised" surface picks one of these instead of
+     inventing its own box-shadow. Warm pink-tinted shadows keep depth
+     consistent with the accent palette instead of reading as generic grey. */
+  --shadow-1: 0 1px 2px rgba(154, 52, 107, 0.10);
+  --shadow-2: 0 2px 6px rgba(154, 52, 107, 0.12), 0 1px 2px rgba(154, 52, 107, 0.08);
+  --shadow-3: 0 6px 16px rgba(154, 52, 107, 0.16), 0 2px 6px rgba(154, 52, 107, 0.10);
+  --shadow-4: 0 16px 32px rgba(154, 52, 107, 0.20), 0 6px 12px rgba(154, 52, 107, 0.12);
+  --shadow-press: inset 0 2px 4px rgba(154, 52, 107, 0.18);
+
+  /* Glass tokens — reserved for chrome/structure (header, side panels,
+     modal scrim, floating chat bubble), never for dense text content.
+     Frosted enough to show the gradient behind it; bordered so the edge
+     still reads as an object, not just a blur filter. */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.65);
+  --glass-blur: 18px;
+
+  /* Radius scale — pick one instead of mixing rounded-lg/xl/2xl/[2rem] ad hoc */
+  --radius-sm: 0.5rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-pill: 999px;
+}
+
 @layer components {
   /* Button components */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-light hover:shadow-medium transform-gpu hover:-translate-y-0.5 cursor-pointer border border-transparent min-h-[2.75rem];
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all transform-gpu hover:-translate-y-0.5 active:translate-y-0 cursor-pointer border border-transparent min-h-[2.75rem];
+    box-shadow: var(--shadow-2);
+  }
+
+  .btn:hover {
+    box-shadow: var(--shadow-3);
+  }
+
+  .btn:active {
+    box-shadow: var(--shadow-press);
   }
 
   @screen md {
@@ -15,7 +58,8 @@
   }
 
   .btn-sm {
-    @apply px-3 py-1.5 text-xs rounded-full min-h-[2.25rem] min-w-[2.5rem];
+    @apply px-3 py-2 text-xs rounded-full min-h-[2.25rem] min-w-[2.5rem] transition-all hover:scale-105;
+    box-shadow: var(--shadow-1);
   }
 
   .btn-primary {
@@ -46,26 +90,37 @@
     @apply bg-pink-100;
   }
 
-  .btn-sm {
-    @apply px-3 py-2 text-sm rounded-md transition-all hover:scale-105 min-h-[2.25rem];
-  }
-
   /* Card component */
   .card {
-    @apply bg-white bg-opacity-95 rounded-2xl p-6 shadow-light transition-all backdrop-blur-sm border border-white border-opacity-50 hover:-translate-y-2 hover:shadow-dark relative overflow-hidden;
-    box-shadow: 
-      0 1px 3px rgba(0,0,0,0.08),
-      0 4px 12px rgba(220,150,180,0.12),
-      0 8px 24px rgba(220,150,180,0.16);
+    @apply bg-white bg-opacity-95 rounded-2xl p-6 transition-all backdrop-blur-sm border border-white border-opacity-60 hover:-translate-y-2 transform-gpu relative overflow-hidden;
+    box-shadow: var(--shadow-3);
+  }
+
+  .card:hover {
+    box-shadow: var(--shadow-4);
   }
 
   .card::before {
     @apply absolute inset-0 bg-gradient-to-br from-transparent via-primary-light to-accent-purple opacity-5 pointer-events-none;
   }
 
-  /* Note card */
+  /* Faint 1px rim light along the top edge — the thing that reads as
+     "physical card catching light" instead of a flat rectangle. */
+  .card::after {
+    content: '';
+    @apply absolute inset-x-0 top-0 h-px pointer-events-none;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+  }
+
+  /* Note card — treated as a sheet of paper resting on the stack below it,
+     so its depth is a touch shallower than the elevated .card surfaces. */
   .note-card {
-    @apply bg-white bg-opacity-97 rounded-lg p-5 mb-4 shadow-light transition-all cursor-pointer border-l-4 border-accent-pink relative overflow-hidden hover:-translate-y-2 hover:shadow-medium min-h-[5rem];
+    @apply bg-white bg-opacity-97 rounded-lg p-5 mb-4 transition-all cursor-pointer border-l-4 border-accent-pink relative overflow-hidden hover:-translate-y-1.5 transform-gpu min-h-[5rem];
+    box-shadow: var(--shadow-2);
+  }
+
+  .note-card:hover {
+    box-shadow: var(--shadow-3);
   }
 
   .note-card::before {
@@ -78,7 +133,8 @@
   }
 
   .modal-content {
-    @apply bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden;
+    @apply bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden;
+    box-shadow: var(--shadow-4);
   }
 
   .modal-header {
@@ -100,7 +156,8 @@
 
   /* Stats components */
   .stat-card {
-    @apply bg-gradient-to-br from-accent-pink to-accent-purple text-white rounded-xl p-6 text-center shadow-light hover:-translate-y-1 transition-all;
+    @apply bg-gradient-to-br from-accent-pink to-accent-purple text-white rounded-xl p-6 text-center hover:-translate-y-1 transition-all;
+    box-shadow: var(--shadow-3);
   }
 
   .stat-number {
@@ -113,7 +170,7 @@
 
   /* Grid layouts */
   .note-grid {
-    @apply grid gap-4;
+    @apply grid gap-4 grid-cols-1;
   }
 
   @screen sm {
@@ -268,11 +325,31 @@
   }
 
   .panel {
-    @apply bg-white/90 dark:bg-dark-surface/95 border border-white/70 dark:border-dark-border rounded-[2rem] shadow-light backdrop-blur-md transition-all;
+    @apply transition-all rounded-lg;
+    /* Fallback for browsers that don't support backdrop-filter */
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    /* Modern browsers with backdrop-filter */
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
   }
 
   .panel-strong {
-    @apply bg-white/95 dark:bg-dark-surface rounded-[2rem] border border-primary-light/30 dark:border-dark-border shadow-medium;
+    @apply transition-all rounded-lg;
+    /* Fallback for browsers that don't support backdrop-filter */
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(200, 184, 200, 0.3);
+    /* Modern browsers with backdrop-filter */
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-3);
   }
 
   .hero-panel {
@@ -301,14 +378,22 @@
 
   /* Stats */
   .stat-item {
-    @apply bg-white/90 p-6 rounded-lg text-center shadow-light;
+    @apply bg-white/90 p-6 rounded-lg text-center transition-all hover:-translate-y-1;
+    box-shadow: var(--shadow-2);
+  }
+
+  .stat-item:hover {
+    box-shadow: var(--shadow-3);
   }
 
   .stat-value {
     @apply block text-4xl font-bold text-accent-pink mb-1;
   }
 
-  .stat-label {
+  /* Scoped to .stat-item so this doesn't silently overwrite the
+     .stat-card .stat-label rule defined above (they used to share one
+     global .stat-label class with two different, conflicting styles). */
+  .stat-item .stat-label {
     @apply block text-xs text-text-light uppercase tracking-wider;
   }
 
@@ -323,7 +408,8 @@
 
   /* Notification */
   .notification {
-    @apply fixed left-1/2 -translate-x-1/2 bg-gradient-to-r from-accent-pink to-accent-purple text-white px-8 py-4 rounded-full shadow-dark transition-all font-medium;
+    @apply fixed left-1/2 -translate-x-1/2 bg-gradient-to-r from-accent-pink to-accent-purple text-white px-8 py-4 rounded-full transition-all font-medium;
+    box-shadow: var(--shadow-4);
     bottom: -128px;
     z-index: 50;
   }
@@ -346,6 +432,16 @@
   /* Dark mode */
   html.dark {
     color-scheme: dark;
+    /* Pink-tinted shadows read as "invisible" against a dark surface —
+       swap to black depth plus a faint accent glow instead. */
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(232, 121, 165, 0.06);
+    --shadow-3: 0 8px 20px rgba(0, 0, 0, 0.55), 0 0 24px rgba(232, 121, 165, 0.08);
+    --shadow-4: 0 20px 40px rgba(0, 0, 0, 0.65), 0 0 32px rgba(232, 121, 165, 0.10);
+    --shadow-press: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    --glass-bg: rgba(30, 24, 34, 0.45);
+    --glass-bg-strong: rgba(30, 24, 34, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.10);
   }
 
   html.dark body {
@@ -444,7 +540,16 @@
   }
 
   header {
-    @apply bg-white bg-opacity-85 backdrop-blur-lg shadow-light sticky top-0 border-b border-primary-medium border-opacity-30;
+    @apply sticky top-0;
+    /* Fallback for browsers that don't support backdrop-filter */
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid rgba(200, 184, 200, 0.3);
+    /* Modern browsers with backdrop-filter */
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-2);
     z-index: 50;
   }
 
@@ -484,6 +589,17 @@
   width: 18rem;
   font-family: inherit;
   animation: slideIn 0.3s ease-out;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  /* Fallback for browsers that don't support backdrop-filter */
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(200, 184, 200, 0.5);
+  /* Modern browsers with backdrop-filter */
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-3);
 }
 
 @keyframes slideIn {
@@ -541,6 +657,7 @@
   50% { transform: scaleY(1.3); }
 }
 .character-svg.talking .mouth {
+  transform-origin: 60px 96px;
   animation: mouthMove 0.3s infinite;
 }
 
@@ -595,12 +712,6 @@
   animation: hairSway 6s ease-in-out infinite;
 }
 
-/* small mouth bounce when talking */
-.character-svg.talking .mouth {
-  transform-origin: 60px 96px;
-  animation: mouthMove 0.28s infinite;
-}
-
 /* character bounce on appearance */
 .character-container {
   animation: characterBounce 0.5s ease-out;
@@ -619,4 +730,3 @@
     opacity: 1;
   }
 }
-
