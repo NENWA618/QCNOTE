@@ -88,6 +88,7 @@
     "test:e2e:ui": "playwright test --ui",
     "check-admin": "tsx scripts/check-admin.ts",
     "generate-sri-hashes": "node scripts/generate-sri-hashes.mjs",
+    "sync-deps": "node scripts/sync-common-deps.mjs",
     "prepare": "husky install || true"
   }
 }

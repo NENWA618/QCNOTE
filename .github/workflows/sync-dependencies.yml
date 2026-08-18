@@ -1,0 +1,74 @@
+name: Sync Common Dependencies
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'server/package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-deps:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run sync script
+        run: node scripts/sync-common-deps.mjs
+
+      - name: Check if changes were made
+        id: verify
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install frontend dependencies
+        if: steps.verify.outputs.changed == 'true'
+        run: npm install
+
+      - name: Install backend dependencies
+        if: steps.verify.outputs.changed == 'true'
+        run: cd server && npm install
+
+      - name: Commit changes
+        if: steps.verify.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json server/package.json package-lock.json server/package-lock.json
+          git commit -m "chore: Sync common dependencies from Dependabot update"
+
+      - name: Push changes
+        if: steps.verify.outputs.changed == 'true'
+        run: |
+          git push origin ${{ github.head_ref }}
+
+      - name: Comment on PR
+        if: steps.verify.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ **Common Dependencies Synced**\n\nFrontend and backend dependencies have been automatically synced to ensure consistent versions across the project.'
+            })
