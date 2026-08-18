@@ -417,44 +417,17 @@
   .notification.show {
     @apply bottom-8;
   }
-}
 
-/* Smooth scroll behavior */
-@layer base {
-  html {
-    @apply scroll-smooth;
-  }
-
-  body {
-    @apply bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 text-primary-dark;
-  }
-
-  /* Dark mode */
-  html.dark {
-    color-scheme: dark;
-    /* Pink-tinted shadows read as "invisible" against a dark surface —
-       swap to black depth plus a faint accent glow instead. */
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
-    --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(232, 121, 165, 0.06);
-    --shadow-3: 0 8px 20px rgba(0, 0, 0, 0.55), 0 0 24px rgba(232, 121, 165, 0.08);
-    --shadow-4: 0 20px 40px rgba(0, 0, 0, 0.65), 0 0 32px rgba(232, 121, 165, 0.10);
-    --shadow-press: inset 0 2px 4px rgba(0, 0, 0, 0.5);
-    --glass-bg: rgba(30, 24, 34, 0.45);
-    --glass-bg-strong: rgba(30, 24, 34, 0.65);
-    --glass-border: rgba(255, 255, 255, 0.10);
-  }
-
-  html.dark body {
-    @apply bg-gradient-to-br from-dark-bg via-dark-surface to-dark-surface-light text-dark-text;
-  }
-
-  html.dark header {
-    @apply bg-dark-surface/75 border-dark-border;
-  }
-
-  html.dark footer {
-    @apply bg-gradient-to-r from-dark-surface-light to-dark-surface;
-  }
+  /* ============================================================
+     Dark-mode overrides for the component classes above.
+     These MUST live in @layer components, not @layer base — Tailwind's
+     cascade layers rank purely by layer order (base < components <
+     utilities), so a rule in @layer base loses to a same-named class in
+     @layer components regardless of the "html.dark" selector being more
+     specific. That was the actual bug behind the white modal / unreadable
+     form fields in dark mode: these rules were previously declared inside
+     @layer base and were silently never winning.
+     ============================================================ */
 
   /* Cards in dark mode */
   html.dark .card {
@@ -484,6 +457,23 @@
   html.dark .select,
   html.dark .search-box {
     @apply bg-dark-surface-light border-dark-border text-dark-text focus:ring-accent-pink/30;
+  }
+
+  /* Placeholder text was inheriting the light-mode grey, which reads as
+     near-invisible on a dark input (this is what made the WebDAV / OneDrive
+     fields look empty-and-broken in the screenshot). */
+  html.dark .input::placeholder,
+  html.dark textarea.input::placeholder,
+  html.dark .search-box::placeholder {
+    color: rgba(226, 214, 224, 0.45);
+  }
+
+  /* Native checkboxes (e.g. "启用自动同步") have no dark styling by default
+     and render as a near-black box on a dark background — effectively
+     invisible. accent-color themes the native control consistently. */
+  html.dark input[type='checkbox'],
+  html.dark input[type='radio'] {
+    accent-color: theme('colors.accent-pink', #e879a5);
   }
 
   /* Modal in dark mode */
@@ -538,6 +528,45 @@
   html.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: rgb(100 100 100);
   }
+}
+
+/* Smooth scroll behavior */
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 text-primary-dark;
+  }
+
+  /* Dark mode */
+  html.dark {
+    color-scheme: dark;
+    /* Pink-tinted shadows read as "invisible" against a dark surface —
+       swap to black depth plus a faint accent glow instead. */
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(232, 121, 165, 0.06);
+    --shadow-3: 0 8px 20px rgba(0, 0, 0, 0.55), 0 0 24px rgba(232, 121, 165, 0.08);
+    --shadow-4: 0 20px 40px rgba(0, 0, 0, 0.65), 0 0 32px rgba(232, 121, 165, 0.10);
+    --shadow-press: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    --glass-bg: rgba(30, 24, 34, 0.45);
+    --glass-bg-strong: rgba(30, 24, 34, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.10);
+  }
+
+  html.dark body {
+    @apply bg-gradient-to-br from-dark-bg via-dark-surface to-dark-surface-light text-dark-text;
+  }
+
+  html.dark header {
+    @apply bg-dark-surface/75 border-dark-border;
+  }
+
+  html.dark footer {
+    @apply bg-gradient-to-r from-dark-surface-light to-dark-surface;
+  }
+
 
   header {
     @apply sticky top-0;
