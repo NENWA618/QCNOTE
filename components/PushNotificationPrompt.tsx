@@ -68,20 +68,20 @@ const PushNotificationPrompt: React.FC<PushNotificationPromptProps> = ({
 
   return (
     <div
-      className="fixed bottom-4 right-4 max-w-sm p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
+      className="fixed bottom-4 right-4 max-w-sm p-4 bg-white dark:bg-dark-surface rounded-lg shadow-lg border border-gray-200 dark:border-dark-border z-50"
       role="alert"
     >
       <div className="flex gap-3 items-start">
         <div className="flex-1">
-          <h3 className="font-bold text-sm text-primary-dark dark:text-white">🔔 订阅通知</h3>
-          <p className="text-xs text-text-light dark:text-gray-300 mt-1">
+          <h3 className="font-bold text-sm text-primary-dark dark:text-dark-text">🔔 订阅通知</h3>
+          <p className="text-xs text-text-light dark:text-dark-text-secondary mt-1">
             订阅我们的推送通知，获取最新的官方消息和更新提醒。
           </p>
           <div className="flex gap-2 mt-3">
             <button
               onClick={handleSubscribe}
               disabled={isLoading}
-              className="px-3 py-1.5 text-xs font-medium bg-accent-pink text-white rounded hover:bg-pink-600 disabled:opacity-50 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium bg-accent-pink dark:bg-accent-pink text-white rounded hover:bg-pink-600 dark:hover:bg-pink-700 disabled:opacity-50 transition-colors"
             >
               {isLoading ? '处理中...' : '订阅'}
             </button>
@@ -90,7 +90,7 @@ const PushNotificationPrompt: React.FC<PushNotificationPromptProps> = ({
                 setShowPrompt(false);
                 localStorage.setItem('push-prompt-dismissed', 'true');
               }}
-              className="px-3 py-1.5 text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium bg-gray-200 dark:bg-dark-surface-light text-gray-700 dark:text-dark-text rounded hover:bg-gray-300 dark:hover:bg-dark-border transition-colors"
             >
               稍后
             </button>

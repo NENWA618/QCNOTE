@@ -78,13 +78,17 @@ const ProcessedMarkdown: React.FC<ProcessedMarkdownProps> = ({ content }) => {
         ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal">{children}</ol>,
         li: ({ children }) => <li className="mb-1">{children}</li>,
         code: ({ children }) => (
-          <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">{children}</code>
+          <code className="bg-gray-100 dark:bg-dark-surface-light px-2 py-1 rounded text-sm font-mono text-gray-800 dark:text-dark-text">
+            {children}
+          </code>
         ),
         pre: ({ children }) => (
-          <pre className="bg-gray-100 p-4 rounded overflow-x-auto mb-4">{children}</pre>
+          <pre className="bg-gray-100 dark:bg-dark-surface-light p-4 rounded overflow-x-auto mb-4 text-gray-800 dark:text-dark-text">
+            {children}
+          </pre>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="border-l-4 border-primary pl-4 italic text-gray-600 mb-4">
+          <blockquote className="border-l-4 border-primary pl-4 italic text-gray-600 dark:text-dark-text-secondary mb-4">
             {children}
           </blockquote>
         ),
@@ -117,13 +121,17 @@ export const NormalMarkdown: React.FC<NormalMarkdownProps> = ({ content }) => {
         ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal">{children}</ol>,
         li: ({ children }) => <li className="mb-1">{children}</li>,
         code: ({ children }) => (
-          <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">{children}</code>
+          <code className="bg-gray-100 dark:bg-dark-surface-light px-2 py-1 rounded text-sm font-mono text-gray-800 dark:text-dark-text">
+            {children}
+          </code>
         ),
         pre: ({ children }) => (
-          <pre className="bg-gray-100 p-4 rounded overflow-x-auto mb-4">{children}</pre>
+          <pre className="bg-gray-100 dark:bg-dark-surface-light p-4 rounded overflow-x-auto mb-4 text-gray-800 dark:text-dark-text">
+            {children}
+          </pre>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="border-l-4 border-primary pl-4 italic text-gray-600 mb-4">
+          <blockquote className="border-l-4 border-primary pl-4 italic text-gray-600 dark:text-dark-text-secondary mb-4">
             {children}
           </blockquote>
         ),

@@ -36,21 +36,23 @@ export function SkeletonText({ lines = 3, className = '' }: Omit<SkeletonLoaderP
  */
 export function SkeletonCard({ className = '' }: { className?: string }) {
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 space-y-4 ${className}`}>
+    <div
+      className={`bg-white dark:bg-dark-surface rounded-lg shadow-md p-6 space-y-4 ${className}`}
+    >
       {/* Header */}
-      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-2/3" />
+      <div className="h-6 bg-gray-200 dark:bg-dark-surface-light rounded animate-pulse w-2/3" />
 
       {/* Content lines */}
       <div className="space-y-3">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-full" />
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-5/6" />
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-4/6" />
+        <div className="h-4 bg-gray-200 dark:bg-dark-surface-light rounded animate-pulse w-full" />
+        <div className="h-4 bg-gray-200 dark:bg-dark-surface-light rounded animate-pulse w-5/6" />
+        <div className="h-4 bg-gray-200 dark:bg-dark-surface-light rounded animate-pulse w-4/6" />
       </div>
 
       {/* Footer */}
       <div className="pt-4 flex gap-2">
-        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-20" />
-        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-20" />
+        <div className="h-8 bg-gray-200 dark:bg-dark-surface-light rounded animate-pulse w-20" />
+        <div className="h-8 bg-gray-200 dark:bg-dark-surface-light rounded animate-pulse w-20" />
       </div>
     </div>
   );
@@ -63,12 +65,12 @@ export function SkeletonAvatar({ className = '' }: { className?: string }) {
   return (
     <div className={`flex items-center gap-4 ${className}`}>
       {/* Avatar circle */}
-      <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse flex-shrink-0" />
+      <div className="h-12 w-12 bg-gray-200 dark:bg-dark-surface-light rounded-full animate-pulse flex-shrink-0" />
 
       {/* Text content */}
       <div className="flex-1 space-y-2">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-2/3" />
-        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-1/2" />
+        <div className="h-4 bg-gray-200 dark:bg-dark-surface-light rounded animate-pulse w-2/3" />
+        <div className="h-3 bg-gray-200 dark:bg-dark-surface-light rounded animate-pulse w-1/2" />
       </div>
     </div>
   );
@@ -81,11 +83,11 @@ export function SkeletonList({ lines = 5, className = '' }: Omit<SkeletonLoaderP
   return (
     <div className={`space-y-4 ${className}`}>
       {Array.from({ length: lines }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded">
-          <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse flex-shrink-0" />
+        <div key={i} className="flex items-center gap-4 p-4 bg-white dark:bg-dark-surface rounded">
+          <div className="h-10 w-10 bg-gray-200 dark:bg-dark-surface-light rounded animate-pulse flex-shrink-0" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-1/3" />
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-2/3" />
+            <div className="h-4 bg-gray-200 dark:bg-dark-surface-light rounded animate-pulse w-1/3" />
+            <div className="h-3 bg-gray-200 dark:bg-dark-surface-light rounded animate-pulse w-2/3" />
           </div>
         </div>
       ))}

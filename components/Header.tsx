@@ -81,17 +81,19 @@ const Header: React.FC = () => {
                 {session.user?.name?.charAt(0)?.toUpperCase() || 'U'}
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-3xl shadow-xl border border-gray-100 py-2 z-50">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-dark-surface rounded-3xl shadow-xl border border-gray-100 dark:border-dark-border py-2 z-50">
+                  <div className="px-4 py-2 border-b border-gray-100 dark:border-dark-border">
+                    <p className="text-sm font-medium text-gray-900 dark:text-dark-text">
                       {session.user?.name || '用户'}
                     </p>
-                    <p className="text-xs text-gray-500">{session.user?.email}</p>
+                    <p className="text-xs text-gray-500 dark:text-dark-text-secondary">
+                      {session.user?.email}
+                    </p>
                   </div>
                   <Link
                     href="/dashboard"
                     prefetch={false}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-surface-light transition-colors"
                     onClick={() => setUserMenuOpen(false)}
                   >
                     控制台

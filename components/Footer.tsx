@@ -69,14 +69,14 @@ const Footer: React.FC<FooterProps> = ({
       <footer
         role="contentinfo"
         aria-label="Site footer"
-        className="bg-primary-dark text-white py-8 px-6"
+        className="bg-primary-dark dark:bg-dark-surface text-white py-8 px-6 border-t border-gray-200 dark:border-dark-border"
       >
         <div className="max-w-6xl mx-auto">
           <p className="text-center">{FOOTER_CONFIG.copyright}</p>
-          <p className="text-center text-xs text-gray-400 mt-2">
+          <p className="text-center text-xs text-gray-400 dark:text-dark-text-secondary mt-2">
             <a
               href={FOOTER_CONFIG.icp.url}
-              className="text-primary-light no-underline hover:text-white transition-colors"
+              className="text-primary-light dark:text-accent-pink no-underline hover:text-white dark:hover:text-pink-400 transition-colors"
               target="_blank"
               rel="noopener noreferrer"
             >

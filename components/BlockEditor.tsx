@@ -206,13 +206,13 @@ const BlockEditor: React.FC<BlockEditorProps> = ({ content, onChange }) => {
         <div className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
           <button
             onClick={() => onAdd(index, 'text')}
-            className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+            className="text-xs px-2 py-1 bg-green-500 dark:bg-green-600 text-white rounded hover:bg-green-600 dark:hover:bg-green-700"
           >
             +
           </button>
           <button
             onClick={() => onDelete(block.id)}
-            className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+            className="text-xs px-2 py-1 bg-red-500 dark:bg-red-600 text-white rounded hover:bg-red-600 dark:hover:bg-red-700"
           >
             ×
           </button>

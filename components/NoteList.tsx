@@ -14,11 +14,11 @@ const NoteList: React.FC<NoteListProps> = ({ notes, onEdit, onTagClick }) => {
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      生活: 'bg-blue-100 text-blue-800',
-      工作: 'bg-green-100 text-green-800',
-      学习: 'bg-purple-100 text-purple-800',
-      灵感: 'bg-pink-100 text-pink-800',
-      其他: 'bg-gray-100 text-gray-800',
+      生活: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+      工作: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+      学习: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300',
+      灵感: 'bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300',
+      其他: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300',
     };
     return colors[category] || colors['其他'];
   };
@@ -27,8 +27,12 @@ const NoteList: React.FC<NoteListProps> = ({ notes, onEdit, onTagClick }) => {
     return (
       <div className="text-center py-12">
         <div className="text-6xl mb-4">📝</div>
-        <h3 className="text-xl font-semibold text-gray-600 mb-2">还没有笔记</h3>
-        <p className="text-gray-500">点击&quot;新建笔记&quot;开始记录您的想法</p>
+        <h3 className="text-xl font-semibold text-gray-600 dark:text-dark-text-secondary mb-2">
+          还没有笔记
+        </h3>
+        <p className="text-gray-500 dark:text-dark-text-secondary">
+          点击&quot;新建笔记&quot;开始记录您的想法
+        </p>
       </div>
     );
   }
@@ -49,7 +53,7 @@ const NoteList: React.FC<NoteListProps> = ({ notes, onEdit, onTagClick }) => {
               <h3 className="text-lg font-semibold text-primary-dark group-hover:text-accent-pink transition-colors truncate">
                 {note.title || '无标题'}
               </h3>
-              <div className="flex gap-2 items-center mt-2 text-xs text-gray-500">
+              <div className="flex gap-2 items-center mt-2 text-xs text-gray-500 dark:text-dark-text-secondary">
                 <span>{formatDate(note.updatedAt)}</span>
                 {note.category && (
                   <span

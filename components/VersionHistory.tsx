@@ -34,25 +34,27 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-96 flex">
+      <div className="bg-white dark:bg-dark-surface rounded-lg shadow-2xl max-w-4xl w-full max-h-96 flex border border-gray-200 dark:border-dark-border">
         {/* Version List */}
-        <div className="w-80 border-r border-gray-200 overflow-y-auto bg-gray-50">
-          <div className="sticky top-0 bg-gray-100 border-b border-gray-200 p-4">
-            <h3 className="font-bold text-gray-800">版本历史</h3>
-            <p className="text-xs text-gray-500 mt-1">共 {versions.length + 1} 个版本</p>
+        <div className="w-80 border-r border-gray-200 dark:border-dark-border overflow-y-auto bg-gray-50 dark:bg-dark-surface-light">
+          <div className="sticky top-0 bg-gray-100 dark:bg-dark-surface border-b border-gray-200 dark:border-dark-border p-4">
+            <h3 className="font-bold text-gray-800 dark:text-dark-text">版本历史</h3>
+            <p className="text-xs text-gray-500 dark:text-dark-text-secondary mt-1">
+              共 {versions.length + 1} 个版本
+            </p>
           </div>
 
           {/* Current Version */}
           <button
             onClick={() => setSelectedVersion(null)}
-            className={`w-full text-left p-4 border-b border-gray-200 hover:bg-blue-50 transition ${
-              selectedVersion === null ? 'bg-blue-100' : ''
+            className={`w-full text-left p-4 border-b border-gray-200 dark:border-dark-border hover:bg-blue-50 dark:hover:bg-blue-900/30 transition ${
+              selectedVersion === null ? 'bg-blue-100 dark:bg-blue-900/50' : ''
             }`}
           >
-            <div className="font-semibold text-gray-800 text-sm truncate">
+            <div className="font-semibold text-gray-800 dark:text-dark-text text-sm truncate">
               {currentVersion.title}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-dark-text-secondary mt-1">
               ✨ 当前版本 •{' '}
               {new Date(currentVersion.updatedAt).toLocaleString('zh-CN', {
                 month: 'short',
@@ -68,12 +70,14 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
             <button
               key={`${version.updatedAt}-${index}`}
               onClick={() => setSelectedVersion(version)}
-              className={`w-full text-left p-4 border-b border-gray-200 hover:bg-blue-50 transition ${
-                selectedVersion === version ? 'bg-blue-100' : ''
+              className={`w-full text-left p-4 border-b border-gray-200 dark:border-dark-border hover:bg-blue-50 dark:hover:bg-blue-900/30 transition ${
+                selectedVersion === version ? 'bg-blue-100 dark:bg-blue-900/50' : ''
               }`}
             >
-              <div className="font-semibold text-gray-800 text-sm truncate">{version.title}</div>
-              <p className="text-xs text-gray-500 mt-1">
+              <div className="font-semibold text-gray-800 dark:text-dark-text text-sm truncate">
+                {version.title}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-dark-text-secondary mt-1">
                 v{versions.length - index} •{' '}
                 {new Date(version.updatedAt).toLocaleString('zh-CN', {
                   month: 'short',
@@ -87,14 +91,14 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
         </div>
 
         {/* Preview Panel */}
-        <div className="flex-1 flex flex-col bg-white">
-          <div className="bg-gray-50 border-b border-gray-200 p-4">
-            <h3 className="font-bold text-gray-800">
+        <div className="flex-1 flex flex-col bg-white dark:bg-dark-surface">
+          <div className="bg-gray-50 dark:bg-dark-surface-light border-b border-gray-200 dark:border-dark-border p-4">
+            <h3 className="font-bold text-gray-800 dark:text-dark-text">
               {selectedVersion
                 ? `预览版本 v${versions.length - versions.indexOf(selectedVersion)}`
                 : '当前版本预览'}
             </h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 dark:text-dark-text-secondary mt-1">
               {selectedVersion
                 ? new Date(selectedVersion.updatedAt).toLocaleString('zh-CN')
                 : new Date(currentVersion.updatedAt).toLocaleString('zh-CN')}

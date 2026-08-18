@@ -77,7 +77,7 @@ export default function PushNotificationManager({
       <form onSubmit={handleSend} className="px-6 py-6">
         {/* 标题 */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
             通知标题 <span className="text-red-500">*</span>
           </label>
           <input
@@ -85,14 +85,14 @@ export default function PushNotificationManager({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="例如：新功能发布 或 系统维护通知"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-pink dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-pink bg-white dark:bg-dark-surface-light text-gray-900 dark:text-dark-text"
             disabled={loading}
           />
         </div>
 
         {/* 内容 */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
             通知内容
           </label>
           <textarea
@@ -100,14 +100,14 @@ export default function PushNotificationManager({
             onChange={(e) => setBody(e.target.value)}
             placeholder="输入通知内容（可选）"
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-pink dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-pink bg-white dark:bg-dark-surface-light text-gray-900 dark:text-dark-text"
             disabled={loading}
           />
         </div>
 
         {/* 图标 */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
             通知图标 URL
           </label>
           <input
@@ -115,7 +115,7 @@ export default function PushNotificationManager({
             value={icon}
             onChange={(e) => setIcon(e.target.value)}
             placeholder="/images/icons/note_icon.png"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-pink dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-md focus:outline-none focus:ring-2 focus:ring-accent-pink bg-white dark:bg-dark-surface-light text-gray-900 dark:text-dark-text text-sm"
             disabled={loading}
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

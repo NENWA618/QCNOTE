@@ -108,18 +108,20 @@ const TagManager: React.FC<TagManagerProps> = ({
 
       {/* 批量操作 */}
       {selectedTags.length > 0 && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-          <h3 className="font-semibold mb-2">批量操作 ({selectedTags.length} 个标签)</h3>
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+          <h3 className="font-semibold mb-2 text-gray-800 dark:text-dark-text">
+            批量操作 ({selectedTags.length} 个标签)
+          </h3>
           <div className="flex gap-2 mb-2">
             <button
               onClick={() => setBulkOperation('add')}
-              className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+              className="px-3 py-1 bg-green-500 dark:bg-green-600 text-white rounded hover:bg-green-600 dark:hover:bg-green-700"
             >
               批量添加标签
             </button>
             <button
               onClick={() => setBulkOperation('remove')}
-              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+              className="px-3 py-1 bg-red-500 dark:bg-red-600 text-white rounded hover:bg-red-600 dark:hover:bg-red-700"
             >
               批量移除标签
             </button>
@@ -132,12 +134,12 @@ const TagManager: React.FC<TagManagerProps> = ({
                 placeholder={`要${bulkOperation === 'add' ? '添加' : '移除'}的标签`}
                 value={bulkTag}
                 onChange={(e) => setBulkTag(e.target.value)}
-                className="flex-1 px-3 py-1 border rounded"
+                className="flex-1 px-3 py-1 border border-gray-300 dark:border-dark-border rounded bg-white dark:bg-dark-surface-light text-gray-800 dark:text-dark-text"
               />
               <button
                 onClick={handleBulkOperation}
                 disabled={!bulkTag.trim()}
-                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                className="px-3 py-1 bg-blue-500 dark:bg-blue-600 text-white rounded hover:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50"
               >
                 执行
               </button>
@@ -146,7 +148,7 @@ const TagManager: React.FC<TagManagerProps> = ({
                   setBulkOperation(null);
                   setBulkTag('');
                 }}
-                className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
+                className="px-3 py-1 bg-gray-500 dark:bg-gray-600 text-white rounded hover:bg-gray-600 dark:hover:bg-gray-700"
               >
                 取消
               </button>
