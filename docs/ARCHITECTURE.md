@@ -184,7 +184,7 @@ QCNOTE 以用户或访客为命名空间隔离存储：
 - Tailwind CSS 3.4.1
 - Lunr.js 2.3.9
 - KaTeX 0.18.4
-- Fastify 5.12.0
+- Fastify 5.12.1
 - PostgreSQL / Redis（可选）
 
 ## 10. 设计总结
