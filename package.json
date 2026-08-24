@@ -88,6 +88,10 @@
     "check-admin": "tsx scripts/check-admin.ts",
     "generate-sri-hashes": "node scripts/generate-sri-hashes.mjs",
     "sync-deps": "node scripts/sync-common-deps.mjs",
-    "prepare": "husky install || true"
+    "prepare": "husky"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "unrs-resolver": true
   }
 }
