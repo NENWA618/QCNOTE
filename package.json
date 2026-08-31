@@ -21,7 +21,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@microsoft/microsoft-graph-client": "^3.0.7",
-    "@testing-library/user-event": "^14.6.5",
+    "@testing-library/user-event": "^14.6.6",
     "axios": "^1.19.0",
     "glob": "^13.0.6",
     "isomorphic-fetch": "^3.0.0",
