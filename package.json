@@ -60,7 +60,7 @@
     "@vitejs/plugin-react": "^6.1.0",
     "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.5.4",
-    "eslint": "^8.0.0",
+    "eslint": "^10.9.1",
     "eslint-config-next": "^15.5.23",
     "eslint-plugin-react-hooks": "^7.1.1",
     "fake-indexeddb": "^6.2.5",
