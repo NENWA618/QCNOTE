@@ -178,7 +178,7 @@ QCNOTE 以用户或访客为命名空间隔离存储：
 
 ## 9. 版本与依赖
 
-- Next.js 16.3.1
+- Next.js 16.3.4
 - React 18.3.1
 - TypeScript 5.2.0
 - Tailwind CSS 3.4.1
