@@ -2,7 +2,7 @@
 
 > **2026-09-19 更新**：Live2D 看板娘模块已整体移除，原第 1 节记录的外部脚本 SRI 哈希配置随之失效并删除
 > （`pages/_app.tsx` 的 `LIVE2D_SCRIPTS`、`scripts/generate-sri-hashes.mjs`、`.script-hashes.json` 均已删除）。
-> CSP 的 `script-src` 也已同步移除 `'unsafe-eval'`（生产环境）与 `live2d.fghrsh.net`，见第 4 节。
+> CSP 的 `script-src` 也已同步移除 `'unsafe-eval'`（生产环境）与 `live2d.fghrsh.net`，见第 3 节。
 
 ## 1. HSTS (HTTP Strict Transport Security) 配置
 
@@ -94,16 +94,23 @@ HSTS 预加载列表是浏览器厂商维护的一个列表，包含应该强制
 - **sameSite**: `lax` - 不使用 `strict`：OAuth 回调和外链进入均为跨站顶层跳转，Strict 会导致首个请求读不到会话
 - **maxAge**: 30 天
 
-#### callbackUrl / csrfToken
+#### callbackUrl
 
-- **用途**: OAuth 回调和 CSRF 防护
+- **用途**: OAuth 登录后的回跳地址
 - **sameSite**: `lax` - 平衡安全与 OAuth 流程
-- **maxAge**: 会话级别
-
-#### pkceCodeVerifier
-
-- **用途**: PKCE 安全流程的临时令牌
 - **maxAge**: 15 分钟
+
+#### csrfToken
+
+- **用途**: NextAuth 的 CSRF 防护令牌
+- **sameSite**: `lax`
+- **maxAge**: 未设置（会话级别，关闭浏览器即失效）
+
+> `authConfig.ts` 只显式配置了以上三个 Cookie；PKCE 等其余 Cookie 使用 NextAuth 默认值。
+
+### 开发用测试登录
+
+`authConfig.ts` 中有一个 `test` Credentials 提供者，仅当 `NODE_ENV === 'development'` 时才会通过 `authorize`，其他环境一律返回 `null`。它用于在没有配置 OAuth 时本地登录，**不要在生产环境把 `NODE_ENV` 设为 `development`**。
 
 ---
 
@@ -156,6 +163,14 @@ X-Frame-Options: DENY
 Referrer-Policy: strict-origin-when-cross-origin
 ```
 
+### X-XSS-Protection
+
+旧版浏览器的 XSS 过滤器（现代浏览器已忽略，主要防护依赖 CSP）
+
+```
+X-XSS-Protection: 1; mode=block
+```
+
 ### Permissions-Policy
 
 限制危险的浏览器 API 使用
@@ -170,7 +185,6 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 
 ### 部署前检查
 
-- [ ] 所有脚本配置了 SRI 哈希值
 - [ ] HSTS 头部已配置 (max-age ≥ 1 年)
 - [ ] 所有 Cookie 配置了 HttpOnly 和 Secure 标志
 - [ ] HTTPS 在生产环境启用
@@ -180,7 +194,7 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 ### 定期维护
 
 - [ ] 每季度运行安全审计
-- [ ] 脚本更新后重新生成 SRI 哈希值
+- [ ] 新增外部脚本或第三方域名时，同步收紧或更新 CSP（当前仅 `vercel.live` 为外部脚本来源）
 - [ ] 监控 CSP 违规日志
 - [ ] 检查 HSTS 预加载列表状态
 
@@ -188,7 +202,6 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 
 ## 5. 参考资源
 
-- [MDN: Subresource Integrity](https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity)
 - [MDN: HSTS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security)
 - [HSTS Preload](https://hstspreload.org/)
 - [OWASP: Content Security Policy](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html)

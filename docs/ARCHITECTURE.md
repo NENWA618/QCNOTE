@@ -30,10 +30,14 @@ QCNOTE 的架构可分为四个主要层级：
 
 - `storage.ts`：本地存储适配层，负责 IndexedDB/localStorage 读写、加密解密、命名空间隔离、配置与数据迁移。
 - `utils.ts`：搜索解析、全文检索、语义向量搜索、时间格式化等工具函数。
-- `vector.ts` / `basicVector.ts`：基于词频向量的相似度计算，提供语义匹配能力。
+- `embeddings.ts` / `embeddings.worker.ts`：语义搜索。Worker 中通过 `@huggingface/transformers` 运行 `paraphrase-multilingual-MiniLM-L12-v2`，主线程懒加载 Worker，只有用户开启语义搜索才会下载模型。
+- `vector.ts` / `basicVector.ts`：基于词频的 bag-of-words 向量与余弦相似度，作为全文搜索的轻量补充。
+- `aiClient.ts` / `aiSettings.ts`：外部 AI 服务（OpenAI 兼容接口）调用与本地加密配置，请求由浏览器直接发出。
 - `sentiment.ts`：情感分析能力，用于笔记情绪检测与展示。
 - `webdavSyncManager.ts`：WebDAV 同步管理、冲突检测与处理。
-- `api-client*.ts` 及 `server/`：可选后端交互与社区服务实现。
+- `api-client.ts` / `backend-proxy.ts` / `csrfProtection.ts`：前端访问后端的封装、代理与 CSRF 校验。
+- `pushNotification.ts`：Web Push 订阅管理（配合 `public/service-worker.js`）。
+- `clipImport.ts`：解析并校验浏览器扩展通过 URL hash 传来的网页剪藏（zod 校验、大小限制，数据视为不可信）。
 
 ### 2.3 运行时与存储层
 
@@ -43,9 +47,10 @@ QCNOTE 的架构可分为四个主要层级：
 
 ### 2.4 可选后端层
 
-- `server/`：Fastify 服务与附加后端逻辑。
-- PostgreSQL / Redis：用户资料、积分/排行榜、缓存数据的可选后端存储。
-- `NextAuth`：OAuth 登录与 OneDrive 集成。
+- `server/`：独立的 Fastify 服务（有自己的 `package.json`），Next.js 的 `pages/api/*` 通过 `BACKEND_URL` 代理调用它。
+- PostgreSQL / Redis：用户资料、推送订阅、金库密钥、积分/排行榜与缓存数据的后端存储。
+- `NextAuth`：Google / GitHub / Discord OAuth 登录与 OneDrive 集成。
+- `extensions/`：Chrome / Firefox 网页剪藏扩展。扩展把剪藏编码进 `/dashboard#qcnote-clip=...`（URL hash 不发往服务器），仪表盘用 `lib/clipImport.ts` 校验并弹出 `ClipImportDialog`，用户确认后才写入本地存储。
 
 ## 3. 运行时架构（QCRuntime）
 
@@ -113,13 +118,19 @@ QCNOTE 以用户或访客为命名空间隔离存储：
 - 索引字段包括：`title`、`content`、`tags`、`category`。
 - 搜索支持字段限定、布尔运算和通配词。
 
-### 5.2 向量语义搜索
+### 5.2 语义搜索（embedding）
 
-- 基于 `vector.ts` 中的 bag-of-words 向量化实现。
-- 对输入查询与每条笔记计算余弦相似度。
-- 将语义得分与 Lunr 搜索结果合并，补充传统全文检索不足。
+- 由仪表盘上的开关控制（偏好保存在 `localStorage`），默认关闭。
+- 开启后由 `embeddings.worker.ts` 加载 `Xenova/paraphrase-multilingual-MiniLM-L12-v2`，支持中英文等多语言；模型仅在首次使用时下载，下载进度通过 `onEmbeddingProgress` 回传界面。
+- `indexer.ts` 按笔记缓存 embedding（记录 `updatedAt`），仅对新增或改动的笔记重新计算。
+- 查询向量与笔记向量做余弦相似度，把关键词搜索未命中的语义匹配结果追加到列表末尾。
+- 推理完全在本地进行，笔记内容不会发送到任何服务器。CSP 因此需要 `blob:` 与 `wasm-unsafe-eval`（见 `next.config.mjs`）。
 
-### 5.3 搜索解析
+### 5.3 词频向量（轻量补充）
+
+- `vector.ts` 用 bag-of-words 词频向量（支持中文按字切分）计算余弦相似度，随索引一起构建，不依赖模型下载。
+
+### 5.4 搜索解析
 
 - `utils.parseSearchQuery()` 支持 `title:xxx`、`content:xxx`、`tag:xxx` 等字段过滤。
 - 还支持 `AND/OR/NOT` 组合逻辑与日期范围查询。
@@ -148,7 +159,12 @@ QCNOTE 以用户或访客为命名空间隔离存储：
 ### 7.1 主要页面
 
 - `index.tsx`：首页介绍、核心功能卡片、快速上手。
-- `dashboard.tsx`：笔记仪表盘，显示笔记列表、统计与视图切换。
+- `dashboard.tsx`：笔记仪表盘，显示笔记列表、统计、视图切换与语义搜索开关，并接收扩展剪藏（`ClipImportDialog` 确认后保存）。
+- `models.tsx`：AI 模型接入配置（需登录）。
+- `profile.tsx` / `leaderboard.tsx`：个人主页与排行榜。
+- `admin.tsx`：管理后台（需管理员角色）。
+- `signin.tsx`：登录页。
+- `diejie.tsx`：迷宫小游戏，成绩通过 `/api/ugc/maze/submit` 提交并进入排行榜。
 - `privacy.tsx` / `terms.tsx`：法律与隐私说明页面。
 - `contact.tsx`：联系与支持页面。
 
@@ -163,13 +179,22 @@ QCNOTE 以用户或访客为命名空间隔离存储：
 
 ### 8.1 管理与用户服务
 
-- `server/check-admin.ts`：管理员权限检查。
-- `server/` 目录下还包含推荐、认证和数据访问模块。
+- `server/index.ts`：Fastify 路由入口，包含 `/api/ugc/*`（用户资料、积分、排行榜、迷宫）、`/api/admin/*`、`/api/push/*`、`/api/device/*`、`/api/vault/key`、`/api/health` 等。
+- `server/ugc-service.ts`：用户资料、积分、成就与排行榜。
+- `server/recommendation-service.ts`：推荐系统。
+- `server/push-service.ts`：VAPID Web Push 发送与订阅管理（配置见 [VAPID_SETUP.md](VAPID_SETUP.md)）。
+- `server/check-admin.ts` / `set-admin.ts`：管理员权限检查与提升，也可由 `postinstall.js` 通过 `ADMIN_SET_EMAIL` 引导。
+
+### 8.1.1 设备会话与金库密钥
+
+- **设备会话**：`/api/device/verify`、`/api/device/session/create|validate`、`/api/device/reset` 基于设备指纹签发与校验会话令牌，签名密钥为 `DEVICE_SESSION_SECRET`。
+- **金库密钥**：`/api/vault/key` 由服务端使用 `VAULT_MASTER_KEY` 加密保存每个用户的本地加密密钥（KEK），以便在新设备上恢复；生产环境未配置该变量时接口会拒绝服务，不会回退到默认值。这意味着服务端持有可解密 KEK 的能力，属于"服务端托管密钥"而非严格的端到端加密。
 
 ### 8.2 数据库与缓存
 
-- PostgreSQL 用于存储用户账号、个人主页资料和排行榜数据。
-- Redis 用于会话、缓存和临时状态管理。
+- PostgreSQL 用于存储用户账号、个人主页资料、推送订阅（`scripts/001-*.sql`）和用户金库密钥（`scripts/002-*.sql`）。
+- Redis 用于积分、排行榜、会话与缓存。
+- 生产环境缺少 `DATABASE_URL` / `REDIS_URL` 时后端会直接拒绝启动，仅开发环境回退到内存 mock。
 
 ### 8.3 认证与外部集成
 
@@ -178,13 +203,16 @@ QCNOTE 以用户或访客为命名空间隔离存储：
 
 ## 9. 版本与依赖
 
+- Node.js ≥ 20.9（Next.js 16 要求；CI 使用 22）
 - Next.js 16.3.4
 - React 18.3.1
 - TypeScript 5.2.0
 - Tailwind CSS 3.4.1
 - Lunr.js 2.3.9
 - KaTeX 0.18.4
-- Fastify 5.12.3
+- @huggingface/transformers 4.x
+- next-auth 4.x
+- Fastify 5.12.3（`server/`）
 - PostgreSQL / Redis（可选）
 
 ## 10. 设计总结
@@ -225,7 +253,7 @@ IndexedDB Save (storage.ts)
   ↓
 Lunr Index Update (indexer.ts)
   ↓
-Vector Update (vector.ts)
+Vector Update (vector.ts 词频向量；语义 embedding 在开启语义搜索后按需计算)
   ↓
 本地存储完成 ✓
   ↓
@@ -248,6 +276,23 @@ Vector Update (vector.ts)
 返回结果列表
   ↓
 知识图谱可视化 (可选)
+```
+
+### 网页剪藏流程
+
+```
+浏览器扩展（popup.js）
+  ↓ 提取整页 / 选中文本 / 文章正文，正文截断到 100,000 字符
+  ↓ JSON → UTF-8 → base64url
+打开 <应用地址>/dashboard#qcnote-clip=...   （hash 不会发往服务器）
+  ↓
+dashboard.tsx 读取并清除 hash → lib/clipImport.ts 校验（zod）
+  ├─ 无效 / 过大: 提示并忽略
+  └─ 有效: 暂存为 pendingClip
+  ↓ 等待会话就绪（登录用户还需设备验证完成）
+ClipImportDialog 展示标题、来源、预览
+  ├─ 放弃: 丢弃
+  └─ 保存为笔记: NoteStorage.addNoteAsync → 更新索引
 ```
 
 ### 知识图谱构建
@@ -320,9 +365,9 @@ if (cached_hash === hash) {
 const results = lunr_index.search(query);
 ```
 
-### 3. 语义搜索 (vector.ts)
+### 3. 语义搜索 (embeddings.ts)
 
-**向量计算**:
+**当前实现**：Worker 内运行多语言 MiniLM 模型生成 embedding，详见第 5.2 节；下方是词频向量（`vector.ts`）的简化示意：
 
 ```typescript
 // 1. 文本向量化（词频统计）
@@ -457,19 +502,13 @@ export class NewFeature {
 
 ### Docker 部署
 
+仓库中的 `docker-compose.yml` 包含 `app`（前端，3000）、`server`（Fastify，10000，`server/Dockerfile`，构建上下文为仓库根目录，因为 `server/tsconfig.server.json` 继承根 `tsconfig.json`）和 `redis` 三个服务；**不包含 PostgreSQL**，需自行提供并通过 `DATABASE_URL` 注入 `server`。后端也可通过 `render.yaml` 部署到 Render（`rootDirectory: server`）。
+
 ```yaml
-version: '3.8'
 services:
-  web:
-    build: .
-    ports:
-      - '3000:3000'
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_PASSWORD: password
-  redis:
-    image: redis:7
+  app: # build: .        → 前端，BACKEND_URL=http://server:10000
+  server: # build: context . + server/Dockerfile → Fastify 后端
+  redis: # image: redis:7-alpine（开启 AOF 持久化）
 ```
 
 ## 监控和调试
@@ -483,8 +522,8 @@ services:
 
 ### 错误追踪
 
-- Sentry 集成
-- 本地日志管理
+- 统一日志（`lib/logger.ts`），可通过 `LOG_ENDPOINT` 转发到远程
+- `/api/health` 后端健康检查
 - 错误边界捕获
 
 ## 未来改进
@@ -493,5 +532,5 @@ services:
 - [ ] GraphQL API
 - [ ] 端到端加密
 - [ ] 协作编辑
-- [ ] AI 智能助手集成
+- [ ] AI 智能助手深度集成（目前仅支持在 `/models` 配置外部接口并从浏览器直接调用）
 - [ ] 移动应用原生版本

@@ -27,6 +27,8 @@ import {
 } from '../lib/storage';
 import { Utils } from '../lib/utils';
 import Indexer from '../lib/indexer';
+import ClipImportDialog from '../components/ClipImportDialog';
+import { CLIP_HASH_KEY, clipToNote, parseClipFromHash, type ClipPayload } from '../lib/clipImport';
 import { isSemanticSearchAvailable, onEmbeddingProgress } from '../lib/embeddings';
 
 const SEMANTIC_SEARCH_STORAGE_KEY = 'qcnote:semantic-search-enabled';
@@ -85,7 +87,8 @@ const Dashboard: React.FC = () => {
     'idle' | 'pending' | 'verified' | 'failed'
   >('idle');
   const [deviceVerificationMessage, setDeviceVerificationMessage] = useState('');
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const [pendingClip, setPendingClip] = useState<ClipPayload | null>(null);
   const currentUserId = (session?.user as { id?: string } | undefined)?.id ?? null;
 
   const DEVICE_SESSION_TOKEN_KEY = 'qcnote:deviceSessionToken';
@@ -971,6 +974,31 @@ const Dashboard: React.FC = () => {
     return notes.filter((note) => linkTargets.has(note.id));
   }, [editingNote, notes]);
 
+  // 浏览器扩展通过 URL hash 传来的网页剪藏：先读出并清掉 hash（刷新不会重复导入），确认后再保存
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!new URLSearchParams(window.location.hash.slice(1)).has(CLIP_HASH_KEY)) return;
+    const clip = parseClipFromHash(window.location.hash);
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    if (clip) {
+      setPendingClip(clip);
+    } else {
+      alert('剪藏数据无效或过大，已忽略。');
+    }
+  }, []);
+
+  // 登录用户要等设备验证完成、存储切换到该用户的命名空间后再导入，避免写进访客库
+  const clipImportReady =
+    sessionStatus !== 'loading' && (!currentUserId || deviceVerificationStatus === 'verified');
+
+  const handleConfirmClip = async (clip: ClipPayload) => {
+    const s = storageRef.current;
+    if (!s) return;
+    await s.addNoteAsync(clipToNote(clip));
+    await loadNotes();
+    setPendingClip(null);
+  };
+
   const handleNewNote = async () => {
     const s = storageRef.current;
     if (!s) return;
@@ -1474,6 +1502,12 @@ const Dashboard: React.FC = () => {
           </main>
         </div>
       </Layout>
+
+      <ClipImportDialog
+        clip={clipImportReady ? pendingClip : null}
+        onConfirm={handleConfirmClip}
+        onDiscard={() => setPendingClip(null)}
+      />
 
       {/* Note Editor Modal */}
       <NoteEditor

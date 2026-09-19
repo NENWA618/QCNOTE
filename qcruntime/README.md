@@ -62,7 +62,7 @@ await db.close();
 
 - 运行时使用 AES-GCM 对 `secret: true` 字段执行加密。
 - 加密值格式为 `base64(iv) + '.' + base64(ciphertext)`。
-- 密钥由 PBKDF2 从用户提供的 secret 派生。
+- 密钥由 PBKDF2（SHA-256，250,000 次迭代）从用户提供的 secret 派生。
 - 加密密钥可以被 Worker 持久保存，用于自动解密。
 
 ### 2. Worker RPC 架构
@@ -107,7 +107,7 @@ await db.close();
   - `getById()` / `get()` / `find()`：读取记录并解密。
   - `deleteById()` / `delete()` / `clear()`：删除记录。
   - `purgeExpired()`：删除 TTL 过期记录。
-- 使用 `evalWhere()` 执行条件查询。
+- 使用 `evalWhere()` 执行条件查询，支持的运算符：`=`、`!=`、`<`、`<=`、`>`、`>=`、`~=`（字符串包含）、`between`、`in`。
 - 管理 `QCDb` 实例生命周期。
 
 ## 设计细节
@@ -122,7 +122,7 @@ await db.close();
 
 ### TTL 支持
 
-- `QCStoreSchema` 支持 `ttl` 字段。
+- `QCStoreSchema` 支持 `ttl` 字段（如 `"7d"`、`"1h"`、`"30m"`）。
 - 写入时自动添加 `_expires` 元字段。
 - `purgeExpired()` 可定期清理过期记录。
 

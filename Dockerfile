@@ -1,5 +1,5 @@
 # Frontend Dockerfile
-FROM node:18.19.0-alpine3.19 AS frontend
+FROM node:22-alpine AS frontend
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:18.19.0-alpine3.19 AS production
+FROM node:22-alpine AS production
 
 WORKDIR /app
 
@@ -29,12 +29,13 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
 # Install production dependencies only
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+# --ignore-scripts: skip the husky `prepare` hook (husky is a devDependency)
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # Copy built frontend
 COPY --from=frontend --chown=nodejs:nodejs /app/.next ./.next
 COPY --from=frontend --chown=nodejs:nodejs /app/public ./public
-COPY --from=frontend --chown=nodejs:nodejs /app/next.config.js ./
+COPY --from=frontend --chown=nodejs:nodejs /app/next.config.mjs ./
 COPY --from=frontend --chown=nodejs:nodejs /app/server ./server
 
 # Switch to non-root user
@@ -43,9 +44,9 @@ USER nodejs
 # Expose port
 EXPOSE 3000
 
-# Health check
+# Health check (the frontend has no /api/health; that route lives on the Fastify backend)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/api/health || exit 1
+  CMD curl -f http://localhost:3000/ || exit 1
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/usr/sbin/dumb-init", "--"]
