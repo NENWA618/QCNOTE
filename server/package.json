@@ -1,0 +1,39 @@
+{
+  "name": "note-server",
+  "version": "1.0.3",
+  "description": "Backend server for QCNOTE application",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsx --tsconfig tsconfig.server.json index.ts",
+    "dev": "tsx --watch --tsconfig tsconfig.server.json index.ts",
+    "postinstall": "node postinstall.js",
+    "check-admin": "tsx --tsconfig tsconfig.server.json check-admin.ts",
+    "set-admin": "tsx --tsconfig tsconfig.server.json set-admin.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "@fastify/jwt": "^10.2.2",
+    "bull": "^4.16.5",
+    "fastify": "^5.12.3",
+    "next-auth": "^4.24.15",
+    "pg": "^8.11.1",
+    "redis": "^6.2.1",
+    "tsx": "^4.23.13",
+    "uuid": "^14.0.2",
+    "web-push": "^3.6.7"
+  },
+  "overrides": {
+    "bull": {
+      "uuid": "^14.0.1"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "@types/pg": "^8.23.1",
+    "@types/web-push": "^3.6.4"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "msgpackr-extract@3.0.4": true
+  }
+}
