@@ -35,7 +35,7 @@
     "remark-math": "^6.0.0",
     "sentiment": "^5.0.1",
     "uuid": "^14.0.2",
-    "zod": "^4.6.2"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
