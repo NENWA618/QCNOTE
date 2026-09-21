@@ -61,7 +61,7 @@
     "jsdom": "^30.0.1",
     "lint-staged": "^17.4.1",
     "postcss": "^8.5.28",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.8",
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.13",
