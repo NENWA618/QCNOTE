@@ -48,7 +48,7 @@ const Dashboard: React.FC = () => {
     totalTags: 0,
     createdToday: 0,
   });
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [viewingTrash, setViewingTrash] = useState(false);
   const [trashNotes, setTrashNotes] = useState<NoteItem[]>([]);
   const [conflicts, setConflicts] = useState<NoteConflict[]>([]);

@@ -40,9 +40,7 @@ const Sidebar: React.FC<Props> = ({
   const [statsOpen, setStatsOpen] = useState(true);
 
   return (
-    <aside
-      className={`w-full md:w-72 flex-shrink-0 transition-all ${isOpen ? 'block' : 'hidden md:block'}`}
-    >
+    <aside className={`w-full md:w-72 flex-shrink-0 transition-all ${isOpen ? 'block' : 'hidden'}`}>
       <div className="bg-white/90 dark:bg-dark-surface/95 border border-gray-200/80 dark:border-dark-border rounded-3xl shadow-light overflow-hidden">
         <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200/70 dark:border-dark-border">
           <h2 className="text-lg font-semibold text-primary-dark">笔记管理</h2>
