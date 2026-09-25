@@ -53,7 +53,7 @@ const Dashboard: React.FC = () => {
   const [trashNotes, setTrashNotes] = useState<NoteItem[]>([]);
   const [conflicts, setConflicts] = useState<NoteConflict[]>([]);
   const [viewMode, setViewMode] = useState<
-    'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts' | 'tags'
+    'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts' | 'tags' | 'cloud'
   >('list');
   const [webdavConfig, setWebdavConfig] = useState({
     url: '',
@@ -1426,6 +1426,14 @@ const Dashboard: React.FC = () => {
                       🏷️ 标签管理
                     </button>
                     <button
+                      onClick={() => setViewMode('cloud')}
+                      className={`btn-secondary btn-sm flex items-center gap-1 ${
+                        viewMode === 'cloud' ? 'bg-blue-100 text-blue-600' : ''
+                      }`}
+                    >
+                      ☁️ 云端同步
+                    </button>
+                    <button
                       onClick={handleNewNote}
                       className="btn-primary btn-sm flex items-center gap-1"
                     >
@@ -1474,7 +1482,7 @@ const Dashboard: React.FC = () => {
               />
             ) : viewMode === 'conflicts' ? (
               <Conflicts conflicts={conflicts} onResolve={handleResolveConflict} />
-            ) : (
+            ) : viewMode === 'cloud' ? (
               <div className="space-y-4">
                 <WebDAVSync
                   config={webdavConfig}
@@ -1492,6 +1500,9 @@ const Dashboard: React.FC = () => {
                   onSaveConfig={handleSaveOneDriveConfig}
                   onClearConfig={handleClearOneDriveConfig}
                 />
+              </div>
+            ) : (
+              <div className="space-y-4">
                 <NoteList
                   notes={filteredNotes}
                   onEdit={handleEditNote}
