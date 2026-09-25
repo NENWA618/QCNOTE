@@ -1316,7 +1316,7 @@ const Dashboard: React.FC = () => {
       </Head>
 
       <Layout>
-        <div className="flex min-h-[calc(100vh-14rem)] lg:min-h-[calc(100vh-16rem)] gap-6">
+        <div className="flex flex-col md:flex-row min-h-[calc(100vh-14rem)] lg:min-h-[calc(100vh-16rem)] gap-6">
           {deviceVerificationStatus !== 'idle' && (
             <div className="fixed top-24 left-1/2 z-20 w-[min(96vw,800px)] -translate-x-1/2 rounded-lg border px-4 py-3 shadow-lg transition-all duration-300 sm:top-28">
               <div
@@ -1362,7 +1362,7 @@ const Dashboard: React.FC = () => {
           />
 
           {/* Main Content */}
-          <main className="flex-1 p-6">
+          <main className="flex-1 min-w-0 p-4 md:p-6">
             {/* Header Controls */}
             <div className="flex flex-col md:flex-row justify-start items-start md:items-center gap-4 mb-6">
               {/* Actions */}
