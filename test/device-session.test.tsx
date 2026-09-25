@@ -47,8 +47,8 @@ vi.mock('../components/Layout', () => ({ default: () => <div data-testid="layout
 vi.mock('../components/Sidebar', () => ({ default: () => <div data-testid="sidebar" /> }));
 vi.mock('../components/NoteList', () => ({ default: () => <div data-testid="note-list" /> }));
 vi.mock('../components/NoteEditor', () => ({ default: () => <div data-testid="note-editor" /> }));
-vi.mock('../components/ImportExport', () => ({
-  default: () => <div data-testid="import-export" />,
+vi.mock('../components/DashboardToolbar', () => ({
+  default: () => <div data-testid="dashboard-toolbar" />,
 }));
 vi.mock('../components/Trash', () => ({ Trash: () => <div data-testid="trash" /> }));
 vi.mock('../components/Calendar', () => ({ Calendar: () => <div data-testid="calendar" /> }));

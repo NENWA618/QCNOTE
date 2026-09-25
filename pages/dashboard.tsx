@@ -5,7 +5,7 @@ import Layout from '../components/Layout';
 import Sidebar from '../components/Sidebar';
 import NoteList from '../components/NoteList';
 import NoteEditor from '../components/NoteEditor';
-import ImportExport from '../components/ImportExport';
+import DashboardToolbar from '../components/DashboardToolbar';
 import { Trash } from '../components/Trash';
 import { Calendar } from '../components/Calendar';
 import { Timeline } from '../components/Timeline';
@@ -1085,7 +1085,8 @@ const Dashboard: React.FC = () => {
   const handleClearAll = async () => {
     const s = storageRef.current;
     if (!s) return;
-    if (confirm('确定要删除所有笔记吗？此操作无法撤销。')) {
+    const typed = prompt('此操作将删除所有笔记且无法撤销。请输入“清空”以确认：');
+    if (typed?.trim() === '清空') {
       await s.clearAllAsync();
       await loadNotes();
     }
@@ -1364,96 +1365,23 @@ const Dashboard: React.FC = () => {
           {/* Main Content */}
           <main className="flex-1 min-w-0 p-4 md:p-6">
             {/* Header Controls */}
-            <div className="flex flex-col md:flex-row justify-start items-start md:items-center gap-4 mb-6">
-              {/* Actions */}
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => setViewingTrash(!viewingTrash)}
-                  className="btn-secondary btn-sm flex items-center gap-1"
-                >
-                  {viewingTrash
-                    ? '返回'
-                    : `🗑️ 回收站 ${trashNotes.length > 0 ? `(${trashNotes.length})` : ''}`}
-                </button>
-                {!viewingTrash && (
-                  <>
-                    <button
-                      onClick={() => setViewMode('list')}
-                      className={`btn-secondary btn-sm flex items-center gap-1 ${
-                        viewMode === 'list' ? 'bg-blue-100 text-blue-600' : ''
-                      }`}
-                    >
-                      📝 列表
-                    </button>
-                    <button
-                      onClick={() => setViewMode('calendar')}
-                      className={`btn-secondary btn-sm flex items-center gap-1 ${
-                        viewMode === 'calendar' ? 'bg-blue-100 text-blue-600' : ''
-                      }`}
-                    >
-                      📅 日历
-                    </button>
-                    <button
-                      onClick={() => setViewMode('timeline')}
-                      className={`btn-secondary btn-sm flex items-center gap-1 ${
-                        viewMode === 'timeline' ? 'bg-blue-100 text-blue-600' : ''
-                      }`}
-                    >
-                      📊 时间线
-                    </button>
-                    <button
-                      onClick={() => setViewMode('graph')}
-                      className={`btn-secondary btn-sm flex items-center gap-1 ${
-                        viewMode === 'graph' ? 'bg-blue-100 text-blue-600' : ''
-                      }`}
-                    >
-                      🧠 图谱
-                    </button>
-                    <button
-                      onClick={() => setViewMode('conflicts')}
-                      className={`btn-secondary btn-sm flex items-center gap-1 ${
-                        viewMode === 'conflicts' ? 'bg-yellow-100 text-yellow-600' : ''
-                      }`}
-                    >
-                      ⚠️ 冲突 {conflicts.length > 0 ? `(${conflicts.length})` : ''}
-                    </button>
-                    <button
-                      onClick={() => setViewMode('tags')}
-                      className={`btn-secondary btn-sm flex items-center gap-1 ${
-                        viewMode === 'tags' ? 'bg-purple-100 text-purple-600' : ''
-                      }`}
-                    >
-                      🏷️ 标签管理
-                    </button>
-                    <button
-                      onClick={() => setViewMode('cloud')}
-                      className={`btn-secondary btn-sm flex items-center gap-1 ${
-                        viewMode === 'cloud' ? 'bg-blue-100 text-blue-600' : ''
-                      }`}
-                    >
-                      ☁️ 云端同步
-                    </button>
-                    <button
-                      onClick={handleNewNote}
-                      className="btn-primary btn-sm flex items-center gap-1"
-                    >
-                      ➕ 新建笔记
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Stats */}
-
-            {/* Import/Export */}
-            {!viewingTrash && viewMode === 'list' && (
-              <ImportExport
+            <div className="mb-6">
+              <DashboardToolbar
+                viewMode={viewMode}
+                viewingTrash={viewingTrash}
+                trashCount={trashNotes.length}
+                conflictCount={conflicts.length}
+                onSelectView={(view) => {
+                  setViewingTrash(false);
+                  setViewMode(view);
+                }}
+                onToggleTrash={() => setViewingTrash(!viewingTrash)}
+                onNewNote={handleNewNote}
                 onExport={handleExport}
                 onImport={handleImport}
                 onClearAll={handleClearAll}
               />
-            )}
+            </div>
 
             {/* View Content */}
             {viewingTrash ? (

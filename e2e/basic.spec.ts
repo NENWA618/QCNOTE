@@ -72,7 +72,8 @@ test.describe('Dashboard', () => {
 
   test('should open the trash view', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.getByRole('button', { name: /回收站/ }).click();
+    await page.getByRole('button', { name: '更多' }).click();
+    await page.getByRole('menuitem', { name: /回收站/ }).click();
     await expect(page.getByText('回收站是空的')).toBeVisible();
   });
 
