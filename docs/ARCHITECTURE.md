@@ -234,7 +234,8 @@ function cosineSimilarity(v1: number[], v2: number[]): number {
 
 - `NoteEditor.tsx`：Markdown 编辑与实时预览、KaTeX 数学公式渲染、双链创建与管理、版本历史记录、块级编辑、情感分析、自动保存。编辑流程为 `编辑器输入 → useState → 保存到 IndexedDB → 更新搜索索引 → UI 更新`。
 - `KnowledgeGraph.tsx`：知识网络可视化组件，见 7.4 节。
-- `NoteList.tsx`：动态笔记列表及标签过滤。
+- `DashboardToolbar.tsx`：仪表盘顶部工具栏。主区域是视图切换（列表 / 日历 / 时间线 / 图谱）和"新建笔记"；回收站、冲突、标签管理、云端同步、导入 / 导出、清空所有笔记收在"更多"菜单里（清空需输入"清空"二次确认）。取代了原来的 `ImportExport.tsx`。
+- `NoteList.tsx`：动态笔记列表及标签过滤，卡片网格等高对齐，标题、标签和元信息超长时截断。
 - `WebDAVSync.tsx` / `OneDriveSync.tsx`：同步设置与控制面板。
 
 ### 7.3 网页剪藏流程

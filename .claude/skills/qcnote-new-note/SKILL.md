@@ -30,7 +30,7 @@ If the user gave none of these, ask once for title and content; otherwise use th
 
 Use `find` with plain descriptions:
 
-- "新建笔记 button" (toolbar, next to 标签管理): opens an empty 编辑笔记 dialog
+- "新建笔记 button" (toolbar, rightmost; shows as 新建 on narrow screens): opens an empty 编辑笔记 dialog. 标签管理, 云端同步, 回收站, 导入/导出 now live in the **⋯ 更多** menu, not on the toolbar
 - "note card titled <Title>": clicking the card heading opens that note in the 编辑笔记 dialog, in edit mode
 - "note content textarea in edit dialog", "保存 button", "取消 button", "分类 select"
 
@@ -58,7 +58,7 @@ Start appended content with `\n---\n\n# <heading>` so it is clearly separated. T
 
 ## Verify
 
-1. `find` the card again: its date should now be today. For a new note, the 统计信息 → 总笔记 count also goes up by one.
+1. `find` the card again: its date should now be today. For a new note, the sidebar's 统计信息 → 总笔记 count also goes up by one (the sidebar may be collapsed on narrow screens; skip this check there and rely on the card).
 2. Reopen the card and check with JS: `textarea.value.length` matches the new length, the original opening text is still there, and the last section is present. Optionally click **预览** to confirm the Markdown renders.
 3. Close the dialog with **取消**. You already saved, so this discards nothing.
 4. The 历史 button keeps earlier versions, so the user can roll back.
@@ -69,6 +69,6 @@ One or two lines: which note, what was added, confirmation that the original con
 
 ## Never
 
-- Click 清空所有, 删除, or 回收站 → empty
-- Touch the WebDAV / OneDrive sync settings or enter credentials there
+- Click 更多 → 清空所有笔记… (it prompts for typing 清空; never type it), 删除, or 更多 → 回收站 → empty
+- Touch 更多 → 云端同步 or the WebDAV / OneDrive sync settings, or enter credentials there
 - Replace existing note content unless the user asked for it
