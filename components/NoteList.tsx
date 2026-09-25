@@ -38,78 +38,72 @@ const NoteList: React.FC<NoteListProps> = ({ notes, onEdit, onTagClick }) => {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-stretch">
       {notes.map((note, index) => (
         <div
           key={note.id}
-          className={`card group cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] animate-fade-in-up ${
+          className={`card group flex flex-col min-w-0 cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] animate-fade-in-up ${
             note.isArchived ? 'opacity-60' : ''
           }`}
           style={{ animationDelay: `${index * 0.1}s` }}
           onClick={() => onEdit(note)}
         >
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-primary-dark group-hover:text-accent-pink transition-colors truncate">
-                {note.title || '无标题'}
-              </h3>
-              <div className="flex gap-2 items-center mt-2 text-xs text-gray-500 dark:text-dark-text-secondary">
-                <span>{formatDate(note.updatedAt)}</span>
-                {note.category && (
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs ${getCategoryColor(note.category)}`}
-                  >
-                    {note.category}
-                  </span>
-                )}
-                {note.sentimentCategory && (
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs ${
-                      note.sentimentCategory === 'positive'
-                        ? 'bg-green-100 text-green-800'
-                        : note.sentimentCategory === 'negative'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    {note.sentimentCategory === 'positive'
-                      ? '正面'
+          <div className="min-w-0 mb-3">
+            <h3 className="text-lg font-semibold text-primary-dark group-hover:text-accent-pink transition-colors truncate">
+              {note.title || '无标题'}
+            </h3>
+            <div className="flex gap-2 items-center mt-2 text-xs text-gray-500 dark:text-dark-text-secondary whitespace-nowrap overflow-hidden">
+              <span>{formatDate(note.updatedAt)}</span>
+              {note.category && (
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${getCategoryColor(note.category)}`}
+                >
+                  {note.category}
+                </span>
+              )}
+              {note.sentimentCategory && (
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    note.sentimentCategory === 'positive'
+                      ? 'bg-green-100 text-green-800'
                       : note.sentimentCategory === 'negative'
-                        ? '低落'
-                        : '平静'}
-                  </span>
-                )}
-              </div>
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                  }`}
+                >
+                  {note.sentimentCategory === 'positive'
+                    ? '正面'
+                    : note.sentimentCategory === 'negative'
+                      ? '低落'
+                      : '平静'}
+                </span>
+              )}
             </div>
           </div>
 
-          <p className="text-sm text-gray-600 line-clamp-2 mb-3 leading-relaxed">
-            {note.content.replace(/[#*`]/g, '').substring(0, 100)}...
+          <p className="text-sm text-gray-600 dark:text-dark-text-secondary line-clamp-2 mb-3 leading-relaxed min-h-[2.75rem]">
+            {note.content.replace(/[#*`>]/g, '').trim()}
           </p>
 
-          <div className="flex items-center justify-between">
-            <div className="flex gap-1">
-              {note.tags.length > 0 && (
-                <div className="flex gap-1 flex-wrap">
-                  {note.tags.slice(0, 2).map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-1 bg-accent-purple bg-opacity-10 text-accent-purple text-xs rounded-full hover:bg-opacity-20 transition-colors cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTagClick(tag);
-                      }}
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                  {note.tags.length > 2 && (
-                    <span className="text-xs text-gray-400">+{note.tags.length - 2}</span>
-                  )}
-                </div>
+          <div className="mt-auto flex items-center justify-between gap-2 min-h-[1.75rem]">
+            <div className="flex gap-1 min-w-0 overflow-hidden">
+              {note.tags.slice(0, 2).map((tag) => (
+                <span
+                  key={tag}
+                  className="px-2 py-1 bg-accent-purple bg-opacity-10 text-accent-purple text-xs rounded-full hover:bg-opacity-20 transition-colors cursor-pointer whitespace-nowrap max-w-[7rem] truncate"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTagClick(tag);
+                  }}
+                >
+                  #{tag}
+                </span>
+              ))}
+              {note.tags.length > 2 && (
+                <span className="text-xs text-gray-400 self-center">+{note.tags.length - 2}</span>
               )}
             </div>
-            <div className="flex gap-2 text-xs text-gray-400">
+            <div className="flex gap-2 text-xs text-gray-400 whitespace-nowrap shrink-0">
               <span>链接 {note.links?.length || 0}</span>
               <span>被引用 {note.backlinks?.length || 0}</span>
             </div>
