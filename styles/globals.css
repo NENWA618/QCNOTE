@@ -1,0 +1,761 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Browser compatibility: Fallback for older browsers that don't support CSS variables */
+@supports not (--test: 0) {
+  :root {
+    --shadow-1: 0 1px 2px rgba(154, 52, 107, 0.10);
+    --shadow-2: 0 2px 6px rgba(154, 52, 107, 0.12), 0 1px 2px rgba(154, 52, 107, 0.08);
+  }
+}
+
+:root {
+  /* Elevation scale — every "raised" surface picks one of these instead of
+     inventing its own box-shadow. Warm pink-tinted shadows keep depth
+     consistent with the accent palette instead of reading as generic grey. */
+  --shadow-1: 0 1px 2px rgba(154, 52, 107, 0.10);
+  --shadow-2: 0 2px 6px rgba(154, 52, 107, 0.12), 0 1px 2px rgba(154, 52, 107, 0.08);
+  --shadow-3: 0 6px 16px rgba(154, 52, 107, 0.16), 0 2px 6px rgba(154, 52, 107, 0.10);
+  --shadow-4: 0 16px 32px rgba(154, 52, 107, 0.20), 0 6px 12px rgba(154, 52, 107, 0.12);
+  --shadow-press: inset 0 2px 4px rgba(154, 52, 107, 0.18);
+
+  /* Glass tokens — reserved for chrome/structure (header, side panels,
+     modal scrim, floating chat bubble), never for dense text content.
+     Frosted enough to show the gradient behind it; bordered so the edge
+     still reads as an object, not just a blur filter. */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.65);
+  --glass-blur: 6px; /* 半径越大，软件渲染环境下重绘开销越高；6px 视觉差异很小 */
+
+  /* Radius scale — pick one instead of mixing rounded-lg/xl/2xl/[2rem] ad hoc */
+  --radius-sm: 0.5rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-pill: 999px;
+}
+
+@layer components {
+  /* Button components */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all transform-gpu hover:-translate-y-0.5 active:translate-y-0 cursor-pointer border border-transparent min-h-[2.75rem];
+    box-shadow: var(--shadow-2);
+  }
+
+  .btn:hover {
+    box-shadow: var(--shadow-3);
+  }
+
+  .btn:active {
+    box-shadow: var(--shadow-press);
+  }
+
+  @screen md {
+    .btn {
+      @apply py-2;
+    }
+  }
+
+  .btn-sm {
+    @apply px-3 py-2 text-xs rounded-full min-h-[2.25rem] min-w-[2.5rem] transition-all hover:scale-105;
+    box-shadow: var(--shadow-1);
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-accent-pink to-accent-purple text-white border-transparent hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-primary-dark border border-primary-dark/20 hover:bg-primary-light hover:text-primary-dark;
+  }
+
+  .btn-danger {
+    @apply bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700;
+  }
+
+  .btn-success {
+    @apply bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-primary-dark border border-primary-dark/20 hover:bg-primary-light;
+  }
+
+  .btn-icon {
+    @apply w-10 h-10 rounded-full bg-transparent border-0 cursor-pointer text-xl transition-all flex items-center justify-center hover:bg-primary-light hover:scale-110;
+  }
+
+  .btn-icon.delete-btn:hover {
+    @apply bg-pink-100;
+  }
+
+  /* Card component */
+  .card {
+    @apply bg-white bg-opacity-95 rounded-2xl p-6 transition-all border border-white border-opacity-60 hover:-translate-y-2 transform-gpu relative overflow-hidden;
+    box-shadow: var(--shadow-3);
+  }
+
+  .card:hover {
+    box-shadow: var(--shadow-4);
+  }
+
+  .card::before {
+    @apply absolute inset-0 bg-gradient-to-br from-transparent via-primary-light to-accent-purple opacity-5 pointer-events-none;
+  }
+
+  /* Faint 1px rim light along the top edge — the thing that reads as
+     "physical card catching light" instead of a flat rectangle. */
+  .card::after {
+    content: '';
+    @apply absolute inset-x-0 top-0 h-px pointer-events-none;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+  }
+
+  /* Note card — treated as a sheet of paper resting on the stack below it,
+     so its depth is a touch shallower than the elevated .card surfaces. */
+  .note-card {
+    @apply bg-white bg-opacity-97 rounded-lg p-5 mb-4 transition-all cursor-pointer border-l-4 border-accent-pink relative overflow-hidden hover:-translate-y-1.5 transform-gpu min-h-[5rem];
+    box-shadow: var(--shadow-2);
+  }
+
+  .note-card:hover {
+    box-shadow: var(--shadow-3);
+  }
+
+  .note-card::before {
+    @apply absolute inset-0 bg-gradient-to-br from-transparent to-primary-light pointer-events-none opacity-10;
+  }
+
+  /* Modal components */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+  }
+
+  .modal-content {
+    @apply bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden;
+    box-shadow: var(--shadow-4);
+  }
+
+  .modal-header {
+    @apply px-6 py-4 border-b border-gray-200 flex items-center justify-between;
+  }
+
+  .modal-body {
+    @apply p-6 overflow-y-auto max-h-[70vh];
+  }
+
+  /* Form components */
+  .form-input {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-pink focus:border-transparent transition-all;
+  }
+
+  .form-textarea {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-pink focus:border-transparent transition-all resize-none;
+  }
+
+  /* Stats components */
+  .stat-card {
+    @apply bg-gradient-to-br from-accent-pink to-accent-purple text-white rounded-xl p-6 text-center hover:-translate-y-1 transition-all;
+    box-shadow: var(--shadow-3);
+  }
+
+  .stat-number {
+    @apply text-3xl font-bold mb-2;
+  }
+
+  .stat-label {
+    @apply text-sm opacity-90;
+  }
+
+  /* Grid layouts */
+  .note-grid {
+    @apply grid gap-4 grid-cols-1;
+  }
+
+  @screen sm {
+    .note-grid {
+      @apply grid-cols-2;
+    }
+  }
+
+  @screen md {
+    .note-grid {
+      @apply grid-cols-3;
+    }
+  }
+
+  @screen lg {
+    .note-grid {
+      @apply grid-cols-4;
+    }
+  }
+
+  /* Animation utilities */
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Loading states */
+  .loading-spinner {
+    @apply inline-block w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin;
+  }
+
+  /* Utility classes */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgb(203 213 225);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(148 163 184);
+  }
+
+  .note-title {
+    @apply text-lg text-primary-dark m-0 flex-1 break-words;
+  }
+
+  .favorite-btn {
+    @apply bg-none border-0 cursor-pointer text-2xl transition-transform hover:scale-125 flex-shrink-0 w-10 h-10 flex items-center justify-center;
+  }
+
+  .favorite-btn.active {
+    @apply animate-heart-beat;
+  }
+
+  .note-preview {
+    @apply text-text-light mb-2 text-sm leading-relaxed;
+  }
+
+  .note-meta {
+    @apply flex gap-4 mb-2 text-xs flex-wrap;
+  }
+
+  .category-badge {
+    @apply bg-gradient-to-r from-primary-light to-primary-medium text-primary-dark px-3 py-0.5 rounded-full font-medium;
+  }
+
+  .note-date {
+    @apply text-text-light text-xs;
+  }
+
+  .note-tags {
+    @apply flex gap-1 flex-wrap mb-2;
+  }
+
+  .tag {
+    @apply bg-pink-100 text-accent-pink px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .note-actions {
+    @apply flex gap-1 opacity-0 transition-opacity;
+  }
+
+  .note-card:hover .note-actions {
+    @apply opacity-100;
+  }
+
+  /* Input and form elements */
+  .input {
+    @apply w-full px-4 py-3 border-2 border-primary-light rounded-lg text-base text-primary-dark bg-white/50 transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light min-h-[2.75rem];
+  }
+
+  textarea.input {
+    @apply w-full px-4 py-3 border-2 border-primary-light rounded-lg text-base text-primary-dark bg-white/50 transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light resize-y;
+    min-height: 10rem;
+    font-family: monospace;
+  }
+
+  .select {
+    @apply w-full px-4 py-3 border-2 border-primary-light rounded-lg bg-white/50 text-primary-dark cursor-pointer transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light min-h-[2.75rem];
+  }
+
+  .search-box {
+    @apply w-full px-4 py-3 border-2 border-primary-light rounded-full text-base bg-white/50 transition-all focus:outline-none focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light min-h-[2.75rem];
+  }
+
+  /* Sidebar */
+  .sidebar-title {
+    @apply font-bold text-primary-dark mb-4 text-sm uppercase tracking-wider;
+  }
+
+  .app-shell {
+    @apply min-h-screen bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-dark-bg text-primary-dark dark:text-dark-text;
+  }
+
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+
+  .panel {
+    @apply transition-all rounded-lg;
+    /* Fallback for browsers that don't support backdrop-filter */
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    /* Modern browsers with backdrop-filter */
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+  }
+
+  .panel-strong {
+    @apply transition-all rounded-lg;
+    /* Fallback for browsers that don't support backdrop-filter */
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(200, 184, 200, 0.3);
+    /* Modern browsers with backdrop-filter */
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-3);
+  }
+
+  .hero-panel {
+    @apply panel overflow-hidden;
+  }
+
+  .footer-panel {
+    @apply bg-primary-dark/95 text-white;
+  }
+
+  .footer-section-title {
+    @apply text-white mb-4 text-lg font-semibold;
+  }
+
+  .section-heading {
+    @apply text-primary-dark dark:text-white text-3xl md:text-4xl font-bold tracking-tight mb-6;
+  }
+
+  .section-subtitle {
+    @apply text-text-light dark:text-dark-text-secondary max-w-2xl mx-auto leading-relaxed;
+  }
+
+  .feature-card {
+    @apply card overflow-hidden;
+  }
+
+  /* Stats */
+  .stat-item {
+    @apply bg-white/90 p-6 rounded-lg text-center transition-all hover:-translate-y-1;
+    box-shadow: var(--shadow-2);
+  }
+
+  .stat-item:hover {
+    box-shadow: var(--shadow-3);
+  }
+
+  .stat-value {
+    @apply block text-4xl font-bold text-accent-pink mb-1;
+  }
+
+  /* Scoped to .stat-item so this doesn't silently overwrite the
+     .stat-card .stat-label rule defined above (they used to share one
+     global .stat-label class with two different, conflicting styles). */
+  .stat-item .stat-label {
+    @apply block text-xs text-text-light uppercase tracking-wider;
+  }
+
+  /* Empty state */
+  .empty-state {
+    @apply text-center py-16 px-8 text-text-light;
+  }
+
+  .empty-state p:first-child {
+    @apply text-2xl font-semibold text-primary-dark mb-2;
+  }
+
+  /* Notification */
+  .notification {
+    @apply fixed left-1/2 -translate-x-1/2 bg-gradient-to-r from-accent-pink to-accent-purple text-white px-8 py-4 rounded-full transition-all font-medium;
+    box-shadow: var(--shadow-4);
+    bottom: -128px;
+    z-index: 50;
+  }
+
+  .notification.show {
+    @apply bottom-8;
+  }
+
+  /* ============================================================
+     Dark-mode overrides for the component classes above.
+     These MUST live in @layer components, not @layer base — Tailwind's
+     cascade layers rank purely by layer order (base < components <
+     utilities), so a rule in @layer base loses to a same-named class in
+     @layer components regardless of the "html.dark" selector being more
+     specific. That was the actual bug behind the white modal / unreadable
+     form fields in dark mode: these rules were previously declared inside
+     @layer base and were silently never winning.
+     ============================================================ */
+
+  /* Cards in dark mode */
+  html.dark .card {
+    @apply bg-dark-surface bg-opacity-90 border-dark-border text-dark-text;
+  }
+
+  html.dark .note-card {
+    @apply bg-dark-surface text-dark-text border-l-accent-pink shadow-none;
+  }
+
+  html.dark .note-card::before {
+    @apply bg-gradient-to-br from-transparent to-dark-surface-light pointer-events-none opacity-10;
+  }
+
+  /* Buttons in dark mode */
+  html.dark .btn-icon {
+    @apply hover:bg-dark-surface-light;
+  }
+
+  html.dark .btn-secondary {
+    @apply bg-dark-surface text-accent-pink border-2 border-accent-pink;
+  }
+
+  /* Forms in dark mode */
+  html.dark .input,
+  html.dark textarea.input,
+  html.dark .select,
+  html.dark .search-box {
+    @apply bg-dark-surface-light border-dark-border text-dark-text focus:ring-accent-pink/30;
+  }
+
+  /* Placeholder text was inheriting the light-mode grey, which reads as
+     near-invisible on a dark input (this is what made the WebDAV / OneDrive
+     fields look empty-and-broken in the screenshot). */
+  html.dark .input::placeholder,
+  html.dark textarea.input::placeholder,
+  html.dark .search-box::placeholder {
+    color: rgba(226, 214, 224, 0.45);
+  }
+
+  /* Native checkboxes (e.g. "启用自动同步") have no dark styling by default
+     and render as a near-black box on a dark background — effectively
+     invisible. accent-color themes the native control consistently. */
+  html.dark input[type='checkbox'],
+  html.dark input[type='radio'] {
+    accent-color: theme('colors.accent-pink', #e879a5);
+  }
+
+  /* Modal in dark mode */
+  html.dark .modal-overlay {
+    @apply bg-black/75;
+  }
+
+  html.dark .modal-content {
+    @apply bg-dark-surface border border-dark-border;
+  }
+
+  html.dark .modal-header {
+    @apply border-dark-border text-dark-text;
+  }
+
+  html.dark .modal-body {
+    @apply text-dark-text;
+  }
+
+  /* Stats in dark mode */
+  html.dark .stat-item {
+    @apply bg-dark-surface text-dark-text;
+  }
+
+  /* Category badge in dark mode */
+  html.dark .category-badge {
+    @apply bg-dark-surface-light text-accent-pink;
+  }
+
+  /* Tags in dark mode */
+  html.dark .tag {
+    @apply bg-dark-surface text-accent-pink border border-dark-border;
+  }
+
+  /* Forms input focus in dark mode */
+  html.dark .input:focus,
+  html.dark textarea.input:focus,
+  html.dark .select:focus,
+  html.dark .search-box:focus {
+    @apply bg-dark-surface;
+  }
+
+  /* Scrollbar in dark mode */
+  html.dark .scrollbar-thin {
+    scrollbar-color: rgb(64 64 64) transparent;
+  }
+
+  html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgb(64 64 64);
+  }
+
+  html.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(100 100 100);
+  }
+}
+
+/* Smooth scroll behavior */
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-gradient-to-br from-primary-light via-primary-medium to-purple-200 text-primary-dark;
+  }
+
+  /* Dark mode */
+  html.dark {
+    color-scheme: dark;
+    /* Pink-tinted shadows read as "invisible" against a dark surface —
+       swap to black depth plus a faint accent glow instead. */
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(232, 121, 165, 0.06);
+    --shadow-3: 0 8px 20px rgba(0, 0, 0, 0.55), 0 0 24px rgba(232, 121, 165, 0.08);
+    --shadow-4: 0 20px 40px rgba(0, 0, 0, 0.65), 0 0 32px rgba(232, 121, 165, 0.10);
+    --shadow-press: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    --glass-bg: rgba(30, 24, 34, 0.45);
+    --glass-bg-strong: rgba(30, 24, 34, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.10);
+  }
+
+  html.dark body {
+    @apply bg-gradient-to-br from-dark-bg via-dark-surface to-dark-surface-light text-dark-text;
+  }
+
+  html.dark header {
+    @apply bg-dark-surface/75 border-dark-border;
+  }
+
+  html.dark footer {
+    @apply bg-gradient-to-r from-dark-surface-light to-dark-surface;
+  }
+
+
+  header {
+    @apply sticky top-0;
+    /* Fallback for browsers that don't support backdrop-filter */
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid rgba(200, 184, 200, 0.3);
+    /* Modern browsers with backdrop-filter */
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-2);
+    z-index: 50;
+  }
+
+  footer {
+    @apply bg-gradient-to-r from-primary-dark to-primary-medium text-white text-center py-12 px-8 mt-16 rounded-t-3xl;
+  }
+
+  footer a {
+    @apply text-primary-light no-underline transition-all hover:text-white;
+  }
+
+  footer hr {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    margin: 2rem 0;
+  }
+}
+
+/* character component styles */
+.character-container {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  width: 180px;
+  height: 300px;
+  cursor: pointer;
+  z-index: 1000;
+  overflow: hidden;
+  border-radius: 8px;
+  background-color: transparent;
+}
+.character-container .character-chat {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 0.5rem;
+  width: 18rem;
+  font-family: inherit;
+  animation: slideIn 0.3s ease-out;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  /* Fallback for browsers that don't support backdrop-filter */
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(200, 184, 200, 0.5);
+  /* Modern browsers with backdrop-filter */
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-3);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.character-chat .input {
+  font-size: 0.875rem;
+}
+
+.character-chat .input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+/* custom scrollbar */
+.character-chat::-webkit-scrollbar {
+  width: 6px;
+}
+.character-chat::-webkit-scrollbar-track {
+  background: transparent;
+}
+.character-chat::-webkit-scrollbar-thumb {
+  background-color: rgba(220,150,180,0.6);
+  border-radius: 3px;
+}
+
+.character-svg {
+  width: 100%;
+  height: auto;
+  transition: transform 0.3s ease;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+}
+
+/* blinking */
+@keyframes blink {
+  0%, 20%, 40%, 60%, 80%, 100% { transform: scaleY(1); }
+  10%, 30%, 50%, 70%, 90% { transform: scaleY(0.1); }
+}
+.character-svg.idle .eyes {
+  animation: blink 4s infinite;
+}
+
+/* talking: mouth movement */
+@keyframes mouthMove {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.3); }
+}
+.character-svg.talking .mouth {
+  transform-origin: 60px 96px;
+  animation: mouthMove 0.3s infinite;
+}
+
+/* happy jump */
+.character-svg.happy {
+  animation: happyJump 0.5s infinite;
+}
+@keyframes happyJump {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* thinking tilt */
+.character-svg.thinking {
+  transform: rotate(-5deg);
+  animation: thinkingPulse 2s ease-in-out infinite;
+}
+
+@keyframes thinkingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+/* playful wink */
+.character-svg.playful .eye-left {
+  animation: wink 1.5s infinite;
+}
+@keyframes wink {
+  0%, 20%, 100% { transform: scaleY(1); }
+  10% { transform: scaleY(0.1); }
+}
+
+/* sad droop */
+.character-svg.sad {
+  transform: translateY(2px) scale(0.98);
+  animation: sadSway 3s ease-in-out infinite;
+}
+
+@keyframes sadSway {
+  0%, 100% { transform: translateY(2px) scale(0.98) rotate(-2deg); }
+  50% { transform: translateY(4px) scale(0.97) rotate(2deg); }
+}
+
+/* hair sway */
+@keyframes hairSway {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(1.6deg); }
+  100% { transform: rotate(0deg); }
+}
+.character-svg .hair {
+  transform-origin: 60px 20px;
+  animation: hairSway 6s ease-in-out infinite;
+}
+
+/* character bounce on appearance */
+.character-container {
+  animation: characterBounce 0.5s ease-out;
+}
+
+@keyframes characterBounce {
+  0% {
+    transform: scale(0.8) translateY(20px);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
