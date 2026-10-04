@@ -1499,9 +1499,7 @@ const Dashboard: React.FC = () => {
           setEditingNote(null);
         }}
         onChange={(field, value) => {
-          if (editingNote) {
-            setEditingNote({ ...editingNote, [field]: value });
-          }
+          setEditingNote((prev) => (prev ? { ...prev, [field]: value } : prev));
         }}
         onTogglePreview={() => setIsPreview(!isPreview)}
         onDelete={handleDeleteNote}

@@ -124,8 +124,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
   if (!isVisible || !localNote) return null;
 
   const handleFieldChange = (field: keyof NoteItem, value: NoteItem[keyof NoteItem]) => {
-    const updatedNote = { ...localNote, [field]: value };
-    setLocalNote(updatedNote);
+    // 函数式更新：同一轮事件里连续调用（如恢复版本）时，不会互相覆盖
+    setLocalNote((prev) => (prev ? { ...prev, [field]: value } : prev));
     onChange(field, value);
   };
 

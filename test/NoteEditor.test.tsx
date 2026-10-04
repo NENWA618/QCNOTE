@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import NoteEditor from '../components/NoteEditor';
-import { NoteItem } from '../lib/storage';
+import { NoteItem, NoteVersion } from '../lib/storage';
 
 describe('NoteEditor Component', () => {
   const mockNote: NoteItem = {
@@ -211,5 +211,82 @@ describe('NoteEditor Component', () => {
     const linkButton = screen.getAllByRole('button', { name: /Related Note/ })[0];
     await user.click(linkButton);
     expect(props.onOpenRelatedNote).toHaveBeenCalledWith(relatedNote);
+  });
+
+  it('restoring a version applies every field instead of only the last one', async () => {
+    const user = userEvent.setup();
+    const version: NoteVersion = {
+      versionId: 'v1',
+      title: 'Old Title',
+      content: 'old content',
+      category: '工作',
+      tags: ['old'],
+      color: '#4ecdc4',
+      coloredRanges: [],
+      isFavorite: true,
+      isArchived: true,
+      updatedAt: Date.now() - 50000,
+    };
+    const noteWithVersion: NoteItem = { ...mockNote, versions: [version] };
+    let latest: NoteItem = noteWithVersion;
+
+    // 模拟 dashboard：onChange 用函数式更新累加 editingNote
+    const Harness = () => {
+      const [editing, setEditing] = React.useState<NoteItem>(noteWithVersion);
+      latest = editing;
+      return React.createElement(NoteEditor, {
+        ...mockProps,
+        note: editing,
+        onChange: (field: keyof NoteItem, value: NoteItem[keyof NoteItem]) =>
+          setEditing((prev) => ({ ...prev, [field]: value })),
+      });
+    };
+
+    render(React.createElement(Harness));
+    await user.click(screen.getByRole('button', { name: /历史/ }));
+    await user.click(screen.getByRole('button', { name: /v1/ }));
+    await user.click(screen.getByRole('button', { name: /恢复此版本/ }));
+
+    expect(mockProps.onRevertVersion).toHaveBeenCalledWith(version);
+    expect(screen.getByDisplayValue('Old Title')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('old content')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('old')).toBeInTheDocument();
+    expect(latest).toMatchObject({
+      title: 'Old Title',
+      content: 'old content',
+      category: '工作',
+      tags: ['old'],
+      color: '#4ecdc4',
+      isFavorite: true,
+      isArchived: true,
+    });
+  });
+
+  it('restoring a version updates all editor fields even when the parent does not re-render', async () => {
+    const user = userEvent.setup();
+    const version: NoteVersion = {
+      versionId: 'v1',
+      title: 'Old Title',
+      content: 'old content',
+      category: '工作',
+      tags: ['old'],
+      color: '#4ecdc4',
+      coloredRanges: [],
+      isFavorite: true,
+      isArchived: true,
+      updatedAt: Date.now() - 50000,
+    };
+
+    // note 属性保持不变：编辑器只能靠自己的内部状态累加各字段
+    render(
+      React.createElement(NoteEditor, { ...mockProps, note: { ...mockNote, versions: [version] } }),
+    );
+    await user.click(screen.getByRole('button', { name: /历史/ }));
+    await user.click(screen.getByRole('button', { name: /v1/ }));
+    await user.click(screen.getByRole('button', { name: /恢复此版本/ }));
+
+    expect(screen.getByDisplayValue('Old Title')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('old content')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('old')).toBeInTheDocument();
   });
 });
