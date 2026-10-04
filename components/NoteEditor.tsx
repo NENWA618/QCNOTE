@@ -91,6 +91,36 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
     };
   }, [localNote?.id, localNote?.title, localNote?.content, localNote]);
 
+  const isOpen = isVisible && !!localNote;
+
+  // 打开时锁定背景滚动，避免移动端滑动穿透到下方列表
+  useEffect(() => {
+    if (!isOpen || typeof document === 'undefined') return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen]);
+
+  // 桌面端快捷键：Ctrl/Cmd+S 保存，Ctrl/Cmd+Shift+P 切换预览
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const key = e.key.toLowerCase();
+      if (key === 's') {
+        e.preventDefault();
+        onSave();
+      } else if (key === 'p' && e.shiftKey) {
+        e.preventDefault();
+        onTogglePreview();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onSave, onTogglePreview]);
+
   if (!isVisible || !localNote) return null;
 
   const handleFieldChange = (field: keyof NoteItem, value: NoteItem[keyof NoteItem]) => {
@@ -127,6 +157,12 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
     const result = await onUnpublish(localNote.id);
     setPublishBusy(false);
     if (!result.ok) setPublishError(result.error);
+  };
+
+  const handleTogglePreview = () => {
+    setSelectionStart(null);
+    setSelectionEnd(null);
+    onTogglePreview();
   };
 
   const unpublishedChanges = hasUnpublishedChanges(localNote, publishInfo);
@@ -227,27 +263,46 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-dark-surface rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-gray-200 dark:border-dark-border">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-stretch sm:items-center justify-center z-50 sm:p-4">
+      <div className="bg-white dark:bg-dark-surface sm:rounded-lg shadow-xl w-full sm:max-w-4xl h-[100dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:border border-gray-200 dark:border-dark-border">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-dark-border">
-          <div>
-            <h2 className="text-2xl font-bold text-primary-dark dark:text-dark-text">
-              {localNote.id ? '编辑笔记' : '新建笔记'}
-            </h2>
-            <div className="text-sm text-gray-500 dark:text-dark-text-secondary mt-1">
-              {sentimentLabel}
-              {publishInfo && (
-                <span className="ml-3 text-green-600 dark:text-green-400">
-                  🌐 已公开{unpublishedChanges ? '（有未发布的更改）' : ''}
-                </span>
+        <div className="shrink-0 border-b border-gray-200 dark:border-dark-border px-4 py-3 sm:p-6 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-2xl font-bold text-primary-dark dark:text-dark-text">
+                {localNote.id ? '编辑笔记' : '新建笔记'}
+              </h2>
+              <div className="text-xs sm:text-sm text-gray-500 dark:text-dark-text-secondary mt-1">
+                {sentimentLabel}
+                {publishInfo && (
+                  <span className="ml-3 text-green-600 dark:text-green-400">
+                    🌐 已公开{unpublishedChanges ? '（有未发布的更改）' : ''}
+                  </span>
+                )}
+              </div>
+              {publishError && (
+                <div className="text-sm text-red-600 dark:text-red-300 mt-1">{publishError}</div>
               )}
             </div>
-            {publishError && (
-              <div className="text-sm text-red-600 dark:text-red-300 mt-1">{publishError}</div>
-            )}
+            <div className="flex gap-2 shrink-0">
+              <button onClick={onCancel} className="btn-secondary btn-sm">
+                取消
+              </button>
+              <button onClick={onSave} className="btn-primary btn-sm" title="保存 (Ctrl/Cmd+S)">
+                保存
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
+
+          {/* 次要操作：移动端横向滚动，桌面端自动换行 */}
+          <div className="flex gap-2 mt-3 overflow-x-auto sm:overflow-visible sm:flex-wrap -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 sm:pb-0 [&>*]:shrink-0 [&>*]:whitespace-nowrap">
+            <button
+              onClick={handleTogglePreview}
+              title="切换编辑/预览 (Ctrl/Cmd+Shift+P)"
+              className={`btn-secondary btn-sm ${isPreview ? 'bg-primary-dark dark:bg-accent-pink text-white' : ''}`}
+            >
+              {isPreview ? '编辑' : '预览'}
+            </button>
             {localNote.versions && localNote.versions.length > 0 && (
               <button
                 onClick={() => setShowVersionHistory(true)}
@@ -257,12 +312,6 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                 ⏱️ 历史 ({localNote.versions.length})
               </button>
             )}
-            <button
-              onClick={onTogglePreview}
-              className={`btn-secondary btn-sm ${isPreview ? 'bg-primary-dark dark:bg-accent-pink text-white' : ''}`}
-            >
-              {isPreview ? '编辑' : '预览'}
-            </button>
             {onPublish && localNote.id && (
               <>
                 <button
@@ -285,33 +334,25 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
               </>
             )}
             {localNote?.id && (
-              <>
-                <button
-                  onClick={() => {
-                    if (window.confirm('确定要删除此笔记吗？它将被移到回收站。')) {
-                      onDelete(localNote.id);
-                    }
-                  }}
-                  className="btn-danger btn-sm"
-                >
-                  删除
-                </button>
-              </>
+              <button
+                onClick={() => {
+                  if (window.confirm('确定要删除此笔记吗？它将被移到回收站。')) {
+                    onDelete(localNote.id);
+                  }
+                }}
+                className="btn-danger btn-sm"
+              >
+                删除
+              </button>
             )}
-            <button onClick={onCancel} className="btn-secondary btn-sm">
-              取消
-            </button>
-            <button onClick={onSave} className="btn-primary btn-sm">
-              保存
-            </button>
           </div>
         </div>
 
         {/* Editor Content */}
-        <div className="flex h-[calc(90vh-120px)]">
+        <div className="flex flex-1 min-h-0 sm:h-[calc(90vh-9rem)]">
           {/* Editor Panel */}
           {!isPreview && (
-            <div className="flex-1 p-6 overflow-y-auto dark:bg-dark-surface">
+            <div className="flex-1 min-w-0 p-4 sm:p-6 overflow-y-auto overscroll-contain dark:bg-dark-surface">
               {/* Title */}
               <div className="mb-4">
                 <label className="text-sm font-medium text-gray-700 dark:text-dark-text">
@@ -322,44 +363,46 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                   value={localNote.title}
                   onChange={(e) => handleFieldChange('title', e.target.value)}
                   placeholder="笔记标题"
-                  className="w-full text-2xl font-bold border-none outline-none bg-transparent dark:text-dark-text dark:placeholder-dark-text-secondary"
+                  className="w-full text-xl sm:text-2xl font-bold border-none outline-none bg-transparent dark:text-dark-text dark:placeholder-dark-text-secondary"
                 />
               </div>
 
               {/* Content */}
               <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-dark-text">
-                    内容 (支持 Markdown 和 LaTeX 公式语法)
-                  </label>
-                  {selectionStart !== null &&
-                    selectionEnd !== null &&
-                    selectionStart !== selectionEnd && (
-                      <div className="flex gap-1 items-center">
-                        <span className="text-xs text-gray-500 dark:text-dark-text-secondary">
-                          已选中 {selectionEnd - selectionStart} 字符
-                        </span>
-                        <div className="flex gap-1 ml-2">
-                          {colors.map((color) => (
-                            <button
-                              key={color}
-                              onClick={() => applyColorToSelection(color)}
-                              className="w-6 h-6 rounded border border-gray-300 dark:border-dark-border hover:border-gray-800 dark:hover:border-gray-400 transition"
-                              style={{ backgroundColor: color }}
-                              title={`应用${color}颜色`}
-                            />
-                          ))}
-                          <button
-                            onClick={clearColorFromSelection}
-                            className="text-xs px-2 py-1 bg-gray-200 dark:bg-dark-surface-light hover:bg-gray-300 dark:hover:bg-dark-border rounded transition"
-                            title="清除颜色"
-                          >
-                            清除
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                </div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-2">
+                  内容 (支持 Markdown 和 LaTeX 公式语法)
+                </label>
+                {selectionStart !== null &&
+                  selectionEnd !== null &&
+                  selectionStart !== selectionEnd && (
+                    // onMouseDown 阻止默认行为，避免点击颜色时文本框失焦丢失选区
+                    <div
+                      className="flex flex-wrap gap-2 items-center mb-2 p-2 rounded bg-gray-50 dark:bg-dark-surface-light"
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
+                      <span className="text-xs text-gray-500 dark:text-dark-text-secondary">
+                        已选中 {selectionEnd - selectionStart} 字符
+                      </span>
+                      {colors.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => applyColorToSelection(color)}
+                          className="w-8 h-8 sm:w-6 sm:h-6 rounded border border-gray-300 dark:border-dark-border hover:border-gray-800 dark:hover:border-gray-400 transition"
+                          style={{ backgroundColor: color }}
+                          title={`应用${color}颜色`}
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        onClick={clearColorFromSelection}
+                        className="text-xs px-3 py-2 sm:px-2 sm:py-1 bg-gray-200 dark:bg-dark-border hover:bg-gray-300 rounded transition"
+                        title="清除颜色"
+                      >
+                        清除
+                      </button>
+                    </div>
+                  )}
                 <textarea
                   ref={contentTextareaRef}
                   value={localNote.content}
@@ -367,13 +410,14 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                   onSelect={handleTextSelection}
                   onMouseUp={handleTextSelection}
                   onKeyUp={handleTextSelection}
+                  onTouchEnd={handleTextSelection}
                   placeholder="开始记录您的想法... (支持 Markdown 和 LaTeX 公式语法)"
-                  className="w-full h-64 resize-none border rounded p-2 outline-none bg-white dark:bg-dark-surface-light font-mono text-sm border-gray-300 dark:border-dark-border text-gray-800 dark:text-dark-text"
+                  className="w-full h-[45dvh] min-h-48 sm:h-80 resize-y border rounded p-2 outline-none bg-white dark:bg-dark-surface-light font-mono text-base sm:text-sm border-gray-300 dark:border-dark-border text-gray-800 dark:text-dark-text"
                 />
               </div>
 
               {/* Metadata */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
                     分类
@@ -381,7 +425,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                   <select
                     value={localNote.category}
                     onChange={(e) => handleFieldChange('category', e.target.value)}
-                    className="w-full p-2 border rounded"
+                    className="w-full p-2 border rounded text-base sm:text-sm dark:bg-dark-surface-light dark:border-dark-border dark:text-dark-text"
                   >
                     <option value="">选择分类</option>
                     {categories.map((cat) => (
@@ -393,14 +437,18 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">颜色主题</label>
-                  <div className="flex gap-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
+                    颜色主题
+                  </label>
+                  <div className="flex flex-wrap gap-2">
                     {colors.map((color) => (
                       <button
                         key={color}
                         onClick={() => handleFieldChange('color', color)}
                         className={`w-8 h-8 rounded-full border-2 ${
-                          localNote.color === color ? 'border-gray-800' : 'border-gray-300'
+                          localNote.color === color
+                            ? 'border-gray-800 dark:border-white'
+                            : 'border-gray-300 dark:border-dark-border'
                         }`}
                         style={{ backgroundColor: color }}
                       />
@@ -411,7 +459,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 
               {/* Tags */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-dark-text mb-1">
                   标签 (用逗号分隔)
                 </label>
                 <input
@@ -427,13 +475,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                     )
                   }
                   placeholder="标签1, 标签2, 标签3"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded text-base sm:text-sm dark:bg-dark-surface-light dark:border-dark-border dark:text-dark-text"
                 />
               </div>
 
               {/* Options */}
-              <div className="flex gap-4">
-                <label className="flex items-center">
+              <div className="flex gap-6 dark:text-dark-text">
+                <label className="flex items-center min-h-[2.25rem]">
                   <input
                     type="checkbox"
                     checked={localNote.isFavorite}
@@ -442,7 +490,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                   />
                   收藏
                 </label>
-                <label className="flex items-center">
+                <label className="flex items-center min-h-[2.25rem]">
                   <input
                     type="checkbox"
                     checked={localNote.isArchived}
@@ -457,12 +505,15 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 
           {/* Preview Panel */}
           {isPreview && (
-            <div className="flex-1 p-6 overflow-y-auto border-l">
-              <h1 className="text-3xl font-bold mb-4" style={{ color: localNote.color }}>
+            <div className="flex-1 min-w-0 p-4 sm:p-6 overflow-y-auto overscroll-contain dark:text-dark-text">
+              <h1
+                className="text-2xl sm:text-3xl font-bold mb-4 break-words"
+                style={{ color: localNote.color }}
+              >
                 {localNote.title || '无标题'}
               </h1>
 
-              <div className="mb-3 text-sm text-gray-600">
+              <div className="mb-3 text-sm text-gray-600 dark:text-dark-text-secondary">
                 <span className="inline-flex items-center gap-1 mr-3">
                   🔗 引用: {localNote.links?.length ?? 0}
                 </span>
@@ -471,7 +522,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                 </span>
               </div>
               <div className="grid gap-4 md:grid-cols-2 mb-4">
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="rounded-lg border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-surface-light p-4">
                   <div className="text-sm font-semibold mb-2">引用笔记</div>
                   {forwardLinks.length > 0 ? (
                     <ul className="space-y-2 text-sm">
@@ -490,16 +541,18 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                         </li>
                       ))}
                       {unresolvedForwardLinks.length > 0 && (
-                        <li className="text-gray-500">
+                        <li className="text-gray-500 dark:text-dark-text-secondary">
                           未匹配笔记: {unresolvedForwardLinks.join('、')}
                         </li>
                       )}
                     </ul>
                   ) : (
-                    <div className="text-gray-500">还未引用其他笔记。</div>
+                    <div className="text-gray-500 dark:text-dark-text-secondary">
+                      还未引用其他笔记。
+                    </div>
                   )}
                 </div>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="rounded-lg border border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-surface-light p-4">
                   <div className="text-sm font-semibold mb-2">被引用笔记</div>
                   {backlinkNotes.length > 0 ? (
                     <ul className="space-y-2 text-sm">
@@ -519,18 +572,20 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                       ))}
                     </ul>
                   ) : (
-                    <div className="text-gray-500">暂时没有其他笔记引用此笔记。</div>
+                    <div className="text-gray-500 dark:text-dark-text-secondary">
+                      暂时没有其他笔记引用此笔记。
+                    </div>
                   )}
                 </div>
               </div>
               {localNote.versions && localNote.versions.length > 0 && (
-                <div className="mb-4 p-3 border border-gray-200 rounded bg-gray-50 text-xs">
+                <div className="mb-4 p-3 border border-gray-200 dark:border-dark-border rounded bg-gray-50 dark:bg-dark-surface-light text-xs">
                   最近版本：{localNote.versions.length} 次，最早版本{' '}
                   {new Date(localNote.versions[0].updatedAt).toLocaleString()}
                 </div>
               )}
 
-              <div className="prose prose-lg max-w-none">
+              <div className="prose dark:prose-invert md:prose-lg max-w-none break-words overflow-x-auto">
                 <ColoredMarkdown
                   content={localNote.content}
                   coloredRanges={localNote.coloredRanges}
@@ -538,7 +593,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
               </div>
 
               {/* Metadata in Preview */}
-              <div className="mt-6 pt-4 border-t text-sm text-gray-500">
+              <div className="mt-6 pt-4 border-t dark:border-dark-border text-sm text-gray-500 dark:text-dark-text-secondary">
                 {localNote.category && <span className="mr-4">📁 {localNote.category}</span>}
                 {localNote.tags.length > 0 && (
                   <span className="mr-4">🏷️ {localNote.tags.join(', ')}</span>
@@ -548,7 +603,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
               </div>
 
               {relatedNotes.length > 0 && (
-                <div className="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="mt-4 p-3 bg-gray-50 dark:bg-dark-surface-light rounded border border-gray-200 dark:border-dark-border">
                   <p className="text-sm font-semibold mb-2">相关笔记</p>
                   <ul className="text-sm list-disc pl-5 space-y-1">
                     {relatedNotes.slice(0, 5).map((related) => (
