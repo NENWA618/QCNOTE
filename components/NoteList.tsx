@@ -1,0 +1,126 @@
+import React from 'react';
+import { NoteItem } from '../lib/storage';
+import { hasUnpublishedChanges } from '../lib/publicNotes';
+import type { PublishedNoteInfo } from '../types/ugc-types';
+
+interface NoteListProps {
+  notes: NoteItem[];
+  onEdit: (note: NoteItem) => void;
+  onTagClick: (tag: string) => void;
+  /** 以本地笔记 ID 为键的已发布记录；用于显示"已公开"标记 */
+  published?: Record<string, PublishedNoteInfo>;
+}
+
+const NoteList: React.FC<NoteListProps> = ({ notes, onEdit, onTagClick, published }) => {
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString('zh-CN');
+  };
+
+  const getCategoryColor = (category: string) => {
+    const colors: Record<string, string> = {
+      生活: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+      工作: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+      学习: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300',
+      灵感: 'bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300',
+      其他: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300',
+    };
+    return colors[category] || colors['其他'];
+  };
+
+  if (notes.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-6xl mb-4">📝</div>
+        <h3 className="text-xl font-semibold text-gray-600 dark:text-dark-text-secondary mb-2">
+          还没有笔记
+        </h3>
+        <p className="text-gray-500 dark:text-dark-text-secondary">
+          点击&quot;新建笔记&quot;开始记录您的想法
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-stretch">
+      {notes.map((note, index) => (
+        <div
+          key={note.id}
+          className={`card group flex flex-col min-w-0 cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] animate-fade-in-up ${
+            note.isArchived ? 'opacity-60' : ''
+          }`}
+          style={{ animationDelay: `${index * 0.1}s` }}
+          onClick={() => onEdit(note)}
+        >
+          <div className="min-w-0 mb-3">
+            <h3 className="text-lg font-semibold text-primary-dark group-hover:text-accent-pink transition-colors truncate">
+              {note.title || '无标题'}
+            </h3>
+            <div className="flex gap-2 items-center mt-2 text-xs text-gray-500 dark:text-dark-text-secondary whitespace-nowrap overflow-hidden">
+              <span>{formatDate(note.updatedAt)}</span>
+              {note.category && (
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${getCategoryColor(note.category)}`}
+                >
+                  {note.category}
+                </span>
+              )}
+              {published?.[note.id] && (
+                <span className="px-2 py-1 rounded-full text-xs bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+                  {hasUnpublishedChanges(note, published[note.id]) ? '已公开·有更新' : '已公开'}
+                </span>
+              )}
+              {note.sentimentCategory && (
+                <span
+                  className={`px-2 py-1 rounded-full text-xs ${
+                    note.sentimentCategory === 'positive'
+                      ? 'bg-green-100 text-green-800'
+                      : note.sentimentCategory === 'negative'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                  }`}
+                >
+                  {note.sentimentCategory === 'positive'
+                    ? '正面'
+                    : note.sentimentCategory === 'negative'
+                      ? '低落'
+                      : '平静'}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-600 dark:text-dark-text-secondary line-clamp-2 mb-3 leading-relaxed min-h-[2.75rem]">
+            {note.content.replace(/[#*`>]/g, '').trim()}
+          </p>
+
+          <div className="mt-auto flex items-center justify-between gap-2 min-h-[1.75rem]">
+            <div className="flex gap-1 min-w-0 overflow-hidden">
+              {note.tags.slice(0, 2).map((tag) => (
+                <span
+                  key={tag}
+                  className="px-2 py-1 bg-accent-purple bg-opacity-10 text-accent-purple text-xs rounded-full hover:bg-opacity-20 transition-colors cursor-pointer whitespace-nowrap max-w-[7rem] truncate"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTagClick(tag);
+                  }}
+                >
+                  #{tag}
+                </span>
+              ))}
+              {note.tags.length > 2 && (
+                <span className="text-xs text-gray-400 self-center">+{note.tags.length - 2}</span>
+              )}
+            </div>
+            <div className="flex gap-2 text-xs text-gray-400 whitespace-nowrap shrink-0">
+              <span>链接 {note.links?.length || 0}</span>
+              <span>被引用 {note.backlinks?.length || 0}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default NoteList;
