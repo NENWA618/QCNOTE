@@ -22,7 +22,7 @@
     "jose": "^6.2.12",
     "katex": "^0.19.0",
     "lunr": "^2.3.9",
-    "next": "^16.3.6",
+    "next": "^16.3.8",
     "next-auth": "^4.24.15",
     "react": "^18.3.1",
     "react-diff-viewer-continued": "^4.4.0",
