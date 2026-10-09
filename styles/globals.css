@@ -1,0 +1,674 @@
+@import 'tailwindcss';
+
+/* 图层顺序：Tailwind 自带 theme < base < components < utilities，
+   这里在最后追加 overrides 层，放必须压过元素上工具类的规则（见文件末尾）。 */
+@layer theme, base, components, utilities, overrides;
+
+/* 暗色模式由 DarkModeToggle 在 <html> 上切换 `.dark` 类，而不是跟随系统偏好 */
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   设计 token
+   ============================================================ */
+@theme {
+  /* 调色板 */
+  --color-primary-light: #f6e0e7;
+  --color-primary-medium: #d8cbcf;
+  --color-primary-dark: #c8b8c8;
+  --color-accent-pink: #dc96b4;
+  --color-accent-purple: #b0a8c0;
+
+  --color-dark-bg: #0f0f0f;
+  --color-dark-surface: #1a1a1a;
+  --color-dark-surface-light: #2a2a2a;
+  --color-dark-text: #e5e5e5;
+  --color-dark-text-secondary: #a0a0a0;
+  --color-dark-border: #404040;
+
+  /* 字号：只设字号，行高沿用父级（initial 让 var() 失效，line-height 回落为继承） */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: initial;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: initial;
+  --text-base: 1rem;
+  --text-base--line-height: initial;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: initial;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: initial;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: initial;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: initial;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: initial;
+  --text-5xl: 3rem;
+  --text-5xl--line-height: initial;
+  --text-6xl: 3.75rem;
+  --text-6xl--line-height: initial;
+
+  /* 圆角 */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.8rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+
+  /* 阴影：粉紫色调，与强调色一致 */
+  --shadow-light: 0 4px 12px rgba(200, 180, 210, 0.15);
+  --shadow-medium: 0 8px 25px rgba(200, 180, 210, 0.25);
+
+  /* 动画 */
+  --animate-fade-in-up: fadeInUp 0.8s ease;
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* 随主题切换的文字色。`inline` 让工具类直接引用运行时变量，值在 :root / html.dark 里定义（见 base 层）。
+   - text-light：浅色 #5c5c5c，暗色用 dark-text-secondary；不必在每处再配 dark:text-dark-text-secondary
+     （静态页面里漏配过，暗色下只有约 2.9:1 的对比度）。
+   - ink / ink-pink / ink-purple：品牌色本身是柔和的粉彩，直接当文字色在白底上只有约 2:1。
+     这三个只用于 text-*（text-ink 等），背景、边框、渐变仍用原来的品牌色；
+     浅色下取同色系的深色版本，暗色下保持原来的粉彩。想调整文字配色，改这里的变量即可。 */
+@theme inline {
+  --color-text-light: var(--text-light);
+  --color-ink: var(--ink);
+  --color-ink-pink: var(--ink-pink);
+  --color-ink-purple: var(--ink-purple);
+}
+
+/* ============================================================
+   基础层
+   ============================================================ */
+@layer base {
+  /* ---- 与 Tailwind v3 保持一致的 preflight 行为 ---- */
+
+  /* v4 默认边框色是 currentcolor，这里沿用 v3 的 gray-200 */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  /* v4 去掉了按钮的 pointer 光标和 placeholder 的灰色 */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
+  /* v4 把表单控件背景重置为透明；v3 不处理，浏览器默认的 field 背景生效（暗色下是深灰）。
+     revert 让没有显式背景的控件恢复浏览器默认值。 */
+  input:not([type='button'], [type='reset'], [type='submit']),
+  select,
+  textarea,
+  optgroup {
+    background-color: revert;
+  }
+
+  /* ---- 运行时变量 ----
+     放在 base 层并与 html.dark 同层：未分层的规则会压过所有 @layer，
+     那样 html.dark 里的覆盖就永远不会生效。 */
+  :root {
+    --text-light: #5c5c5c;
+    --ink: #5f4f62; /* primary-dark 的文字版，白底约 7.6:1 */
+    --ink-pink: #9d3a66; /* accent-pink 的文字版，白底约 6.5:1 */
+    --ink-purple: #6d5f8f; /* accent-purple 的文字版，白底约 5.7:1 */
+
+    /* 阴影层级：每个“浮起”的表面从这里取一档，而不是各自写 box-shadow。
+       带粉色的暖阴影与强调色保持一致，比通用灰色更有层次。 */
+    --shadow-1: 0 1px 2px rgba(154, 52, 107, 0.1);
+    --shadow-2: 0 2px 6px rgba(154, 52, 107, 0.12), 0 1px 2px rgba(154, 52, 107, 0.08);
+    --shadow-3: 0 6px 16px rgba(154, 52, 107, 0.16), 0 2px 6px rgba(154, 52, 107, 0.1);
+    --shadow-4: 0 16px 32px rgba(154, 52, 107, 0.2), 0 6px 12px rgba(154, 52, 107, 0.12);
+    --shadow-press: inset 0 2px 4px rgba(154, 52, 107, 0.18);
+
+    /* 毛玻璃：只用于外框/结构（header、侧栏、弹窗遮罩），不用于密集文本。
+       足够通透以透出渐变背景；带边框，让边缘读起来是一个物体而不只是模糊。 */
+    --glass-bg: rgba(255, 255, 255, 0.55);
+    --glass-bg-strong: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.65);
+    /* 半径越大，软件渲染环境下重绘开销越高；6px 视觉差异很小 */
+    --glass-blur: 6px;
+  }
+
+  html.dark {
+    color-scheme: dark;
+    --text-light: var(--color-dark-text-secondary);
+    --ink: var(--color-primary-dark);
+    --ink-pink: var(--color-accent-pink);
+    --ink-purple: var(--color-accent-purple);
+    /* 粉色阴影在深色表面上几乎不可见 —— 换成黑色深度加一点点强调色光晕 */
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(232, 121, 165, 0.06);
+    --shadow-3: 0 8px 20px rgba(0, 0, 0, 0.55), 0 0 24px rgba(232, 121, 165, 0.08);
+    --shadow-4: 0 20px 40px rgba(0, 0, 0, 0.65), 0 0 32px rgba(232, 121, 165, 0.1);
+    --shadow-press: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    --glass-bg: rgba(30, 24, 34, 0.45);
+    --glass-bg-strong: rgba(30, 24, 34, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.1);
+  }
+
+  /* ---- 页面骨架 ---- */
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-linear-to-br from-primary-light via-primary-medium to-purple-200 text-ink;
+  }
+
+  html.dark body {
+    @apply bg-linear-to-br from-dark-bg via-dark-surface to-dark-surface-light text-dark-text;
+  }
+
+  header {
+    @apply sticky top-0;
+    background: var(--glass-bg-strong);
+    border-bottom: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+    box-shadow: var(--shadow-2);
+    z-index: 50;
+  }
+
+  html.dark header {
+    @apply bg-dark-surface/75 border-dark-border;
+  }
+
+  footer {
+    @apply bg-linear-to-r from-primary-dark to-primary-medium text-white text-center py-12 px-8 mt-16 rounded-t-3xl;
+  }
+
+  html.dark footer {
+    @apply bg-linear-to-r from-dark-surface-light to-dark-surface;
+  }
+
+  footer a {
+    @apply text-primary-light no-underline transition-all hover:text-white;
+  }
+
+  footer hr {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    margin: 2rem 0;
+  }
+
+  /* 原生复选框/单选框在深色背景上近乎隐形，用 accent-color 统一着色 */
+  html.dark input[type='checkbox'],
+  html.dark input[type='radio'] {
+    accent-color: var(--color-accent-pink);
+  }
+
+  /* 键盘焦点：统一的品牌色焦点环。输入框有自己的 ring，且工具类（outline-hidden 等）优先级更高，不受影响 */
+  :where(
+    a,
+    button,
+    summary,
+    [role='button'],
+    [role='menuitem'],
+    [tabindex]:not([tabindex='-1'])
+  ):focus-visible {
+    outline: 2px solid var(--color-accent-pink);
+    outline-offset: 2px;
+  }
+
+  /* 尊重系统的“减少动态效果”：关掉过渡、动画和平滑滚动（加载中的转圈保留，否则看不出在加载） */
+  @media (prefers-reduced-motion: reduce) {
+    *:not(.animate-spin),
+    *:not(.animate-spin)::before,
+    *:not(.animate-spin)::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ============================================================
+   组件层
+   ============================================================ */
+@layer components {
+  /* ---- 页面布局 ---- */
+  .app-shell {
+    @apply min-h-screen bg-linear-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-none dark:bg-dark-bg text-ink dark:text-dark-text;
+  }
+
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+
+  .hero-panel {
+    @apply transition-all rounded-lg overflow-hidden;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+    border-radius: 1.5rem;
+    box-shadow: var(--shadow-2);
+  }
+
+  /* ---- 首页全屏沉浸式 Hero ----
+     header 是 sticky 且约 5rem 高，所以 Hero 取剩余视口高度，header 下方刚好一屏。 */
+  .immersive-hero {
+    --mx: 0;
+    --my: 0;
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: max(34rem, calc(100svh - 5rem));
+    padding: 4rem 1.25rem;
+    overflow: hidden;
+    text-align: center;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .hero-orb {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(70px);
+    opacity: 0.75;
+    animation: heroDrift 18s ease-in-out infinite alternate;
+  }
+  .hero-orb-pink {
+    width: 36rem;
+    height: 36rem;
+    top: -10rem;
+    left: -8rem;
+    background: radial-gradient(circle, var(--color-accent-pink), transparent 68%);
+  }
+  .hero-orb-purple {
+    width: 40rem;
+    height: 40rem;
+    right: -12rem;
+    bottom: -14rem;
+    background: radial-gradient(circle, var(--color-accent-purple), transparent 68%);
+    animation-duration: 24s;
+    animation-delay: -6s;
+  }
+  .hero-orb-rose {
+    width: 22rem;
+    height: 22rem;
+    top: 35%;
+    left: 55%;
+    background: radial-gradient(circle, #f3b6cf, transparent 68%);
+    opacity: 0.5;
+    animation-duration: 20s;
+    animation-delay: -12s;
+  }
+  html.dark .hero-orb {
+    opacity: 0.32;
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(95, 79, 98, 0.22) 1px, transparent 1.5px);
+    background-size: 28px 28px;
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 20%, transparent 72%);
+    mask-image: radial-gradient(ellipse at center, #000 20%, transparent 72%);
+  }
+  html.dark .hero-grid {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1.5px);
+  }
+
+  @keyframes heroDrift {
+    from {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+      transform: translate3d(4rem, 3rem, 0) scale(1.15);
+    }
+  }
+  @keyframes heroFloat {
+    from {
+      translate: 0 -0.5rem;
+    }
+    to {
+      translate: 0 0.6rem;
+    }
+  }
+  @keyframes heroReveal {
+    from {
+      opacity: 0;
+      transform: translateY(1.25rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* 漂浮卡片：外层随指针视差，内层自己上下漂浮 */
+  .hero-floaters {
+    display: none;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+  }
+  @media (min-width: 1280px) {
+    .hero-floaters {
+      display: block;
+    }
+  }
+  .hero-float {
+    position: absolute;
+    transform: translate3d(
+      calc(var(--mx) * var(--depth) * -1px),
+      calc(var(--my) * var(--depth) * -1px),
+      0
+    );
+    transition: transform 0.4s ease-out;
+  }
+  .hero-float > * {
+    animation: heroFloat 7s ease-in-out infinite alternate;
+  }
+  .hero-float-a {
+    top: 17%;
+    left: 6%;
+  }
+  .hero-float-b {
+    top: 14%;
+    right: 7%;
+  }
+  .hero-float-b > * {
+    animation-delay: -2s;
+  }
+  .hero-float-c {
+    bottom: 16%;
+    left: 10%;
+  }
+  .hero-float-c > * {
+    animation-delay: -4s;
+  }
+  .hero-float-d {
+    bottom: 20%;
+    right: 9%;
+  }
+  .hero-float-d > * {
+    animation-delay: -1s;
+  }
+  @media (max-width: 1535px) {
+    .hero-float-c,
+    .hero-float-d {
+      display: none;
+    }
+  }
+
+  .hero-glass-card {
+    padding: 1rem;
+    border-radius: 1.25rem;
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+    box-shadow: var(--shadow-3);
+    text-align: left;
+  }
+
+  .hero-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 56rem;
+  }
+
+  .hero-reveal {
+    opacity: 0;
+    animation: heroReveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: calc(var(--i, 0) * 110ms + 80ms);
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.875rem 0.375rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ink);
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-1);
+  }
+
+  .hero-title {
+    margin: 1.5rem 0 1.25rem;
+    font-size: clamp(2.5rem, 7vw, 5rem);
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .hero-title-accent {
+    white-space: nowrap;
+    background: linear-gradient(100deg, var(--ink-pink), var(--ink-purple) 60%, var(--ink-pink));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: heroShine 8s linear infinite;
+  }
+  @keyframes heroShine {
+    to {
+      background-position: 200% center;
+    }
+  }
+
+  .hero-lead {
+    max-width: 34rem;
+    font-size: clamp(1rem, 2.2vw, 1.25rem);
+    line-height: 1.75;
+    color: var(--text-light);
+  }
+
+  .hero-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin: 1.75rem 0 2.25rem;
+    padding: 0;
+    list-style: none;
+  }
+  .hero-chips li {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    color: var(--ink);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.875rem;
+  }
+  .hero-btn {
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+    min-height: 3.25rem;
+  }
+  .hero-btn-ghost {
+    color: var(--ink);
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+  }
+  .hero-btn-ghost:hover {
+    background: var(--glass-bg-strong);
+    border-color: var(--color-accent-pink);
+  }
+
+  .footer-panel {
+    @apply bg-primary-dark/95 text-white;
+  }
+
+  .footer-section-title {
+    @apply text-white mb-4 text-lg font-semibold;
+  }
+
+  /* ---- 按钮 ---- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all transform-gpu hover:-translate-y-0.5 active:translate-y-0 cursor-pointer border border-transparent min-h-[2.75rem];
+    box-shadow: var(--shadow-2);
+
+    &:hover {
+      box-shadow: var(--shadow-3);
+    }
+
+    &:active {
+      box-shadow: var(--shadow-press);
+    }
+  }
+
+  .btn-sm {
+    @apply px-3 py-2 text-xs rounded-full min-h-[2.25rem] min-w-[2.5rem] transition-all hover:scale-105;
+    box-shadow: var(--shadow-1);
+  }
+
+  .btn-primary {
+    @apply bg-linear-to-r from-accent-pink to-accent-purple text-white border-transparent hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-ink border border-primary-dark/20 hover:bg-primary-light hover:text-ink;
+  }
+
+  .btn-danger {
+    @apply bg-linear-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700;
+  }
+
+  /* ---- 卡片 ---- */
+  .card {
+    @apply bg-white/95 rounded-2xl p-6 transition-all border border-white/60 hover:-translate-y-2 transform-gpu relative overflow-hidden;
+    box-shadow: var(--shadow-3);
+
+    &:hover {
+      box-shadow: var(--shadow-4);
+    }
+
+    &::before {
+      @apply absolute inset-0 bg-linear-to-br from-transparent via-primary-light to-accent-purple opacity-5 pointer-events-none;
+    }
+
+    /* 顶部 1px 的高光边：让它读起来是“接住光线的实体卡片”，而不是一块平的矩形 */
+    &::after {
+      content: '';
+      @apply absolute inset-x-0 top-0 h-px pointer-events-none;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+    }
+  }
+
+  /* ---- 表单 ---- */
+  .form-input {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-pink focus:border-transparent transition-all;
+  }
+
+  .input,
+  .select {
+    @apply w-full px-4 py-3 border-2 border-primary-light rounded-lg bg-white/50 text-ink transition-all focus:outline-hidden focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light min-h-[2.75rem];
+  }
+
+  .input {
+    @apply text-base;
+  }
+
+  textarea.input {
+    @apply resize-y;
+    min-height: 10rem;
+    font-family: monospace;
+  }
+
+  .select {
+    @apply cursor-pointer;
+  }
+
+  /* ---- 通知 ---- */
+  .notification {
+    @apply fixed left-1/2 -translate-x-1/2 bg-linear-to-r from-accent-pink to-accent-purple text-white px-8 py-4 rounded-full transition-all font-medium;
+    box-shadow: var(--shadow-4);
+    bottom: -128px;
+    z-index: 50;
+
+    &.show {
+      @apply bottom-8;
+    }
+  }
+}
+
+/* ============================================================
+   覆盖层（`overrides`，在 utilities 之后）
+
+   元素上经常同时带有工具类（如 `card … bg-white/95`），而 v4 的层顺序是
+   components < utilities，同层的特异性帮不上忙：组件里的暗色/状态规则会输给元素上的
+   工具类。把这类规则放在最后一个层里，行为就和 v3 里“选择器特异性更高所以赢”一致。
+   ============================================================ */
+@layer overrides {
+  /* ---- 状态 ---- */
+
+  /* 禁用的按钮要看起来是禁用的，并且不再响应悬停时的位移/缩放 */
+  :is(.btn, .btn-sm):disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+    translate: none;
+    scale: none;
+  }
+
+  /* ---- 暗色 ---- */
+  html.dark .card {
+    @apply bg-dark-surface/90 border-dark-border text-dark-text;
+  }
+
+  html.dark .btn-secondary {
+    @apply bg-dark-surface text-ink-pink border-2 border-accent-pink;
+
+    /* 否则上面的覆盖会连悬停反馈一起吃掉 */
+    &:hover {
+      @apply bg-dark-surface-light;
+    }
+  }
+
+  /* 表单：聚焦时背景回到 surface；placeholder 不能继承浅色模式的灰（在深色输入框上近乎隐形） */
+  html.dark :is(.input, textarea.input, .select) {
+    @apply bg-dark-surface-light border-dark-border text-dark-text focus:ring-accent-pink/30;
+
+    &:focus {
+      @apply bg-dark-surface;
+    }
+  }
+
+  html.dark :is(.input, textarea.input)::placeholder {
+    color: rgba(226, 214, 224, 0.45);
+  }
+}
