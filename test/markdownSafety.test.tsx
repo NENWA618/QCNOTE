@@ -88,6 +88,25 @@ describe('Markdown rendering hardening', () => {
     expect(html).not.toMatch(/position/i);
   });
 
+  it('keeps KaTeX MathML for screen readers and hides the visual layer', () => {
+    const html = render('$$\n' + String.raw`\frac{1}{2} \color{red}{x}` + '\n$$');
+    expect(html).toContain('<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">');
+    expect(html).toContain('<mfrac>');
+    expect(html).toContain('mathcolor=');
+    expect(html).toContain('<annotation encoding="application/x-tex">');
+    expect(html).toContain('class="katex-html" aria-hidden="true"');
+  });
+
+  it('strips links, styles and external glyphs from hand-written MathML', () => {
+    const html = render(
+      '<math href="javascript:alert(1)" style="position:fixed" onclick="alert(1)">' +
+        '<mi href="javascript:alert(2)" style="color:red">x</mi>' +
+        '<mglyph src="https://evil.example/a.png"/></math>',
+    );
+    expect(html).toContain('<mi>x</mi>');
+    expect(html).not.toMatch(/href|javascript|style=|onclick|mglyph|evil\.example/i);
+  });
+
   it('ignores unsafe stored colors in colored ranges', () => {
     const content = 'hello world';
     const out = renderToStaticMarkup(

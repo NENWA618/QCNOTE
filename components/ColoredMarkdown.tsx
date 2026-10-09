@@ -16,14 +16,79 @@ interface ColoredMarkdownProps {
   coloredRanges?: ColoredRange[];
 }
 
+// KaTeX 输出的 MathML 供屏幕阅读器读取公式结构。用户也能手写这些标签，所以这里只放行
+// 纯排版属性：不放行 style（rehypeRestrictUserStyles 只收紧 span/div）、href（Firefox 会把
+// MathML 元素当链接）以及会加载外部图片的 mglyph。
+const mathmlTagNames = [
+  'math',
+  'semantics',
+  'annotation',
+  'mrow',
+  'mi',
+  'mn',
+  'mo',
+  'mtext',
+  'mspace',
+  'msub',
+  'msup',
+  'msubsup',
+  'munder',
+  'mover',
+  'munderover',
+  'mfrac',
+  'msqrt',
+  'mroot',
+  'mtable',
+  'mtr',
+  'mtd',
+  'mstyle',
+  'mpadded',
+  'mphantom',
+  'menclose',
+];
+const mathmlAttributes = [
+  'mathvariant',
+  'mathcolor',
+  'mathbackground',
+  'mathsize',
+  'displaystyle',
+  'scriptlevel',
+  'fence',
+  'separator',
+  'stretchy',
+  'largeop',
+  'lspace',
+  'rspace',
+  'minsize',
+  'maxsize',
+  'accent',
+  'accentunder',
+  'linethickness',
+  'width',
+  'height',
+  'depth',
+  'voffset',
+  'columnalign',
+  'columnlines',
+  'columnspacing',
+  'rowlines',
+  'rowspacing',
+  'notation',
+];
+
 // span/div 的 style 和 className 是 KaTeX 输出需要的。用户手写 HTML 里的 style/class
 // 已在 KaTeX 渲染之前被 rehypeRestrictUserStyles 收紧，所以这里放行的只剩 KaTeX 自己生成的部分。
+// span 的 aria-hidden 让屏幕阅读器跳过 KaTeX 的视觉层，只读 MathML。
 const katexSanitizeSchema = {
   ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames || []), ...mathmlTagNames],
   attributes: {
     ...defaultSchema.attributes,
-    span: [...(defaultSchema.attributes?.span || []), ['className'], ['style']],
+    span: [...(defaultSchema.attributes?.span || []), ['className'], ['style'], ['ariaHidden']],
     div: [...(defaultSchema.attributes?.div || []), ['className'], ['style']],
+    ...Object.fromEntries(mathmlTagNames.map((tag) => [tag, mathmlAttributes])),
+    math: ['xmlns', 'display', ...mathmlAttributes],
+    annotation: ['encoding'],
   },
 };
 
