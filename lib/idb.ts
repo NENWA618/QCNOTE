@@ -2,8 +2,13 @@
 const DB_NAME = 'QCNOTE_DB_V1';
 const STORE_NAME = 'keyval';
 
+// One shared connection: opening a new one per call (and never closing it)
+// piles up connections, and any of them blocks a later version change.
+let connection: Promise<IDBDatabase> | null = null;
+
 function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (connection) return connection;
+  const opening = new Promise<IDBDatabase>((resolve, reject) => {
     // support both browser (window) and Node.js (globalThis) environments
     const env: any = typeof window !== 'undefined' ? window : globalThis;
     if (!env.indexedDB) return reject('IndexedDB not supported');
@@ -12,9 +17,26 @@ function openDB(): Promise<IDBDatabase> {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db: IDBDatabase = req.result;
+      const forget = () => {
+        if (connection === opening) connection = null;
+      };
+      // let another tab upgrade or delete the database; reopen on next use
+      db.onversionchange = () => {
+        db.close();
+        forget();
+      };
+      db.onclose = forget;
+      resolve(db);
+    };
     req.onerror = () => reject(req.error);
   });
+  connection = opening;
+  opening.catch(() => {
+    if (connection === opening) connection = null;
+  });
+  return opening;
 }
 
 async function withStore<T>(
@@ -25,10 +47,16 @@ async function withStore<T>(
   return new Promise<T>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, mode);
     const _store = tx.objectStore(STORE_NAME);
+    let result: T;
+    // Resolve only once the transaction has committed. An abort (e.g. quota
+    // exceeded) fires no error event, so without onabort the caller would
+    // wait forever.
+    tx.oncomplete = () => resolve(result);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
     Promise.resolve(cb(_store))
       .then((v) => {
-        tx.oncomplete = () => resolve(v);
-        tx.onerror = () => reject(tx.error);
+        result = v;
       })
       .catch(reject);
   });

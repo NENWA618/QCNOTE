@@ -160,6 +160,38 @@ describe('IDB Utils', () => {
     });
   });
 
+  describe('Connection handling', () => {
+    const deleteDatabase = () =>
+      new Promise<void>((resolve, reject) => {
+        const req = indexedDB.deleteDatabase('QCNOTE_DB_V1');
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error('blocked by an open connection'));
+      });
+
+    it('lets another connection delete the database, then reopens on next use', async () => {
+      await IDB.setItem('k', 'v');
+      await deleteDatabase();
+      expect(await IDB.getItem('k')).toBeUndefined();
+      await IDB.setItem('k', 'v2');
+      expect(await IDB.getItem('k')).toBe('v2');
+    });
+
+    it('opens a single connection for many operations', async () => {
+      await deleteDatabase(); // start without a cached connection
+      const open = vi.spyOn(indexedDB, 'open');
+      await Promise.all([
+        IDB.setItem('a', 1),
+        IDB.getItem('a'),
+        IDB.setItem('b', 2),
+        IDB.getAllKeys(),
+      ]);
+      await IDB.getItem('b');
+      expect(open).toHaveBeenCalledTimes(1);
+      open.mockRestore();
+    });
+  });
+
   describe('Type safety', () => {
     it('should support generic types for getItem', async () => {
       interface TestNote {
