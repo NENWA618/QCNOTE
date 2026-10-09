@@ -406,6 +406,70 @@ describe('WebDAV sync between two devices', () => {
     expect(await b.getConflictsAsync()).toEqual([]);
   });
 
+  it('keeps a conflict found by a sync that overlaps resolving another one', async () => {
+    await setUp();
+    const n1 = await a.addNoteAsync({ title: 'n1', content: 'v1' });
+    const n2 = await a.addNoteAsync({ title: 'n2', content: 'v1' });
+    await a.syncWithWebDAVAsync(conf());
+    await b.syncWithWebDAVAsync(conf());
+
+    // conflict on n1
+    await a.updateNoteAsync(n1.id, { content: 'A1' });
+    await b.updateNoteAsync(n1.id, { content: 'B1' });
+    await a.syncWithWebDAVAsync(conf());
+    await b.syncWithWebDAVAsync(conf());
+    const [conflict] = await b.getConflictsAsync();
+    expect(conflict.id).toBe(n1.id);
+
+    // the next sync finds a conflict on n2; resolve n1 while it is in flight
+    await a.updateNoteAsync(n2.id, { content: 'A2' });
+    await b.updateNoteAsync(n2.id, { content: 'B2' });
+    await a.syncWithWebDAVAsync(conf());
+    let resolving: Promise<boolean> | undefined;
+    server.afterNextGet(async () => {
+      resolving = b.resolveConflictAsync(n1.id, { ...conflict.local, content: 'merged' });
+    });
+    await b.syncWithWebDAVAsync(conf());
+    expect(await resolving).toBe(true);
+
+    expect((await b.getConflictsAsync()).map((c) => c.id)).toEqual([n2.id]);
+    expect((await b.getNoteAsync(n1.id))?.content).toBe('merged');
+  });
+
+  it('does not lose a conflict found by a sync while another conflict is being added', async () => {
+    await setUp();
+    const n = await a.addNoteAsync({ title: 'n', content: 'v1' });
+    await a.syncWithWebDAVAsync(conf());
+    await b.syncWithWebDAVAsync(conf());
+    await a.updateNoteAsync(n.id, { content: 'A' });
+    await b.updateNoteAsync(n.id, { content: 'B' });
+    await a.syncWithWebDAVAsync(conf());
+
+    // addConflictAsync stalls between reading and writing the conflict list,
+    // while b's sync records the conflict on n
+    const read = b.getConflictsAsync.bind(b);
+    vi.spyOn(b, 'getConflictsAsync').mockImplementationOnce(async () => {
+      const conflicts = await read();
+      await new Promise((r) => setTimeout(r, 50));
+      return conflicts;
+    });
+    const other = note('other');
+    let adding: Promise<boolean> | undefined;
+    server.afterNextGet(async () => {
+      adding = b.addConflictAsync({
+        id: other.id,
+        local: other,
+        remote: other,
+        resolved: false,
+        createdAt: 1,
+      });
+    });
+    await b.syncWithWebDAVAsync(conf());
+    expect(await adding).toBe(true);
+
+    expect((await b.getConflictsAsync()).map((c) => c.id).sort()).toEqual([n.id, other.id].sort());
+  });
+
   it.each([true, false])(
     'retries instead of overwriting when another device uploads mid-sync (ETag: %s)',
     async (etags) => {

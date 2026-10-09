@@ -776,33 +776,40 @@ export class NoteStorage implements SemanticCacheStore {
     }
   }
 
+  // The conflict list is read-modify-written under the write lock, like
+  // runSync's updates to it: otherwise a sync landing between our read and
+  // write would have its new conflicts overwritten.
+
   async addConflictAsync(conflict: NoteConflict): Promise<boolean> {
-    const conflicts = await this.getConflictsAsync();
-    conflicts.push(conflict);
-    return this.setConflictsAsync(conflicts);
+    return this.runExclusive(async () => {
+      const conflicts = await this.getConflictsAsync();
+      conflicts.push(conflict);
+      return this.setConflictsAsync(conflicts);
+    });
   }
 
   async resolveConflictAsync(id: string, resolvedNote: NoteItem): Promise<boolean> {
-    const conflicts = await this.getConflictsAsync();
-    if (!conflicts.some((c) => c.id === id)) return false;
-    // Save the note first: if that fails the conflict stays listed so the
-    // user can retry, instead of the resolution being silently dropped.
-    try {
-      await this.mutateNotes((notes) => {
-        const noteIndex = notes.findIndex((n) => n.id === id);
-        if (noteIndex !== -1) {
-          notes[noteIndex] = resolvedNote;
-        } else {
-          notes.push(resolvedNote);
-        }
-        return notes;
-      });
-    } catch (e) {
-      console.error('[NoteStorage] resolveConflictAsync failed', e);
-      return false;
-    }
-    const remaining = (await this.getConflictsAsync()).filter((c) => c.id !== id);
-    return this.setConflictsAsync(remaining);
+    return this.runExclusive(async () => {
+      const conflicts = await this.getConflictsAsync();
+      if (!conflicts.some((c) => c.id === id)) return false;
+      // Save the note first: if that fails the conflict stays listed so the
+      // user can retry, instead of the resolution being silently dropped.
+      try {
+        await this.mutateNotesUnlocked((notes) => {
+          const noteIndex = notes.findIndex((n) => n.id === id);
+          if (noteIndex !== -1) {
+            notes[noteIndex] = resolvedNote;
+          } else {
+            notes.push(resolvedNote);
+          }
+          return notes;
+        });
+      } catch (e) {
+        console.error('[NoteStorage] resolveConflictAsync failed', e);
+        return false;
+      }
+      return this.setConflictsAsync(conflicts.filter((c) => c.id !== id));
+    });
   }
 
   /**
