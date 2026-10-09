@@ -184,9 +184,10 @@ const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
 
       <button
         onClick={onNewNote}
+        aria-label="新建笔记"
         className="btn-primary btn-sm flex items-center gap-1 whitespace-nowrap"
       >
-        ➕ <span className="hidden sm:inline">新建笔记</span>
+        <span aria-hidden="true">➕</span> <span className="hidden sm:inline">新建笔记</span>
         <span className="sm:hidden">新建</span>
       </button>
 
