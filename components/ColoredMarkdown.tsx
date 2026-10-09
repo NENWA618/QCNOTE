@@ -79,9 +79,11 @@ const mathmlAttributes = [
 // span/div 的 style 和 className 是 KaTeX 输出需要的。用户手写 HTML 里的 style/class
 // 已在 KaTeX 渲染之前被 rehypeRestrictUserStyles 收紧，所以这里放行的只剩 KaTeX 自己生成的部分。
 // span 的 aria-hidden 让屏幕阅读器跳过 KaTeX 的视觉层，只读 MathML。
+// svg/path/line 是 KaTeX 画根号、宽帽子、可伸缩括号用的；用户手写的 SVG 已被
+// rehypeRestrictUserStyles 删除，所以 svg 上的 style 只会是 KaTeX 设置的宽度。
 const katexSanitizeSchema = {
   ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames || []), ...mathmlTagNames],
+  tagNames: [...(defaultSchema.tagNames || []), ...mathmlTagNames, 'svg', 'path', 'line'],
   attributes: {
     ...defaultSchema.attributes,
     span: [...(defaultSchema.attributes?.span || []), ['className'], ['style'], ['ariaHidden']],
@@ -89,6 +91,9 @@ const katexSanitizeSchema = {
     ...Object.fromEntries(mathmlTagNames.map((tag) => [tag, mathmlAttributes])),
     math: ['xmlns', 'display', ...mathmlAttributes],
     annotation: ['encoding'],
+    svg: ['xmlns', 'width', 'height', 'viewBox', 'preserveAspectRatio', 'style'],
+    path: ['d'],
+    line: ['x1', 'y1', 'x2', 'y2', 'strokeWidth'],
   },
 };
 

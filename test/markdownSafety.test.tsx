@@ -107,6 +107,26 @@ describe('Markdown rendering hardening', () => {
     expect(html).not.toMatch(/href|javascript|style=|onclick|mglyph|evil\.example/i);
   });
 
+  it('keeps the SVG KaTeX draws for roots, wide accents and arrows', () => {
+    const html = render('$$\n' + String.raw`\sqrt[3]{x} \widehat{abc} \cancel{y}` + '\n$$');
+    expect(html).toMatch(/<svg xmlns="http:\/\/www.w3.org\/2000\/svg" width="400em"[^>]*viewBox=/);
+    expect(html).toMatch(/<path d="M[^"]+"/);
+    expect(html).toContain('<line x1="0"');
+    expect(html).not.toContain('katex-error');
+  });
+
+  it('removes hand-written SVG anywhere in the note', () => {
+    const html = render(
+      '<svg onload="alert(1)" style="position:fixed;inset:0"><path d="M0 0"/>' +
+        '<a href="javascript:alert(2)"><text>click</text></a><use href="#x"/></svg>\n\n' +
+        '<span><SVG><PATH d="M1 1"/></SVG>inner</span>\n\n' +
+        '<math><mtext><svg><path d="M2 2"/></svg></mtext></math>\n\n' +
+        '<path d="M3 3"/><line x1="1"/>',
+    );
+    expect(html).toContain('<span>inner</span>');
+    expect(html).not.toMatch(/<svg|<path|<line|<use|onload|javascript|position|click/i);
+  });
+
   it('ignores unsafe stored colors in colored ranges', () => {
     const content = 'hello world';
     const out = renderToStaticMarkup(

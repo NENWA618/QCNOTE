@@ -8,6 +8,9 @@
  * 这里的 rehype 插件必须放在 rehype-raw 之后、rehype-katex 之前：那时树里只有用户
  * 写的元素，KaTeX 生成的节点还不存在，所以可以对 style/class 一刀切地收紧，
  * 而不会破坏公式排版。
+ *
+ * 同理，KaTeX 用 SVG 画根号、宽帽子、可伸缩括号，sanitize 因此放行了 svg/path/line。
+ * 用户手写的这些元素在这里整个删掉，保证最终留下的 SVG 都是 KaTeX 生成的。
  */
 
 // hex、命名颜色，或只含数字/小数/百分号/逗号/斜杠/空白的 rgb()/hsl() 函数
@@ -36,8 +39,12 @@ export function filterInlineStyle(style: string): string | null {
 const ALLOWED_CLASS =
   /^(?:language-[\w-]+|math-inline|math-display|contains-task-list|task-list-item)$/;
 
+// 只供 KaTeX 使用的 SVG 元素，用户手写的一律删除
+const KATEX_ONLY_TAGS = new Set(['svg', 'path', 'line']);
+
 interface HastNode {
   type: string;
+  tagName?: string;
   properties?: Record<string, unknown>;
   children?: HastNode[];
 }
@@ -63,10 +70,15 @@ function restrictNode(node: HastNode): void {
     }
   }
 
-  node.children?.forEach(restrictNode);
+  if (node.children) {
+    node.children = node.children.filter(
+      (child) => !(child.type === 'element' && KATEX_ONLY_TAGS.has(child.tagName ?? '')),
+    );
+    node.children.forEach(restrictNode);
+  }
 }
 
-/** rehype 插件：收紧用户手写 HTML 里的 style 与 class */
+/** rehype 插件：收紧用户手写 HTML 里的 style 与 class，删除手写的 SVG */
 export function rehypeRestrictUserStyles() {
   return (tree: HastNode) => restrictNode(tree);
 }
