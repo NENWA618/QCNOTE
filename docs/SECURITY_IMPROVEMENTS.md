@@ -73,7 +73,7 @@ Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
 
 `lib/csrfProtection.ts` 提供两层：
 
-- **同源校验（已接入）**：所有会修改状态的 Next API 路由都用 `withCsrfProtection` 包装，包括 `/api/proxy/*`、`/api/admin/set-admin`、`/api/device/*`、`/api/push/*`、`/api/vault/key`、`/api/ugc/maze/submit`。浏览器发起的跨站请求通过 `Sec-Fetch-Site`（旧浏览器退回 `Origin` / `Referer`）识别并以 403 拒绝。不带这些头的非浏览器客户端不构成 CSRF 攻击面，直接放行。
+- **同源校验（已接入）**：所有会修改状态的 Next API 路由都用 `withCsrfProtection` 包装，包括 `/api/proxy/*`、`/api/admin/set-admin`、`/api/device/*`、`/api/push/*`、`/api/vault/key`、`/api/ugc/maze/start`、`/api/ugc/maze/submit`。浏览器发起的跨站请求通过 `Sec-Fetch-Site`（旧浏览器退回 `Origin` / `Referer`）识别并以 403 拒绝。不带这些头的非浏览器客户端不构成 CSRF 攻击面，直接放行。
 - **无状态令牌（可选）**：`generateCSRFToken` / `validateCSRFToken` 生成与会话绑定的 HMAC 令牌，多实例部署也能校验。
 
 NextAuth 自己的 `/api/auth/*` 使用其内置 CSRF 令牌。

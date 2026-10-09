@@ -5,7 +5,15 @@ import type { NextPage } from 'next';
 import DiejieStage from '../components/diejie/DiejieStage';
 import DiejieStyles from '../components/diejie/DiejieStyles';
 import { drawPlantAt, drawTreeAt } from '../lib/diejie/decor';
-import { cellCenterAt, fmtTime, generateMaze, wallMidAt } from '../lib/diejie/maze';
+import {
+  MAZE_COLS,
+  MAZE_ROWS,
+  cellCenterAt,
+  fmtTime,
+  generateMaze,
+  mulberry32,
+  wallMidAt,
+} from '../lib/diejie/maze';
 
 const DiejiePage: NextPage = () => {
   const { status } = useSession();
@@ -117,6 +125,11 @@ const DiejiePage: NextPage = () => {
     let lightActive = false;
     let movementAllowed = false;
     let lightExpiry = 0;
+    // 当前这一局：走法记录、服务端开局令牌，以及开局请求的 HTTP 状态
+    let runId = 0;
+    let moves = '';
+    let runToken: string | null = null;
+    let runStartStatus: number | null = null;
 
     function getCanvasCoords(clientX: number, clientY: number) {
       const rect = canvasRect;
@@ -154,7 +167,11 @@ const DiejiePage: NextPage = () => {
     }
 
     function reset() {
-      maze = generateMaze(7, 11);
+      runId++;
+      runToken = null;
+      runStartStatus = null;
+      moves = '';
+      maze = generateMaze(MAZE_ROWS, MAZE_COLS);
       buildDecorLayer();
       const start = cellCenter(0, 0);
       player = { r: 0, c: 0, x: start.x, y: start.y, tx: start.x, ty: start.y };
@@ -194,7 +211,7 @@ const DiejiePage: NextPage = () => {
       const [dc, dr] = deltas[dir];
       const nr = player.r + dr;
       const nc = player.c + dc;
-      const blocked = cell[dir] === true || nr < 0 || nr >= 7 || nc < 0 || nc >= 11;
+      const blocked = cell[dir] === true || nr < 0 || nr >= MAZE_ROWS || nc < 0 || nc >= MAZE_COLS;
       if (blocked) {
         bumps++;
         updateHud();
@@ -209,8 +226,9 @@ const DiejiePage: NextPage = () => {
       player.tx = target.x;
       player.ty = target.y;
       steps++;
+      moves += dir;
       updateHud();
-      if (nr === 6 && nc === 10) {
+      if (nr === MAZE_ROWS - 1 && nc === MAZE_COLS - 1) {
         window.setTimeout(() => {
           won = true;
           showWin();
@@ -228,23 +246,31 @@ const DiejiePage: NextPage = () => {
       document.getElementById('finalTime')!.textContent = fmtTime(performance.now() - startTime);
       document.getElementById('winOverlay')?.classList.add('show');
       document.getElementById('statsBox')?.setAttribute('style', '');
-      submitMazeResult(steps, performance.now() - startTime);
+      submitMazeResult();
     }
 
-    async function submitMazeResult(steps: number, timeMs: number) {
+    async function submitMazeResult() {
       const statusEl = document.getElementById('submitStatus');
       if (!statusEl) return;
+      if (!runToken) {
+        if (runStartStatus === 401) {
+          statusEl.textContent = '未登录，正在跳转登录...';
+          signIn(undefined, { callbackUrl: '/diejie' });
+        } else {
+          statusEl.textContent = '本局没有连上排行榜，成绩未提交';
+        }
+        return;
+      }
       statusEl.textContent = '正在提交排行榜...';
       try {
-        const normalizedSteps = Math.round(steps);
-        const normalizedTimeMs = Math.round(timeMs);
+        // 步数和用时由服务端回放走法、按开局时间得出
         const response = await fetch('/api/ugc/maze/submit', {
           method: 'POST',
           credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ steps: normalizedSteps, timeMs: normalizedTimeMs }),
+          body: JSON.stringify({ token: runToken, moves }),
         });
         const responseText = await response.text();
         let result: { success?: boolean; message?: string; error?: string } = {};
@@ -347,7 +373,39 @@ const DiejiePage: NextPage = () => {
       mouse.y = -9999;
     }
 
+    // 排行榜成绩由服务端出题、计时：开局时向服务端要迷宫种子，换成对应的迷宫，
+    // 通关后提交走法让服务端回放。没登录或连不上后端时照常游戏，只是不计入排行榜。
+    async function startRankedRun(run: number) {
+      try {
+        const response = await fetch('/api/ugc/maze/start', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        if (run !== runId) return;
+        runStartStatus = response.status;
+        const result = (await response.json().catch(() => null)) as {
+          success?: boolean;
+          token?: unknown;
+          seed?: unknown;
+        } | null;
+        if (run !== runId) return;
+        if (!response.ok || typeof result?.token !== 'string' || typeof result.seed !== 'number')
+          return;
+        // 预览结束、已经开始走了就不换迷宫，本局不计入排行榜
+        if (movementAllowed || won) return;
+        maze = generateMaze(MAZE_ROWS, MAZE_COLS, mulberry32(result.seed));
+        buildDecorLayer();
+        runToken = result.token;
+      } catch {
+        // 离线：本局不计入排行榜
+      }
+    }
+
     function handleStartClick() {
+      // 一次按下会同时触发 pointerdown / touchstart / click
+      if (!introActive) return;
       document.getElementById('introOverlay')?.classList.remove('show');
       introActive = false;
       lightActive = true;
@@ -356,6 +414,7 @@ const DiejiePage: NextPage = () => {
       mouse = { x: player.x, y: player.y };
       document.getElementById('countdownText')?.setAttribute('style', '');
       startTime = performance.now();
+      void startRankedRun(runId);
     }
 
     function handlePlayAgainClick() {

@@ -235,14 +235,14 @@ OneDrive 目前需要用户手动粘贴 Microsoft Graph 访问令牌，没有内
 
 `server/index.ts` 是入口，路由在 `server/routes/`：
 
-| 文件             | 路由                                                                                                                           |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `core.ts`        | `GET /api/health`、`GET /api/sitemap.xml`                                                                                      |
-| `device.ts`      | `POST /api/device/verify`、`/api/device/session/create`、`/api/device/session/validate`、`/api/device/reset`、`/api/vault/key` |
-| `ugc.ts`         | 用户资料与公开笔记，见 8.2                                                                                                     |
-| `leaderboard.ts` | `GET /api/ugc/leaderboard/:type`、`/api/ugc/leaderboard/maze`；`POST /api/ugc/maze/submit`                                     |
-| `push.ts`        | `/api/push/subscribe`、`/unsubscribe`、`/broadcast`、`GET /api/push/stats`                                                     |
-| `admin.ts`       | `/api/admin/users`、`/roles`、`/set-admin`                                                                                     |
+| 文件             | 路由                                                                                                                                    |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `core.ts`        | `GET /api/health`、`GET /api/sitemap.xml`                                                                                               |
+| `device.ts`      | `POST /api/device/verify`、`/api/device/session/create`、`/api/device/session/validate`、`/api/device/reset`、`/api/vault/key`          |
+| `ugc.ts`         | 用户资料与公开笔记，见 8.2                                                                                                              |
+| `leaderboard.ts` | `GET /api/ugc/leaderboard/:type`、`/api/ugc/leaderboard/maze`；`POST /api/ugc/maze/start`、`/api/ugc/maze/submit`（服务端回放走法计分） |
+| `push.ts`        | `/api/push/subscribe`、`/unsubscribe`、`/broadcast`、`GET /api/push/stats`                                                              |
+| `admin.ts`       | `/api/admin/users`、`/roles`、`/set-admin`                                                                                              |
 
 服务器不保存、也不接收任何私有笔记；唯一的笔记内容是用户主动发布的公开副本。
 

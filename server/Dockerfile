@@ -13,6 +13,9 @@ COPY server/package*.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 COPY tsconfig.json /app/tsconfig.json
+# The server imports dependency-free helpers from ../lib (logger, cookie names,
+# markdown/push checks, maze replay)
+COPY lib/ /app/lib/
 COPY server/ ./
 
 ENV NODE_ENV=production

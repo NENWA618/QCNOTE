@@ -182,6 +182,43 @@ export class UGCService {
     }
   }
 
+  // ==================== 迷宫排行榜：由服务端出题、计时 ====================
+  // 开局时签发一个带随机种子和开局时间的令牌；提交时服务端用种子重建迷宫、回放
+  // 走法，步数和用时都由服务端得出，而不是相信客户端上报的数字。
+
+  async createMazeRunToken(
+    userId: string,
+    expiresMs: number = 1000 * 60 * 60 * 2,
+  ): Promise<{ token: string; seed: number }> {
+    const seed = crypto.randomInt(0, 2 ** 32);
+    const startedAt = Date.now();
+    const token = await new SignJWT({ scope: 'maze_run', seed, startedAt })
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+      .setSubject(userId)
+      .setIssuedAt()
+      .setExpirationTime(Math.floor((startedAt + expiresMs) / 1000))
+      .sign(this.getDeviceSessionSecret());
+    return { token, seed };
+  }
+
+  async verifyMazeRunToken(
+    userId: string,
+    token: string,
+  ): Promise<{ seed: number; startedAt: number } | null> {
+    try {
+      const { payload } = await jwtVerify(token, this.getDeviceSessionSecret(), {
+        subject: userId,
+      });
+      const { scope, seed, startedAt } = payload as Record<string, unknown>;
+      if (scope !== 'maze_run' || typeof seed !== 'number' || typeof startedAt !== 'number') {
+        return null;
+      }
+      return { seed, startedAt };
+    } catch {
+      return null;
+    }
+  }
+
   async verifyDeviceFingerprint(
     userId: string,
     fingerprint: string,
@@ -438,23 +475,6 @@ export class UGCService {
       Array.from(keepDays),
     );
     return result.rowCount ?? 0;
-  }
-
-  async hasGameSubmission(leaderboardKey: string, userId: string): Promise<boolean> {
-    const day = this.extractDayFromLeaderboardKey(leaderboardKey);
-    if (day) {
-      await this.ensureMazeSubmissionTable();
-      const result = await this.db.query(
-        'SELECT 1 FROM maze_submissions WHERE user_id = $1 AND day = $2 LIMIT 1',
-        [userId, day],
-      );
-      if (result.rowCount) {
-        return true;
-      }
-    }
-
-    const exists = await this.redis.exists(`${leaderboardKey}:user:${userId}`);
-    return exists === 1;
   }
 
   async addGameSubmission(

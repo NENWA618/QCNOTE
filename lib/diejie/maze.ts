@@ -4,7 +4,14 @@ export type MazeWall = 'N' | 'E' | 'S' | 'W';
 export type MazeCell = Record<MazeWall, boolean> & { visited: boolean };
 export type MazeDirection = { name: MazeWall; dr: number; dc: number; opp: MazeWall };
 
-export function generateMaze(rows: number, cols: number) {
+export const MAZE_ROWS = 7;
+export const MAZE_COLS = 11;
+
+/**
+ * `random` lets the server rebuild the exact maze a ranked run was played on
+ * (pass mulberry32(seed)); unranked play just uses Math.random.
+ */
+export function generateMaze(rows: number, cols: number, random: () => number = Math.random) {
   const cells: Array<Array<MazeCell>> = [];
   for (let r = 0; r < rows; r++) {
     const row: Array<MazeCell> = [];
@@ -32,7 +39,7 @@ export function generateMaze(rows: number, cols: number) {
       stack.pop();
       continue;
     }
-    const pick = options[Math.floor(Math.random() * options.length)];
+    const pick = options[Math.floor(random() * options.length)];
     cells[r][c][pick.name] = false;
     cells[pick.nr][pick.nc][pick.opp] = false;
     cells[pick.nr][pick.nc].visited = true;
@@ -41,6 +48,38 @@ export function generateMaze(rows: number, cols: number) {
   cells[0][0].N = false;
   cells[rows - 1][cols - 1].S = false;
   return cells;
+}
+
+const MOVE_DELTAS: Record<MazeWall, [number, number]> = {
+  N: [-1, 0],
+  S: [1, 0],
+  E: [0, 1],
+  W: [0, -1],
+};
+
+/**
+ * Replays a run's moves ('N' | 'E' | 'S' | 'W' per step that actually moved)
+ * from the entrance. Returns the step count if every move passes through an
+ * open wall and the last one — and only the last one — reaches the exit;
+ * otherwise null. This is how the server checks a submitted result.
+ */
+export function replayMazeMoves(cells: MazeCell[][], moves: string): number | null {
+  const rows = cells.length;
+  const cols = cells[0]?.length ?? 0;
+  let r = 0;
+  let c = 0;
+  for (let i = 0; i < moves.length; i++) {
+    if (r === rows - 1 && c === cols - 1) return null; // kept moving after the exit
+    const dir = moves[i] as MazeWall;
+    const delta = MOVE_DELTAS[dir];
+    if (!delta) return null;
+    const nr = r + delta[0];
+    const nc = c + delta[1];
+    if (cells[r][c][dir] || nr < 0 || nr >= rows || nc < 0 || nc >= cols) return null;
+    r = nr;
+    c = nc;
+  }
+  return r === rows - 1 && c === cols - 1 ? moves.length : null;
 }
 
 export function wallMidAt(cell: number, r: number, c: number, dir: MazeWall) {
