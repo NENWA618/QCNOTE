@@ -343,7 +343,7 @@ GitHub ─push─▶ Vercel（Next.js + pages/api）─BACKEND_URL─▶ Fastify
 
 ## 14. 版本
 
-以 `package.json` 和 `server/package.json` 为准：Node.js ≥ 20.9（CI 用 22）、Next.js 16（Pages Router）、React 18、TypeScript 5、Tailwind CSS 4、Lunr 2、KaTeX、`@huggingface/transformers` 4、next-auth 4、Fastify 5。
+以 `package.json` 和 `server/package.json` 为准：Node.js ≥ 20.9（CI 用 22）、Next.js 16（Pages Router）、React 19、TypeScript 5、Tailwind CSS 4、Lunr 2、KaTeX、`@huggingface/transformers` 4、next-auth 4、Fastify 5。
 
 ## 15. 已知限制与方向
 
