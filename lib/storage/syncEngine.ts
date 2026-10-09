@@ -55,6 +55,28 @@ export function noteSyncHash(note: NoteItem): string {
   );
 }
 
+/**
+ * Returns `base` if it plausibly describes `remote`, else null (merge as a
+ * first sync: union everything, delete nothing). `remote` is null when the
+ * remote file doesn't exist.
+ *
+ * Without this, "the file is gone" or "this is a different file" (e.g. the
+ * same OneDrive path in another account) would read as "the remote deleted
+ * every note", and the merge would delete them all locally. An existing but
+ * empty file is trusted: that is how "all notes were deleted" looks. The
+ * cost is that a remote where every base note was replaced by new ones
+ * brings the old ones back — resurrecting beats losing data.
+ */
+export function applicableBase(
+  base: SyncBaseHashes | null,
+  remote: NoteItem[] | null,
+): SyncBaseHashes | null {
+  if (!base || Object.keys(base).length === 0) return base;
+  if (remote === null) return null;
+  if (remote.length === 0) return base;
+  return remote.some((note) => base[note.id] !== undefined) ? base : null;
+}
+
 export interface ThreeWayMergeInput {
   local: NoteItem[];
   remote: NoteItem[];

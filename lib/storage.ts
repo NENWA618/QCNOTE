@@ -30,6 +30,7 @@ import {
   type SyncTransport,
 } from './storage/remoteSync';
 import {
+  applicableBase,
   noteSyncHash,
   threeWayMerge,
   type SyncBase,
@@ -952,7 +953,13 @@ export class NoteStorage implements SemanticCacheStore {
         // one locked step, so they all land in the store of the user this
         // sync started for.
         const result = await this.runForGeneration(generation, async () => {
-          const base = await this.readSyncBase(provider, transport.remoteId);
+          const storedBase = await this.readSyncBase(provider, transport.remoteId);
+          const base = applicableBase(storedBase, snapshot ? remoteNotes : null);
+          if (storedBase && !base) {
+            console.warn(
+              `[NoteStorage] ${provider} 远程文件不存在或与上次同步的不是同一个，按首次同步合并（不删除任何笔记）`,
+            );
+          }
           const pending = new Set((await this.getConflictsAsync()).map((c) => c.id));
           const merged: { result?: ThreeWayMergeResult } = {};
           await this.mutateNotesUnlocked((localNotes) => {

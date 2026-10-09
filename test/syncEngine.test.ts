@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NoteStorage, type NoteItem, type WebDAVConfig } from '../lib/storage';
-import { noteSyncHash, threeWayMerge, type SyncBaseHashes } from '../lib/storage/syncEngine';
+import {
+  applicableBase,
+  noteSyncHash,
+  threeWayMerge,
+  type SyncBaseHashes,
+} from '../lib/storage/syncEngine';
 import IDB from '../lib/idb';
 
 const note = (id: string, over: Partial<NoteItem> = {}): NoteItem => ({
@@ -38,6 +43,25 @@ describe('noteSyncHash', () => {
         sentimentScore: 3,
       }),
     ).toBe(noteSyncHash(n));
+  });
+});
+
+describe('applicableBase', () => {
+  const base = baseOf(note('a'), note('b'));
+
+  it('trusts a base that shares notes with the remote, or an empty remote file', () => {
+    expect(applicableBase(base, [note('b'), note('c')])).toBe(base);
+    expect(applicableBase(base, [])).toBe(base);
+  });
+
+  it('drops the base when the remote file is missing or shares no notes with it', () => {
+    expect(applicableBase(base, null)).toBeNull();
+    expect(applicableBase(base, [note('x')])).toBeNull();
+  });
+
+  it('passes a missing or empty base through', () => {
+    expect(applicableBase(null, null)).toBeNull();
+    expect(applicableBase({}, null)).toEqual({});
   });
 });
 
@@ -208,6 +232,13 @@ function makeServer({ etags = true }: { etags?: boolean } = {}) {
     get putCount() {
       return putCount;
     },
+    /** Replaces the remote file as if changed outside the app (null: deletes it). */
+    setFile(body: string | null) {
+      file = body === null ? null : { body, version: (file?.version ?? 0) + 1 };
+    },
+    get body() {
+      return file?.body ?? null;
+    },
   };
 }
 
@@ -309,6 +340,46 @@ describe('WebDAV sync between two devices', () => {
 
     expect(Object.keys(await contents(a))).toEqual(['kept']);
     expect(Object.keys(await contents(b))).toEqual(['kept']);
+  });
+
+  it('re-uploads instead of deleting local notes when the remote file disappears', async () => {
+    await setUp();
+    await a.addNoteAsync({ title: 'n1' });
+    await a.addNoteAsync({ title: 'n2' });
+    expect(await a.syncWithWebDAVAsync(conf())).toBe(true);
+
+    server.setFile(null);
+    expect(await a.syncWithWebDAVAsync(conf())).toBe(true);
+
+    expect(Object.keys(await contents(a)).sort()).toEqual(['n1', 'n2']);
+    const uploaded = JSON.parse(server.body!) as NoteItem[];
+    expect(uploaded.map((n) => n.title).sort()).toEqual(['n1', 'n2']);
+  });
+
+  it('merges instead of deleting when the remote is a different file at the same path', async () => {
+    await setUp();
+    await a.addNoteAsync({ title: 'mine' });
+    expect(await a.syncWithWebDAVAsync(conf())).toBe(true);
+
+    // e.g. another account's file under the same path
+    server.setFile(JSON.stringify([note('other', { title: 'theirs' })]));
+    expect(await a.syncWithWebDAVAsync(conf())).toBe(true);
+
+    expect(Object.keys(await contents(a)).sort()).toEqual(['mine', 'theirs']);
+  });
+
+  it('still propagates deleting every note through an empty remote file', async () => {
+    await setUp();
+    const n = await a.addNoteAsync({ title: 'only' });
+    await a.syncWithWebDAVAsync(conf());
+    await b.syncWithWebDAVAsync(conf());
+
+    await a.permanentlyDeleteNoteAsync(n.id);
+    await a.syncWithWebDAVAsync(conf());
+    expect(server.body).toBe('[]');
+    await b.syncWithWebDAVAsync(conf());
+
+    expect(await b.loadNotesAsync()).toEqual([]);
   });
 
   it('turns concurrent edits of one note into a conflict, then syncs the resolution', async () => {
