@@ -115,7 +115,7 @@ user_vault_keys.wrapped_key            QCNOTE_NOTES_DB_<userId>__qcnote_meta__
 
 - **KEK**（每用户一把）由后端随机生成，用 `VAULT_MASTER_KEY` 加密后存进 `user_vault_keys` 表。
 - **DEK**（每个浏览器的每个笔记库一把）在浏览器本地生成，用 KEK 包裹后存在该库的元数据库里，**从不发往服务器**；KEK 也只在内存中使用，不落盘。
-- 打开笔记库的顺序：读取设备会话令牌 → 计算设备指纹 → `/api/device/session/validate` → `/api/vault/key` 换取 KEK → 解包 DEK。任何一步失败（离线、令牌过期、KEK 解不开 DEK）都会把库标记为**锁定**（`notesDbLocked`），仪表盘提示"设备未解锁"，而不是显示一个空列表。
+- 打开笔记库的顺序：读取设备会话令牌 → 计算设备指纹 → `/api/device/session/validate` → `/api/vault/key` 换取 KEK → 解包 DEK。任何一步失败（离线、令牌过期、KEK 解不开 DEK）都会把库标记为**锁定**（`notesDbLocked`），仪表盘提示"设备未解锁"，而不是显示一个空列表。锁定后每隔 `NOTES_DB_RETRY_MS`（10 秒）的下一次读取会重新尝试打开，仪表盘在锁定期间定时重试、联网时立即重试，解锁后不用刷新页面。
 - **加密的字段**：标题、正文、分类、标签、文字着色、引用的标题（`links`）、版本历史、情感分析结果。明文保留的只有 id、时间戳、收藏 / 归档 / 删除标记、笔记颜色、`backlinks`（笔记 id 列表）和 `ownerId`。新增携带用户内容的字段时，必须在 `NoteStorage.noteStoreSchema` 里标为 `secret`。
 - **迁移**：打开库时，Worker 会把仍是明文的 secret 字段一次性加密；旧方案（v1，本机持久化密钥）的库在拿到 KEK 后迁移到金库方案（v2）。
 - **无法解密的记录**：某条记录的加密字段解不开时，Worker 去掉它的 secret 字段并标记 `_undecryptable`。`NoteStorage` 读取时跳过这些记录（计数在 `undecryptableCount`），它们不会被显示、修改、删除或同步，原始数据留在本机以便日后恢复。
@@ -124,7 +124,7 @@ user_vault_keys.wrapped_key            QCNOTE_NOTES_DB_<userId>__qcnote_meta__
 
 ### 4.3 设备验证
 
-- 设备指纹是 UA、平台、语言、屏幕、CPU 核数等的 SHA-256（`getDeviceFingerprint`）。
+- 设备指纹是 UA、平台、语言、屏幕、CPU 核数等的 SHA-256（`getDeviceFingerprint`）。它在浏览器里计算、由客户端上报，服务端无法核实，也不是秘密：能读到设备会话令牌的一方（例如页面里的 XSS）通常也能在同一环境算出同一指纹。
 - 每个账号同一时间只登记**一台**设备：第一次验证的设备自动登记；其他指纹会被拒绝（`DEVICE_MISMATCH`）。浏览器升级等导致指纹变化时也会被拒绝。
 - 用户可在仪表盘"重置设备"（`/api/device/reset`）：清空登记列表，并把当前设备登记为新设备。重置只要求已登录，所以设备绑定防的是"令牌被拿到别的设备上用"，而不是账号本身被盗用。
 - 设备会话令牌是 HS256 JWT，绑定用户和指纹，有效期 12 小时，签名密钥为 `DEVICE_SESSION_SECRET`（未设置时用 `NEXTAUTH_SECRET`）。令牌存在 `sessionStorage`，关闭浏览器即失效。
@@ -302,7 +302,7 @@ OneDrive 目前需要用户手动粘贴 Microsoft Graph 访问令牌，没有内
 
 - 笔记在 IndexedDB 里，不经过 Service Worker；PWA 补的是"应用壳也能离线打开"。
 - 页面访问过一次才会被缓存。
-- 登录用户离线时拿不到 KEK，笔记库会处于锁定状态；离线读写完整可用的是访客模式。
+- 登录用户离线时拿不到 KEK，笔记库会处于锁定状态，恢复联网后自动解锁；离线读写完整可用的是访客模式。
 - 修改缓存策略时递增 `CACHE_VERSION`；`next.config.mjs` 给 `/service-worker.js` 设了 `no-cache`。
 - 推送点击会聚焦或打开 `/dashboard`。
 
