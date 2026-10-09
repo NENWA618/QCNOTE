@@ -97,11 +97,17 @@ const katexSanitizeSchema = {
   },
 };
 
+// KaTeX 生成的样式不经过 rehypeRestrictUserStyles，公式里写的尺寸会原样变成 CSS：
+// 不设上限的话 `\rule{500em}{500em}` 能画出盖住整页的色块，在公开笔记里可以拿来钓鱼。
+// maxSize 只截断正值，`\kern{-30em}` 这类负值仍能把内容移出笔记区域、盖到侧栏上，
+// 靠 NormalMarkdown 外层容器的裁剪兜底。
+const KATEX_MAX_SIZE_EM = 10;
+
 // 顺序很重要：raw → 收紧用户样式 → katex → sanitize
 const rehypePlugins: Pluggable[] = [
   rehypeRaw as Pluggable,
   rehypeRestrictUserStyles as Pluggable,
-  rehypeKatex as Pluggable,
+  [rehypeKatex, { maxSize: KATEX_MAX_SIZE_EM }] as Pluggable,
   [rehypeSanitize, katexSanitizeSchema] as Pluggable,
 ];
 
@@ -144,37 +150,41 @@ interface NormalMarkdownProps {
 }
 
 export const NormalMarkdown: React.FC<NormalMarkdownProps> = ({ content }) => {
+  // 裁剪掉画到笔记区域之外的内容（KaTeX 用负边距排版，`\kern` 的位移可以很大）；
+  // 过宽的公式横向滚动
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkMath, remarkGfm]}
-      rehypePlugins={rehypePlugins}
-      components={{
-        h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
-        h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
-        h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
-        p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
-        ul: ({ children }) => <ul className="mb-4 ml-6 list-disc">{children}</ul>,
-        ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal">{children}</ol>,
-        li: ({ children }) => <li className="mb-1">{children}</li>,
-        code: ({ children }) => (
-          <code className="bg-gray-100 dark:bg-dark-surface-light px-2 py-1 rounded text-sm font-mono text-gray-800 dark:text-dark-text">
-            {children}
-          </code>
-        ),
-        pre: ({ children }) => (
-          <pre className="bg-gray-100 dark:bg-dark-surface-light p-4 rounded overflow-x-auto mb-4 text-gray-800 dark:text-dark-text">
-            {children}
-          </pre>
-        ),
-        blockquote: ({ children }) => (
-          <blockquote className="border-l-4 border-primary pl-4 italic text-gray-600 dark:text-dark-text-secondary mb-4">
-            {children}
-          </blockquote>
-        ),
-      }}
-    >
-      {content || '*暂无内容*'}
-    </ReactMarkdown>
+    <div className="overflow-x-auto overflow-y-hidden">
+      <ReactMarkdown
+        remarkPlugins={[remarkMath, remarkGfm]}
+        rehypePlugins={rehypePlugins}
+        components={{
+          h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
+          p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
+          ul: ({ children }) => <ul className="mb-4 ml-6 list-disc">{children}</ul>,
+          ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal">{children}</ol>,
+          li: ({ children }) => <li className="mb-1">{children}</li>,
+          code: ({ children }) => (
+            <code className="bg-gray-100 dark:bg-dark-surface-light px-2 py-1 rounded text-sm font-mono text-gray-800 dark:text-dark-text">
+              {children}
+            </code>
+          ),
+          pre: ({ children }) => (
+            <pre className="bg-gray-100 dark:bg-dark-surface-light p-4 rounded overflow-x-auto mb-4 text-gray-800 dark:text-dark-text">
+              {children}
+            </pre>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-primary pl-4 italic text-gray-600 dark:text-dark-text-secondary mb-4">
+              {children}
+            </blockquote>
+          ),
+        }}
+      >
+        {content || '*暂无内容*'}
+      </ReactMarkdown>
+    </div>
   );
 };
 

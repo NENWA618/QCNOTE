@@ -82,6 +82,26 @@ describe('Markdown rendering hardening', () => {
     expect(display).toMatch(/style="[^"]*(height|margin|vertical-align|top)/);
   });
 
+  it('caps sizes written in formulas so they cannot cover the page', () => {
+    for (const formula of ['\\rule{500em}{500em}', '\\raisebox{500em}{X}', '\\kern{500em}x']) {
+      const html = render(`$${formula}$`);
+      expect(html).toContain('class="katex"');
+      // 公式原文会留在 MathML 的 <annotation> 里，只看生成的样式
+      const styles = (html.match(/style="[^"]*"/g) ?? []).join(' ');
+      const sizes = [...styles.matchAll(/(-?[\d.]+)em/g)].map((m) => Math.abs(Number(m[1])));
+      // 截断到 maxSize（10em），再加上字符本身的高度
+      expect(Math.max(...sizes)).toBeGreaterThanOrEqual(10);
+      expect(Math.max(...sizes)).toBeLessThan(20);
+    }
+  });
+
+  it('clips whatever is drawn outside the note area', () => {
+    // maxSize 不截断负值，这一层靠外层容器裁剪
+    const html = render('$\\kern{-500em}X$');
+    expect(html).toMatch(/margin-right:-500em/);
+    expect(html).toMatch(/^<div class="overflow-x-auto overflow-y-hidden">/);
+  });
+
   it('cannot forge KaTeX markup by writing katex classes by hand', () => {
     const html = render('<span class="katex" style="position:fixed;inset:0">fake</span>');
     expect(html).not.toContain('class="katex"');
