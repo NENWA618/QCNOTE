@@ -3,8 +3,8 @@
 // store untouched and be reported, and concurrent saves must not overwrite
 // each other.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { NoteStorage, NoteStorageError } from '../lib/storage';
-import { QCDb } from '../qcruntime/qcnote-runtime';
+import { NoteStorage, NoteStorageError, NOTES_DB_RETRY_MS } from '../lib/storage';
+import { QCDb, QCRuntime } from '../qcruntime/qcnote-runtime';
 import IDB from '../lib/idb';
 
 const resetLocalStorage = () => {
@@ -134,6 +134,31 @@ describe('NoteStorage data integrity', () => {
     expect(notes.map((n) => [n.title, n.tags])).toEqual([['added later', ['t']]]);
   });
 
+  it('picks up guest notes saved to the fallback store while the notes DB could not open', async () => {
+    await storage.addNoteAsync({ title: 'in db' });
+
+    const fallback = new NoteStorage();
+    vi.spyOn(QCRuntime, 'open').mockRejectedValueOnce(new Error('IndexedDB blocked'));
+    await fallback.addNoteAsync({ title: 'saved to fallback' });
+    vi.restoreAllMocks();
+
+    // next page load: the notes DB opens again and must show both
+    const reloaded = new NoteStorage();
+    expect(await titles(reloaded)).toEqual(['in db', 'saved to fallback']);
+    expect(JSON.parse(localStorage.getItem('QCNOTE_STORAGE')!)).toEqual([]);
+    // and they are not duplicated by a later load
+    expect(await titles(new NoteStorage())).toEqual(['in db', 'saved to fallback']);
+  });
+
+  it('does not leave an empty backup behind each time IndexedDB is enabled', async () => {
+    localStorage.setItem('QCNOTE_STORAGE', '[]');
+    const setItem = vi.spyOn(IDB, 'setItem');
+    expect(await new NoteStorage().enableIndexedDB()).toBe(true);
+    expect(setItem.mock.calls.map(([key]) => key)).not.toContainEqual(
+      expect.stringContaining('_backup_'),
+    );
+  });
+
   describe('signed-in user', () => {
     const signIn = async (userId: string) => {
       sessionStorage.setItem(
@@ -183,6 +208,34 @@ describe('NoteStorage data integrity', () => {
 
       expect(storage.notesDbLocked).toBe(true);
       await expect(storage.loadNotesAsync()).rejects.toMatchObject({ kind: 'locked' });
+    });
+
+    it('unlocks by itself once the vault key is reachable again', async () => {
+      await signIn('gina');
+      await storage.addNoteAsync({ title: 'kept' });
+
+      const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
+      const working = fetchMock.getMockImplementation();
+      fetchMock.mockImplementation(
+        async (input: RequestInfo | URL) =>
+          ({
+            ok: !String(input).includes('/api/vault/key'),
+            json: async () => ({ success: !String(input).includes('/api/vault/key') }),
+          }) as Response,
+      );
+      const offline = new NoteStorage();
+      await offline.setCurrentUser('gina');
+      expect(offline.notesDbLocked).toBe(true);
+
+      // back online: still locked until the retry pause has passed...
+      fetchMock.mockImplementation(working!);
+      await expect(offline.loadNotesAsync()).rejects.toMatchObject({ kind: 'locked' });
+
+      // ...then the next read unlocks without switching users again
+      const now = Date.now();
+      vi.spyOn(Date, 'now').mockReturnValue(now + NOTES_DB_RETRY_MS + 1);
+      expect(await titles(offline)).toEqual(['kept']);
+      expect(offline.notesDbLocked).toBe(false);
     });
 
     describe('records that cannot be decrypted', () => {

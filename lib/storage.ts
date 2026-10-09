@@ -77,6 +77,9 @@ const ONEDRIVE_SECRET_FIELDS: (keyof OneDriveConfig & string)[] = ['accessToken'
 const LOCKED_MESSAGE =
   '当前设备未解锁（无法获取加密密钥）。请检查网络连接，或重新验证/注册当前设备后重试。';
 
+/** How long a locked signed-in user's notes DB waits before the next unlock attempt. */
+export const NOTES_DB_RETRY_MS = 10_000;
+
 /**
  * Thrown when notes can't be read or written. Mutations never fall back to
  * "assume there are no notes": doing so and then writing back would wipe the
@@ -150,6 +153,8 @@ export class NoteStorage implements SemanticCacheStore {
   private notesDb?: QCDb | null;
   private notesDbName: string | null = null;
   private notesDbOpenFailed = false;
+  /** Earliest time (ms) a failed open of a signed-in user's notes DB is retried. */
+  private notesDbRetryAt = 0;
   /**
    * True when the last ensureNotesDb() attempt failed specifically because a
    * server-held vault key couldn't be fetched (e.g. offline) and no
@@ -284,7 +289,12 @@ export class NoteStorage implements SemanticCacheStore {
     }
 
     if (this.notesDbOpenFailed) {
-      return null;
+      // A guest stays on the fallback store for the rest of the session. A
+      // signed-in user's open usually fails because the vault key couldn't
+      // be fetched (offline, backend down), so retry after a pause instead
+      // of staying locked until the page is reloaded.
+      if (!userId || Date.now() < this.notesDbRetryAt) return null;
+      this.notesDbOpenFailed = false;
     }
 
     if (typeof window === 'undefined' || !('indexedDB' in window)) {
@@ -325,6 +335,13 @@ export class NoteStorage implements SemanticCacheStore {
       );
       this.notesDbName = dbName;
       this.notesDbOpenFailed = false;
+      if (!userId) {
+        try {
+          await this.absorbLegacyGuestNotes(this.notesDb);
+        } catch (e) {
+          console.warn('[NoteStorage] 合并旧存储中的访客笔记失败，已保留原数据', e);
+        }
+      }
       return this.notesDb;
     } catch (e) {
       console.warn('[NoteStorage] QCRuntime.open failed', e);
@@ -335,9 +352,31 @@ export class NoteStorage implements SemanticCacheStore {
       // (A guest falls back to the plaintext legacy key/value store.)
       if (userId) {
         this.notesDbLocked = true;
+        this.notesDbRetryAt = Date.now() + NOTES_DB_RETRY_MS;
       }
       return null;
     }
+  }
+
+  /**
+   * Moves notes from the guest's legacy key/value store into the guest notes
+   * DB. Notes land there when the DB couldn't be opened (the guest fallback)
+   * or were written by older versions; without this they stay invisible
+   * until sign-in. The legacy copy is emptied only after the DB accepted
+   * them, and notes the DB already has are left alone.
+   */
+  private async absorbLegacyGuestNotes(db: QCDb): Promise<void> {
+    const key = this.getNamespacedKey('STORAGE', null);
+    const legacy = await this.readNotesFromKey(key);
+    if (legacy.length === 0) return;
+    const store = this.noteStoreSchema.name;
+    const existingIds = new Set((await db.find<NoteItem>(store, {})).map((n) => n.id));
+    const incoming = legacy.filter((n) => !existingIds.has(n.id)).map((n) => normalizeNote(n));
+    if (incoming.length > 0) {
+      await db.bulkWrite(store, incoming, []);
+      Indexer.invalidateIndex();
+    }
+    await this.writeStoredValue(key, []);
   }
 
   /**
@@ -1048,9 +1087,13 @@ export class NoteStorage implements SemanticCacheStore {
       if (raw) {
         try {
           const parsed = JSON.parse(raw);
-          const backupKey = `${this.storageKey}_backup_${Date.now()}`;
-          await IDB.setItem(backupKey, parsed);
-          logger.info('✓ 本地数据已备份到 IndexedDB 键：', backupKey);
+          // init() seeds an empty list on every load; backing that up would
+          // leave a new empty backup key behind each time.
+          if (!(Array.isArray(parsed) && parsed.length === 0)) {
+            const backupKey = `${this.storageKey}_backup_${Date.now()}`;
+            await IDB.setItem(backupKey, parsed);
+            logger.info('✓ 本地数据已备份到 IndexedDB 键：', backupKey);
+          }
           await IDB.setItem(this.storageKey, parsed);
           if (settingsRaw) {
             try {

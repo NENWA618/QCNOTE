@@ -25,6 +25,7 @@ import {
   OneDriveConfig,
   NoteConflict,
   initWindowStorage,
+  NOTES_DB_RETRY_MS,
 } from '../lib/storage';
 import { Utils } from '../lib/utils';
 import ClipImportDialog from '../components/ClipImportDialog';
@@ -160,6 +161,18 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     loadNotes();
   }, [loadNotes]);
+
+  // 设备未解锁多半是取不到金库密钥（离线、后端不可用）：联网后立即重试，否则定时重试
+  useEffect(() => {
+    if (!storageLocked) return;
+    const retry = () => void loadNotes();
+    const timer = window.setInterval(retry, NOTES_DB_RETRY_MS);
+    window.addEventListener('online', retry);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('online', retry);
+    };
+  }, [storageLocked, loadNotes]);
 
   const resetLoadedData = useCallback(() => {
     setNotes([]);
@@ -768,7 +781,7 @@ const Dashboard: React.FC = () => {
                 className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
               >
                 {storageLocked
-                  ? '当前设备未解锁（无法获取加密密钥），暂时无法读取或保存笔记。请检查网络连接，或重新验证当前设备后刷新页面。'
+                  ? '当前设备未解锁（无法获取加密密钥），暂时无法读取或保存笔记。恢复联网后会自动重试；如果一直无法解锁，请重新验证当前设备。'
                   : `有 ${undecryptableCount} 条笔记无法解密，已暂时隐藏。它们不会被修改、删除或同步，原始数据仍保留在本机。`}
               </div>
             )}
