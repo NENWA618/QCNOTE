@@ -272,6 +272,94 @@ describe('NoteStorage (extended)', () => {
     });
   });
 
+  describe('sync racing a user switch', () => {
+    const signIn = async (userId: string) => {
+      sessionStorage.setItem(
+        'qcnote:deviceSessionToken',
+        JSON.stringify({ userId, token: `token-${userId}` }),
+      );
+      await storage.setCurrentUser(userId);
+    };
+
+    // Holds the WebDAV download open until release() is called, so the test
+    // can switch users while a sync is between "download" and "merge".
+    const holdDownload = (remote: NoteItem[]) => {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      let downloading!: () => void;
+      const started = new Promise<void>((resolve) => (downloading = resolve));
+      (global.fetch as any).mockImplementation(async (_url: string, init: any) => {
+        if (init?.method === 'GET') {
+          downloading();
+          await gate;
+          return { ok: true, status: 200, text: async () => JSON.stringify(remote) };
+        }
+        return { ok: true, json: async () => ({ success: true, kek: TEST_KEK }) };
+      });
+      return { started, release };
+    };
+
+    const putCount = () =>
+      (global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (c) => c[1]?.method === 'PUT',
+      ).length;
+
+    afterEach(() => {
+      sessionStorage.clear();
+    });
+
+    it('does not merge a signed-in user’s remote notes into the guest store', async () => {
+      await signIn('alice');
+      const { started, release } = holdDownload([
+        makeNote({ id: 'secret', title: 'alice secret' }),
+      ]);
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const sync = storage.syncWithWebDAVAsync(webdavConf());
+      await started;
+      await storage.setCurrentUser(null);
+      release();
+
+      expect(await sync).toBe(false);
+      expect(putCount()).toBe(0);
+      const guestNotes = (await storage.getDataAsync()) || [];
+      expect(guestNotes.map((n) => n.title)).not.toContain('alice secret');
+    });
+
+    it('does not merge one user’s remote notes into another user’s store', async () => {
+      await signIn('alice');
+      const { started, release } = holdDownload([
+        makeNote({ id: 'secret', title: 'alice secret' }),
+      ]);
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const sync = storage.syncWithWebDAVAsync(webdavConf());
+      await started;
+      await signIn('bob');
+      release();
+
+      expect(await sync).toBe(false);
+      expect(putCount()).toBe(0);
+      expect((await storage.getDataAsync()) || []).toHaveLength(0);
+    });
+
+    it('aborts even if the same user signs back in before the download finishes', async () => {
+      await signIn('alice');
+      const { started, release } = holdDownload([makeNote({ id: 'r', title: 'remote' })]);
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const sync = storage.syncWithWebDAVAsync(webdavConf());
+      await started;
+      await storage.setCurrentUser(null);
+      await signIn('alice');
+      release();
+
+      // the sync base read at the start may belong to the other session
+      expect(await sync).toBe(false);
+      expect(putCount()).toBe(0);
+    });
+  });
+
   describe('WebDAV push/pull', () => {
     const putCalls = () =>
       (global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(

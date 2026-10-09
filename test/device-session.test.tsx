@@ -65,6 +65,7 @@ vi.mock('../components/OneDriveSync', () => ({
 vi.mock('../lib/webdavSyncManager', () => ({
   default: class {
     constructor() {}
+    stop() {}
   },
 }));
 vi.mock('../lib/storage', async () => {

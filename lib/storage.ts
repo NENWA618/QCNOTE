@@ -92,6 +92,14 @@ export class NoteStorageError extends Error {
   }
 }
 
+/** Thrown when the signed-in user changed while a sync was in flight. */
+class UserChangedError extends Error {
+  constructor() {
+    super('User changed during sync');
+    this.name = 'UserChangedError';
+  }
+}
+
 export class NoteStorage implements SemanticCacheStore {
   storageKeyPrefix = 'QCNOTE';
   storageKey!: string;
@@ -166,6 +174,42 @@ export class NoteStorage implements SemanticCacheStore {
     const run = this.writeChain.then(task, task);
     this.writeChain = run.catch(() => {});
     return run;
+  }
+
+  /**
+   * Bumped synchronously by every setCurrentUser() call, before the switch
+   * itself is queued. A sync reads it before downloading and re-checks it
+   * inside the write lock, so data fetched with one user's sync config is
+   * never merged into, or recorded against, another session's store — even
+   * when the same user signs back in mid-download.
+   */
+  private userGenerationCounter = 0;
+
+  get userGeneration(): number {
+    return this.userGenerationCounter;
+  }
+
+  /**
+   * Runs `task` under the write lock, unless the user changed since
+   * `generation` (read from userGeneration); then it returns false without
+   * running it. `task` must not itself take the lock (e.g. save notes).
+   */
+  async runIfSameUser(generation: number, task: () => Promise<unknown>): Promise<boolean> {
+    try {
+      await this.runForGeneration(generation, task);
+      return true;
+    } catch (e) {
+      if (e instanceof UserChangedError) return false;
+      throw e;
+    }
+  }
+
+  /** runExclusive, but throws UserChangedError if the user changed since `generation`. */
+  private runForGeneration<T>(generation: number, task: () => Promise<T>): Promise<T> {
+    return this.runExclusive(async () => {
+      if (generation !== this.userGenerationCounter) throw new UserChangedError();
+      return task();
+    });
   }
 
   private getDeviceSessionToken(userId: string | null): string | null {
@@ -487,6 +531,7 @@ export class NoteStorage implements SemanticCacheStore {
   }
 
   async setCurrentUser(userId: string | null): Promise<void> {
+    this.userGenerationCounter++;
     // Queued behind any in-flight save so a mutation can never read one
     // user's notes and write them into another user's DB.
     return this.runExclusive(async () => {
@@ -770,6 +815,8 @@ export class NoteStorage implements SemanticCacheStore {
       return false;
     }
 
+    // `config` is the current user's: never push another session's notes to it.
+    const generation = this.userGenerationCounter;
     try {
       // Strict read: pushing an empty list after a failed read would wipe
       // the remote copy.
@@ -778,14 +825,21 @@ export class NoteStorage implements SemanticCacheStore {
       if (encrypt && config.encryptionKey && config.encryptionKey.length > 0) {
         payload = await this.encryptText(payload, config.encryptionKey);
       }
+      if (generation !== this.userGenerationCounter) throw new UserChangedError();
       const url = normalizeWebDAVUrl(config);
       const response = await webdavFetch('PUT', url, config, payload);
       if (!response.ok) return false;
       // Both sides now hold exactly these notes.
       const hashes = Object.fromEntries(allNotes.map((n) => [n.id, noteSyncHash(n)]));
-      await this.writeSyncBase('webdav', { remoteId: webdavTransport(config).remoteId, hashes });
+      await this.runForGeneration(generation, () =>
+        this.writeSyncBase('webdav', { remoteId: webdavTransport(config).remoteId, hashes }),
+      );
       return true;
     } catch (e) {
+      if (e instanceof UserChangedError) {
+        console.warn('[NoteStorage] WebDAV 上传期间切换了用户，已中止');
+        return false;
+      }
       console.error('[NoteStorage] pushToWebDAVAsync failed', e);
       return false;
     }
@@ -870,7 +924,9 @@ export class NoteStorage implements SemanticCacheStore {
     transport: SyncTransport,
     opts: { key?: string; strategy: SyncStrategy; upload: boolean },
   ): Promise<boolean> {
-    const userId = this.currentUserId;
+    // `transport` and `key` come from the current user's sync config: if the
+    // user changes before we write, this download belongs to someone else.
+    const generation = this.userGenerationCounter;
     const key = opts.key || undefined;
     try {
       for (let attempt = 1; attempt <= 3; attempt++) {
@@ -892,36 +948,47 @@ export class NoteStorage implements SemanticCacheStore {
           remoteNotes = parsed;
         }
 
-        const base = await this.readSyncBase(provider, transport.remoteId);
-        const pending = new Set((await this.getConflictsAsync()).map((c) => c.id));
-        const merged: { result?: ThreeWayMergeResult } = {};
-        await this.mutateNotes((localNotes) => {
-          merged.result = threeWayMerge({
-            local: localNotes,
-            remote: remoteNotes,
-            base,
-            pending,
-            strategy: opts.strategy,
+        // Base, merge, conflicts and the new base are read and written in
+        // one locked step, so they all land in the store of the user this
+        // sync started for.
+        const result = await this.runForGeneration(generation, async () => {
+          const base = await this.readSyncBase(provider, transport.remoteId);
+          const pending = new Set((await this.getConflictsAsync()).map((c) => c.id));
+          const merged: { result?: ThreeWayMergeResult } = {};
+          await this.mutateNotesUnlocked((localNotes) => {
+            merged.result = threeWayMerge({
+              local: localNotes,
+              remote: remoteNotes,
+              base,
+              pending,
+              strategy: opts.strategy,
+            });
+            return syncLinkGraph(merged.result.nextLocal);
           });
-          return syncLinkGraph(merged.result.nextLocal);
-        });
-        const result = merged.result;
-        if (!result || this.currentUserId !== userId) return false;
+          const mergeResult = merged.result;
+          if (!mergeResult) return null;
 
-        if (result.conflicts.length > 0) {
-          const newIds = new Set(result.conflicts.map((c) => c.id));
-          const existing = await this.getConflictsAsync();
-          await this.setConflictsAsync([
-            ...existing.filter((c) => !newIds.has(c.id)),
-            ...result.conflicts,
-          ]);
-        }
-        await this.writeSyncBase(provider, {
-          remoteId: transport.remoteId,
-          hashes: result.baseAfterLocal,
+          if (mergeResult.conflicts.length > 0) {
+            const newIds = new Set(mergeResult.conflicts.map((c) => c.id));
+            const existing = await this.getConflictsAsync();
+            await this.setConflictsAsync([
+              ...existing.filter((c) => !newIds.has(c.id)),
+              ...mergeResult.conflicts,
+            ]);
+          }
+          await this.writeSyncBase(provider, {
+            remoteId: transport.remoteId,
+            hashes: mergeResult.baseAfterLocal,
+          });
+          return mergeResult;
         });
+        if (!result) return false;
 
         if (!opts.upload) return true;
+        // Uploading is still safe after a switch (it's this user's merged
+        // data going to this user's remote), but skip it: nothing would
+        // record the new base for it.
+        if (generation !== this.userGenerationCounter) throw new UserChangedError();
         if (result.remoteChanged) {
           let payload = JSON.stringify(result.nextRemote);
           if (key) payload = await this.encryptText(payload, key);
@@ -930,15 +997,21 @@ export class NoteStorage implements SemanticCacheStore {
             continue;
           }
         }
-        await this.writeSyncBase(provider, {
-          remoteId: transport.remoteId,
-          hashes: result.baseAfterUpload,
-        });
+        await this.runForGeneration(generation, () =>
+          this.writeSyncBase(provider, {
+            remoteId: transport.remoteId,
+            hashes: result.baseAfterUpload,
+          }),
+        );
         return true;
       }
       console.warn(`[NoteStorage] ${provider} 远端持续被修改，放弃本次同步`);
       return false;
     } catch (e) {
+      if (e instanceof UserChangedError) {
+        console.warn(`[NoteStorage] ${provider} 同步期间切换了用户，已中止，未写入任何数据`);
+        return false;
+      }
       console.error(`[NoteStorage] ${provider} 同步失败`, e);
       return false;
     }
@@ -1058,41 +1131,46 @@ export class NoteStorage implements SemanticCacheStore {
   private mutateNotes(
     mutate: (notes: NoteItem[]) => NoteItem[] | null,
   ): Promise<NoteItem[] | null> {
-    return this.runExclusive(async () => {
-      // Read and write through the same handle: setCurrentUser is queued
-      // behind us, so the target DB can't change mid-mutation.
-      const notesDb = await this.ensureNotesDb();
-      const current = await this.readNotes(notesDb);
-      const before = new Map(current.map((note) => [note.id, JSON.stringify(note)]));
+    return this.runExclusive(() => this.mutateNotesUnlocked(mutate));
+  }
 
-      const result = mutate(current);
-      if (!result) return null;
-      const next = result.map((note) => normalizeNote(note));
+  /** mutateNotes body; the caller must already hold the write lock. */
+  private async mutateNotesUnlocked(
+    mutate: (notes: NoteItem[]) => NoteItem[] | null,
+  ): Promise<NoteItem[] | null> {
+    // Read and write through the same handle: setCurrentUser is queued
+    // behind us, so the target DB can't change mid-mutation.
+    const notesDb = await this.ensureNotesDb();
+    const current = await this.readNotes(notesDb);
+    const before = new Map(current.map((note) => [note.id, JSON.stringify(note)]));
 
-      try {
-        if (notesDb) {
-          const nextIds = new Set(next.map((note) => note.id));
-          const puts = next.filter((note) => before.get(note.id) !== JSON.stringify(note));
-          const deletes = [...before.keys()].filter((id) => !nextIds.has(id));
-          if (puts.length > 0 || deletes.length > 0) {
-            await notesDb.bulkWrite(this.noteStoreSchema.name, puts, deletes);
-          }
-        } else {
-          // Legacy store keeps all notes under one key, so this single
-          // write is already all-or-nothing.
-          await this.storeNotesByKey(this.storageKey, next);
+    const result = mutate(current);
+    if (!result) return null;
+    const next = result.map((note) => normalizeNote(note));
+
+    try {
+      if (notesDb) {
+        const nextIds = new Set(next.map((note) => note.id));
+        const puts = next.filter((note) => before.get(note.id) !== JSON.stringify(note));
+        const deletes = [...before.keys()].filter((id) => !nextIds.has(id));
+        if (puts.length > 0 || deletes.length > 0) {
+          await notesDb.bulkWrite(this.noteStoreSchema.name, puts, deletes);
         }
-      } catch (e) {
-        throw new NoteStorageError(
-          this.notesDbLocked ? LOCKED_MESSAGE : '保存笔记失败：写入存储失败',
-          this.notesDbLocked ? 'locked' : 'write',
-          { cause: e },
-        );
+      } else {
+        // Legacy store keeps all notes under one key, so this single
+        // write is already all-or-nothing.
+        await this.storeNotesByKey(this.storageKey, next);
       }
+    } catch (e) {
+      throw new NoteStorageError(
+        this.notesDbLocked ? LOCKED_MESSAGE : '保存笔记失败：写入存储失败',
+        this.notesDbLocked ? 'locked' : 'write',
+        { cause: e },
+      );
+    }
 
-      Indexer.invalidateIndex();
-      return next;
-    });
+    Indexer.invalidateIndex();
+    return next;
   }
 
   /**

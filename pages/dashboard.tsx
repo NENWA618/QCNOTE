@@ -48,6 +48,10 @@ const Dashboard: React.FC = () => {
   );
   const storageRef = useRef<NoteStorage | null>(storage);
   const syncManager = useMemo(() => (storage ? new WebDAVSyncManager(storage) : null), [storage]);
+  // The storage outlives this page (it's shared on window), so an auto-sync
+  // timer left running would keep syncing after we navigate away, and a
+  // second one would start on the next visit.
+  useEffect(() => () => syncManager?.stop(), [syncManager]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
