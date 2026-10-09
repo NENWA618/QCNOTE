@@ -84,6 +84,9 @@
     "sync-deps": "node scripts/sync-common-deps.mjs",
     "prepare": "husky"
   },
+  "overrides": {
+    "katex": "$katex"
+  },
   "allowScripts": {
     "esbuild@0.28.2": true,
     "unrs-resolver": true
