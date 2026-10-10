@@ -475,6 +475,29 @@ async function writeMeta(name: string, key: string, value: unknown): Promise<voi
   });
 }
 
+// Writes `value` only if `key` is absent, atomically (IDB add() rejects an
+// existing key inside the transaction). Returns false if it was already there.
+async function addMetaIfAbsent(name: string, key: string, value: unknown): Promise<boolean> {
+  const db = await openMetaStore(name);
+  return new Promise((res, rej) => {
+    const tx = db.transaction(META_STORE_NAME, 'readwrite');
+    const req = tx.objectStore(META_STORE_NAME).add(value, key);
+    req.onsuccess = () => {
+      db.close();
+      res(true);
+    };
+    req.onerror = (event) => {
+      db.close();
+      if (req.error?.name === 'ConstraintError') {
+        event.preventDefault(); // expected outcome, not a failure
+        res(false);
+      } else {
+        rej(req.error);
+      }
+    };
+  });
+}
+
 async function loadPersistentCryptoKey(name: string): Promise<CryptoKey | undefined> {
   const key = await readMeta<CryptoKey>(name, 'cryptoKey');
   return key ?? undefined;
@@ -538,9 +561,8 @@ async function importKek(kekBytes: Uint8Array): Promise<CryptoKey> {
 // If a wrapped DEK already exists in meta, it is unwrapped and reused —
 // never regenerated — so previously-migrated records stay decryptable.
 async function getOrCreateWrappedDek(name: string, kek: CryptoKey): Promise<CryptoKey> {
-  const existing = await readMeta<string>(name, 'wrappedDEK');
-  if (existing) {
-    const [ivB64, wrappedB64] = existing.split('.');
+  const unwrap = (stored: string): Promise<CryptoKey> => {
+    const [ivB64, wrappedB64] = stored.split('.');
     const iv = base64Decode(ivB64);
     const wrapped = base64Decode(wrappedB64);
     return crypto.subtle.unwrapKey(
@@ -552,7 +574,10 @@ async function getOrCreateWrappedDek(name: string, kek: CryptoKey): Promise<Cryp
       false,
       ['encrypt', 'decrypt'],
     );
-  }
+  };
+
+  const existing = await readMeta<string>(name, 'wrappedDEK');
+  if (existing) return unwrap(existing);
 
   const dek = await crypto.subtle.generateKey({ name: ALGO, length: KEY_LEN }, true, [
     'encrypt',
@@ -564,8 +589,16 @@ async function getOrCreateWrappedDek(name: string, kek: CryptoKey): Promise<Cryp
     iv,
     tagLength: TAG_LEN,
   } as AesGcmParams);
-  await writeMeta(name, 'wrappedDEK', base64Encode(iv) + '.' + base64Encode(wrapped));
-  return dek;
+  // Another open (a second tab, or a concurrent open in this one) may have
+  // created a DEK since our read. Overwriting it would leave whatever that
+  // open already encrypted undecryptable, so only store ours if none exists
+  // and otherwise converge on the stored one.
+  if (await addMetaIfAbsent(name, 'wrappedDEK', base64Encode(iv) + '.' + base64Encode(wrapped))) {
+    return dek;
+  }
+  const winner = await readMeta<string>(name, 'wrappedDEK');
+  if (!winner) throw new Error('[QCNOTE] wrappedDEK vanished while opening the database');
+  return unwrap(winner);
 }
 
 // Re-encrypts every secret-looking field in `storeName` from `oldKey` to

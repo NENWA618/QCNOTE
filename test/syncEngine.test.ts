@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { NoteStorage, type NoteItem, type WebDAVConfig } from '../lib/storage';
+import { NoteStorage, type NoteConflict, type NoteItem, type WebDAVConfig } from '../lib/storage';
 import {
   applicableBase,
   noteSyncHash,
@@ -447,8 +447,9 @@ describe('WebDAV sync between two devices', () => {
 
     // addConflictAsync stalls between reading and writing the conflict list,
     // while b's sync records the conflict on n
-    const read = b.getConflictsAsync.bind(b);
-    vi.spyOn(b, 'getConflictsAsync').mockImplementationOnce(async () => {
+    const bConflicts = b as unknown as { readConflicts: () => Promise<NoteConflict[]> };
+    const read = bConflicts.readConflicts.bind(b);
+    vi.spyOn(bConflicts, 'readConflicts').mockImplementationOnce(async () => {
       const conflicts = await read();
       await new Promise((r) => setTimeout(r, 50));
       return conflicts;

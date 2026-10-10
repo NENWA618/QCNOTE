@@ -3,7 +3,7 @@
 // store untouched and be reported, and concurrent saves must not overwrite
 // each other.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { NoteStorage, NoteStorageError, NOTES_DB_RETRY_MS } from '../lib/storage';
+import { NoteStorage, NoteStorageError, NOTES_DB_RETRY_MS, type NoteItem } from '../lib/storage';
 import { QCDb, QCRuntime } from '../qcruntime/qcnote-runtime';
 import IDB from '../lib/idb';
 
@@ -236,6 +236,53 @@ describe('NoteStorage data integrity', () => {
       vi.spyOn(Date, 'now').mockReturnValue(now + NOTES_DB_RETRY_MS + 1);
       expect(await titles(offline)).toEqual(['kept']);
       expect(offline.notesDbLocked).toBe(false);
+    });
+
+    it('converges on one notes key when two tabs sign a new user in at once', async () => {
+      // Both tabs find no wrapped DEK and create their own; if the second
+      // overwrote the first, notes the first tab saved would never decrypt again.
+      const other = new NoteStorage();
+      await Promise.all([signIn('ivy'), other.setCurrentUser('ivy')]);
+      await storage.addNoteAsync({ title: 'from tab 1' });
+      await other.addNoteAsync({ title: 'from tab 2' });
+
+      const reloaded = new NoteStorage();
+      await reloaded.setCurrentUser('ivy');
+      expect(await titles(reloaded)).toEqual(['from tab 1', 'from tab 2']);
+      expect(reloaded.undecryptableCount).toBe(0);
+    });
+
+    it('shares one open of the notes DB between concurrent reads', async () => {
+      const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
+      const working = fetchMock.getMockImplementation();
+      fetchMock.mockImplementation(
+        async (input: RequestInfo | URL) =>
+          ({
+            ok: !String(input).includes('/api/vault/key'),
+            json: async () => ({ success: !String(input).includes('/api/vault/key') }),
+          }) as Response,
+      );
+      await signIn('jack'); // locked: the DB stays closed until the retry pause passes
+      fetchMock.mockImplementation(working!);
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + NOTES_DB_RETRY_MS + 1);
+
+      const open = vi.spyOn(QCRuntime, 'open');
+      await Promise.all([storage.loadNotesAsync(), storage.loadNotesAsync()]);
+      expect(open).toHaveBeenCalledTimes(1);
+    });
+
+    it('never overwrites a conflict list it could not read', async () => {
+      await signIn('kate');
+      const conflict = (id: string) => {
+        const note = { id, title: id, content: '', createdAt: 1, updatedAt: 1 } as NoteItem;
+        return { id, local: note, remote: note, resolved: false, createdAt: 1 };
+      };
+      expect(await storage.addConflictAsync(conflict('kept'))).toBe(true);
+
+      vi.spyOn(QCDb.prototype, 'unseal').mockRejectedValueOnce(new Error('unseal failed'));
+      expect(await storage.addConflictAsync(conflict('new'))).toBe(false);
+
+      expect((await storage.getConflictsAsync()).map((c) => c.id)).toEqual(['kept']);
     });
 
     describe('records that cannot be decrypted', () => {

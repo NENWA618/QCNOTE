@@ -152,6 +152,8 @@ export class NoteStorage implements SemanticCacheStore {
 
   private notesDb?: QCDb | null;
   private notesDbName: string | null = null;
+  /** The open in progress, if any; see ensureNotesDb. */
+  private notesDbOpening: { dbName: string; promise: Promise<QCDb | null> } | null = null;
   private notesDbOpenFailed = false;
   /** Earliest time (ms) a failed open of a signed-in user's notes DB is retried. */
   private notesDbRetryAt = 0;
@@ -281,7 +283,22 @@ export class NoteStorage implements SemanticCacheStore {
     if (this.notesDb && this.notesDbName === dbName) {
       return this.notesDb;
     }
+    // Reads don't take the write lock, so several can arrive while the DB is
+    // still opening. Share one open: each extra one would fetch the vault key
+    // again and leave its own connection open once the next replaced it.
+    if (this.notesDbOpening?.dbName === dbName) {
+      return this.notesDbOpening.promise;
+    }
+    const opening = { dbName, promise: this.openNotesDb(userId, dbName) };
+    this.notesDbOpening = opening;
+    try {
+      return await opening.promise;
+    } finally {
+      if (this.notesDbOpening === opening) this.notesDbOpening = null;
+    }
+  }
 
+  private async openNotesDb(userId: string | null, dbName: string): Promise<QCDb | null> {
     if (this.notesDb) {
       this.notesDb.close();
       this.notesDb = null;
@@ -789,16 +806,33 @@ export class NoteStorage implements SemanticCacheStore {
     }
   }
 
+  /**
+   * Reads the conflict list, throwing if it can't be read. Use this (never
+   * getConflictsAsync) for anything that writes the list back: treating
+   * "unreadable" as "no conflicts" would erase them.
+   */
+  private async readConflicts(): Promise<NoteConflict[]> {
+    const stored = await this.readKeyValue(this.conflictsKey);
+    const conflicts = (await this.unsealForUser<NoteConflict[]>(stored)) ?? [];
+    if (this.currentUserId && stored && !isSealedValue(stored)) {
+      // Conflicts hold full copies of both notes: never leave them in
+      // plaintext for a signed-in user.
+      await this.setConflictsAsync(conflicts);
+    }
+    return conflicts;
+  }
+
+  private async writeConflicts(conflicts: NoteConflict[]): Promise<void> {
+    await this.writeKeyValue(this.conflictsKey, await this.sealForUser(conflicts));
+  }
+
+  /**
+   * Display-only convenience: like readConflicts but logs and returns [] on
+   * failure. Never write back what this returns.
+   */
   async getConflictsAsync(): Promise<NoteConflict[]> {
     try {
-      const stored = await this.readKeyValue(this.conflictsKey);
-      const conflicts = (await this.unsealForUser<NoteConflict[]>(stored)) ?? [];
-      if (this.currentUserId && stored && !isSealedValue(stored)) {
-        // Conflicts hold full copies of both notes: never leave them in
-        // plaintext for a signed-in user.
-        await this.setConflictsAsync(conflicts);
-      }
-      return conflicts;
+      return await this.readConflicts();
     } catch (e) {
       console.error('[NoteStorage] getConflictsAsync failed', e);
       return [];
@@ -807,7 +841,7 @@ export class NoteStorage implements SemanticCacheStore {
 
   async setConflictsAsync(conflicts: NoteConflict[]): Promise<boolean> {
     try {
-      await this.writeKeyValue(this.conflictsKey, await this.sealForUser(conflicts));
+      await this.writeConflicts(conflicts);
       return true;
     } catch (e) {
       console.error('[NoteStorage] setConflictsAsync failed', e);
@@ -821,15 +855,27 @@ export class NoteStorage implements SemanticCacheStore {
 
   async addConflictAsync(conflict: NoteConflict): Promise<boolean> {
     return this.runExclusive(async () => {
-      const conflicts = await this.getConflictsAsync();
-      conflicts.push(conflict);
-      return this.setConflictsAsync(conflicts);
+      try {
+        const conflicts = await this.readConflicts();
+        conflicts.push(conflict);
+        await this.writeConflicts(conflicts);
+        return true;
+      } catch (e) {
+        console.error('[NoteStorage] addConflictAsync failed', e);
+        return false;
+      }
     });
   }
 
   async resolveConflictAsync(id: string, resolvedNote: NoteItem): Promise<boolean> {
     return this.runExclusive(async () => {
-      const conflicts = await this.getConflictsAsync();
+      let conflicts: NoteConflict[];
+      try {
+        conflicts = await this.readConflicts();
+      } catch (e) {
+        console.error('[NoteStorage] resolveConflictAsync failed', e);
+        return false;
+      }
       if (!conflicts.some((c) => c.id === id)) return false;
       // Save the note first: if that fails the conflict stays listed so the
       // user can retry, instead of the resolution being silently dropped.
@@ -1006,7 +1052,10 @@ export class NoteStorage implements SemanticCacheStore {
               `[NoteStorage] ${provider} 远程文件不存在或与上次同步的不是同一个，按首次同步合并（不删除任何笔记）`,
             );
           }
-          const pending = new Set((await this.getConflictsAsync()).map((c) => c.id));
+          // Strict reads/writes: merging without knowing which notes are in
+          // conflict would overwrite them, and a base recorded without its
+          // conflicts would make the next sync upload over the remote edit.
+          const pending = new Set((await this.readConflicts()).map((c) => c.id));
           const merged: { result?: ThreeWayMergeResult } = {};
           await this.mutateNotesUnlocked((localNotes) => {
             merged.result = threeWayMerge({
@@ -1023,8 +1072,8 @@ export class NoteStorage implements SemanticCacheStore {
 
           if (mergeResult.conflicts.length > 0) {
             const newIds = new Set(mergeResult.conflicts.map((c) => c.id));
-            const existing = await this.getConflictsAsync();
-            await this.setConflictsAsync([
+            const existing = await this.readConflicts();
+            await this.writeConflicts([
               ...existing.filter((c) => !newIds.has(c.id)),
               ...mergeResult.conflicts,
             ]);
