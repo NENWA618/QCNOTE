@@ -1,6 +1,7 @@
 // Transports for WebDAV / OneDrive sync. Everything here is stateless;
 // NoteStorage owns reading/writing the local notes and syncEngine.ts owns
 // the merge.
+import { arrayBufferToBase64 } from './crypto';
 import type { OneDriveConfig, WebDAVConfig } from './types';
 
 export function normalizeWebDAVUrl(config: WebDAVConfig): string {
@@ -21,7 +22,9 @@ export async function webdavFetch(
     ...extraHeaders,
   };
   if (config.username && config.password) {
-    headers.Authorization = `Basic ${btoa(`${config.username}:${config.password}`)}`;
+    // UTF-8 (RFC 7617): btoa() alone throws on any non-Latin-1 character
+    const credentials = new TextEncoder().encode(`${config.username}:${config.password}`);
+    headers.Authorization = `Basic ${arrayBufferToBase64(credentials.buffer as ArrayBuffer)}`;
   }
   return fetch(url, { method, headers, body });
 }

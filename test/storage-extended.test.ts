@@ -377,6 +377,18 @@ describe('NoteStorage (extended)', () => {
       expect(JSON.parse(init.body)[0].title).toBe('Push me');
     });
 
+    it('sends non-Latin-1 credentials as UTF-8 instead of failing', async () => {
+      await storage.addNoteAsync({ title: 'n' });
+      expect(
+        await storage.pushToWebDAVAsync(webdavConf({ username: '张三', password: '密码' })),
+      ).toBe(true);
+
+      const [, init] = putCalls().at(-1)!;
+      const encoded = init.headers.Authorization.replace('Basic ', '');
+      const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+      expect(new TextDecoder().decode(bytes)).toBe('张三:密码');
+    });
+
     it('encrypts the payload when an encryption key is set', async () => {
       await storage.addNoteAsync({ title: 'Top secret title' });
       await storage.pushToWebDAVAsync(webdavConf({ encryptionKey: 'k' }));
