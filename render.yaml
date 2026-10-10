@@ -17,3 +17,7 @@ services:
         value: production
       - key: PORT
         value: 10000
+      # 请求经 Cloudflare 和 Render 负载均衡两层代理到达后端；按 IP 限流时
+      # 只信任这两跳追加的 X-Forwarded-For 条目（说明见 server/index.ts）
+      - key: TRUST_PROXY_HOPS
+        value: 2

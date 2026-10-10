@@ -37,12 +37,14 @@ function buildFastify() {
   // request.ip 只用于匿名请求的限流。只信任离后端最近的 TRUST_PROXY_HOPS 跳，从
   // X-Forwarded-For 的右边取地址：右边的条目是我们信任的负载均衡追加的，左边的
   // 是调用方自己写的。trustProxy: true 会取最左边，任何人直接访问后端时都能自带一个
-  // X-Forwarded-For 冒充任意 IP。默认 1 跳对应 Render 的负载均衡；没有反向代理
-  // （如 docker-compose 内网）时设为 0。
+  // X-Forwarded-For 冒充任意 IP。
+  // 跳数设少了只是取到某个代理的地址（匿名请求合并计数）；设多了会采信调用方伪造的
+  // 条目。所以默认 0、什么都不信任，由部署显式配置：Render 前面是 Cloudflare 加
+  // Render 的负载均衡，共 2 跳（见 render.yaml，已用实测日志核对）。
   // （不能直接传数字：Fastify 5 把数字形式的 trustProxy 当作什么都不信任。）
-  const configuredHops = Number(process.env.TRUST_PROXY_HOPS ?? 1);
+  const configuredHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
   const trustProxyHops =
-    Number.isInteger(configuredHops) && configuredHops >= 0 ? configuredHops : 1;
+    Number.isInteger(configuredHops) && configuredHops >= 0 ? configuredHops : 0;
   const fastify = Fastify({
     logger: true,
     bodyLimit: 256 * 1024,

@@ -38,15 +38,33 @@ describe('anonymous rate limiting by IP', () => {
     vi.unstubAllEnvs();
   });
 
-  it('ignores X-Forwarded-For entries the caller wrote itself', async () => {
-    // the load balancer appends the real address after whatever the caller sent
-    const codes = await statuses((i) => ({ 'x-forwarded-for': `10.9.0.${i}, 203.0.113.5` }));
-    expect(codes.at(-1)).toBe(429);
+  // On Render a request passes Cloudflare, then Render's load balancer: the
+  // caller's own entries come first, then the client as Cloudflare saw it,
+  // then the Cloudflare edge as the load balancer saw it.
+  describe('behind two proxies (TRUST_PROXY_HOPS=2, as on Render)', () => {
+    beforeEach(() => {
+      vi.stubEnv('TRUST_PROXY_HOPS', '2');
+    });
+
+    it('ignores X-Forwarded-For entries the caller wrote itself', async () => {
+      const codes = await statuses((i) => ({
+        'x-forwarded-for': `10.9.0.${i}, 203.0.113.5, 162.158.26.240`,
+      }));
+      expect(codes.at(-1)).toBe(429);
+    });
+
+    it('counts each client the proxies saw separately', async () => {
+      const codes = await statuses((i) => ({
+        'x-forwarded-for': `10.9.0.1, 203.0.113.${i}, 162.158.26.240`,
+      }));
+      expect(codes).not.toContain(429);
+    });
   });
 
-  it('counts each address the load balancer appended separately', async () => {
-    const codes = await statuses((i) => ({ 'x-forwarded-for': `10.9.0.1, 203.0.113.${i}` }));
-    expect(codes).not.toContain(429);
+  it('trusts no X-Forwarded-For entry by default', async () => {
+    // with no proxy in front, the only entry is the caller's own
+    const codes = await statuses((i) => ({ 'x-forwarded-for': `203.0.113.${i}` }));
+    expect(codes.at(-1)).toBe(429);
   });
 
   it('counts each client IP signed by the frontend separately', async () => {
