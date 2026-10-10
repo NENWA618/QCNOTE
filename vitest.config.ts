@@ -15,7 +15,6 @@ export default defineConfig({
     // increase timeout if needed for async IndexedDB operations
     testTimeout: 10000,
     // exclude e2e tests which are run by Playwright separately
-    // exclude server tests which require external dependencies
     exclude: [
       'node_modules',
       '**/node_modules/**',
@@ -24,7 +23,6 @@ export default defineConfig({
       '.claude/**',
       'dist',
       'e2e/**/*.spec.ts',
-      'test/server.test.ts',
       'test/Calendar.test.tsx',
       'test/KnowledgeGraph.test.tsx',
       'test/NoteList.test.tsx',

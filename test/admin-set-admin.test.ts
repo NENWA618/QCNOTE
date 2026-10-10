@@ -13,16 +13,7 @@ vi.mock('../server/postgres-client', () => ({
   initPostgresClient: async () => ({ query }),
 }));
 
-// Importing server/index also starts the server in the background; keep that
-// parked on its first step so it never reaches the mocked database.
-vi.mock('../server/redis-client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../server/redis-client')>()),
-  initRedisClient: () => new Promise(() => {}),
-}));
-
-import { buildFastify } from '../server/index';
-
-const buildApp = () => buildFastify();
+import { buildFastify } from '../server/app';
 
 describe('POST /api/admin/set-admin', () => {
   beforeEach(() => {
@@ -31,7 +22,7 @@ describe('POST /api/admin/set-admin', () => {
 
   it('refuses an unknown email without creating a user or a role', async () => {
     query.mockResolvedValue({ rows: [], rowCount: 0 });
-    const app = buildApp();
+    const app = buildFastify();
 
     const res = await app.inject({
       method: 'POST',
@@ -50,7 +41,7 @@ describe('POST /api/admin/set-admin', () => {
     query.mockImplementation(async (sql: string) =>
       /^\s*SELECT/i.test(sql) ? { rows: [user], rowCount: 1 } : { rows: [], rowCount: 1 },
     );
-    const app = buildApp();
+    const app = buildFastify();
 
     const res = await app.inject({
       method: 'POST',

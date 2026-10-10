@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import vector from '../lib/vector';
 
 describe('Server Vector Search and Index', () => {
@@ -39,7 +39,18 @@ describe('Server Vector Search and Index', () => {
 });
 
 // route tests
-import { buildFastify } from '../server/index';
+import { buildFastify } from '../server/app';
+
+// The health check pings Postgres and Redis; stand both in so it can be
+// tested without real services.
+const { dbQuery, redisPing } = vi.hoisted(() => ({ dbQuery: vi.fn(), redisPing: vi.fn() }));
+vi.mock('../server/postgres-client', () => ({
+  initPostgresClient: async () => ({ query: dbQuery }),
+}));
+vi.mock('../server/redis-client', () => ({
+  initRedisClient: async () => ({ ping: redisPing }),
+  closeRedisClient: async () => {},
+}));
 
 describe('Server routes', () => {
   let app;
@@ -102,11 +113,20 @@ describe('Server routes', () => {
   });
 
   it('GET /api/health returns healthy status', async () => {
+    dbQuery.mockResolvedValue({ rows: [{ '?column?': 1 }] });
+    redisPing.mockResolvedValue('PONG');
     const res = await app.inject({ method: 'GET', url: '/api/health' });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body).toHaveProperty('status', 'healthy');
-    expect(body).toHaveProperty('notes');
+    expect(body.services).toEqual({ database: 'ok', redis: 'ok' });
+  });
+
+  it('GET /api/health reports 503 when the database is unreachable', async () => {
+    dbQuery.mockRejectedValue(new Error('connection refused'));
+    const res = await app.inject({ method: 'GET', url: '/api/health' });
+    expect(res.statusCode).toBe(503);
+    expect(JSON.parse(res.body)).toHaveProperty('status', 'unhealthy');
   });
 
   it('Unknown route returns 404', async () => {

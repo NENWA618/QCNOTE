@@ -4,15 +4,7 @@
 // signature.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CLIENT_IP_HEADER, CLIENT_IP_SIGNATURE_HEADER, signClientIp } from '../lib/internalAuth';
-
-// Importing server/index also starts the server in the background; keep that
-// parked on its first step.
-vi.mock('../server/redis-client', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../server/redis-client')>()),
-  initRedisClient: () => new Promise(() => {}),
-}));
-
-import { buildFastify } from '../server/index';
+import { buildFastify } from '../server/app';
 
 const SECRET = 'a-strong-secret-value';
 // a public route with a 60/minute limit; the handler's own result doesn't matter
