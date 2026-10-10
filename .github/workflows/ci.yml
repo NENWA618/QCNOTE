@@ -43,7 +43,9 @@ jobs:
         with:
           node-version: '22.22.1'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
 
       - name: Restore Next.js cache
         uses: actions/cache@v6
@@ -57,6 +59,12 @@ jobs:
         env:
           NPM_CONFIG_PRODUCTION: false
         run: npm ci --include=dev
+
+      # Unit tests for the backend's routes and rate limiting import
+      # server/index.ts, which resolves fastify etc. from server/node_modules.
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
 
       - name: Audit dependencies (frontend)
         run: npm audit --audit-level=high --omit=dev
