@@ -238,6 +238,61 @@ describe('NoteStorage data integrity', () => {
       expect(offline.notesDbLocked).toBe(false);
     });
 
+    describe('moving guest data into the account', () => {
+      const webdav = (password: string) => ({
+        url: 'https://dav.example',
+        username: 'u',
+        password,
+        remotePath: 'notes.json',
+      });
+      const settings = { theme: 'dark', sortBy: 'title', itemsPerPage: 5, defaultCategory: 'x' };
+      const guestKeys = ['SETTINGS', 'WEBDAV_CONFIG', 'ONEDRIVE_CONFIG', 'SYNC_BASE_WEBDAV'].map(
+        (k) => `QCNOTE_${k}`,
+      );
+      const rawGuest = async (key: string) =>
+        (await IDB.getItem(key)) ?? localStorage.getItem(key) ?? null;
+
+      it('brings settings and sync configs along and empties the guest namespace', async () => {
+        await storage.addNoteAsync({ title: 'guest note' });
+        await storage.setSettingsAsync(settings);
+        await storage.setWebDAVConfigAsync(webdav('guest-pw'));
+        await storage.setOneDriveConfigAsync({ accessToken: 'guest-token', folderPath: 'n.json' });
+        await IDB.setItem('QCNOTE_SYNC_BASE_WEBDAV', { remoteId: 'r', hashes: {} });
+
+        await signIn('lucy');
+        expect(await storage.migrateGuestDataToUser()).toBe(true);
+
+        expect(await storage.getSettingsAsync()).toEqual(settings);
+        expect((await storage.getWebDAVConfigAsync())?.password).toBe('guest-pw');
+        expect((await storage.getOneDriveConfigAsync())?.accessToken).toBe('guest-token');
+        for (const key of guestKeys) expect(await rawGuest(key)).toBeNull();
+      });
+
+      it("keeps the account's own config instead of the guest's", async () => {
+        await signIn('mike');
+        await storage.setWebDAVConfigAsync(webdav('account-pw'));
+        await storage.setCurrentUser(null);
+        await storage.addNoteAsync({ title: 'guest note' });
+        await storage.setWebDAVConfigAsync(webdav('guest-pw'));
+
+        await signIn('mike');
+        expect(await storage.migrateGuestDataToUser()).toBe(true);
+        expect((await storage.getWebDAVConfigAsync())?.password).toBe('account-pw');
+        expect(await rawGuest('QCNOTE_WEBDAV_CONFIG')).toBeNull();
+      });
+
+      it('leaves a guest config whose secret no longer decrypts in place', async () => {
+        await storage.addNoteAsync({ title: 'guest note' });
+        await storage.setWebDAVConfigAsync(webdav('guest-pw'));
+        localStorage.setItem('qcnote:webdav:device-vault-key', 'some-other-device-key');
+
+        await signIn('nina');
+        expect(await storage.migrateGuestDataToUser()).toBe(true);
+        expect(await rawGuest('QCNOTE_WEBDAV_CONFIG')).not.toBeNull();
+        expect(await storage.getWebDAVConfigAsync()).toBeNull();
+      });
+    });
+
     it('converges on one notes key when two tabs sign a new user in at once', async () => {
       // Both tabs find no wrapped DEK and create their own; if the second
       // overwrote the first, notes the first tab saved would never decrypt again.

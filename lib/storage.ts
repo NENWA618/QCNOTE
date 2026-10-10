@@ -657,20 +657,104 @@ export class NoteStorage implements SemanticCacheStore {
     return true;
   }
 
+  /**
+   * Empties the guest namespace once its notes are in the account. Settings
+   * and sync configs go along with the notes unless the account already has
+   * its own; one that can't be moved (e.g. a secret that no longer decrypts)
+   * is left in place rather than lost. The rest (conflicts, sync bases,
+   * search cache) describes the guest's copy of the notes and is dropped:
+   * the next sync with no base merges without deleting anything.
+   */
   private async clearGuestNamespace(): Promise<void> {
-    const guestKeys = [
-      this.getNamespacedKey('STORAGE', null),
-      this.getNamespacedKey('SETTINGS', null),
-      this.getNamespacedKey('WEBDAV_CONFIG', null),
-      this.getNamespacedKey('CONFLICTS', null),
+    const guestKey = (baseKey: string) => this.getNamespacedKey(baseKey, null);
+    const toDelete = [
+      guestKey('STORAGE'),
+      guestKey('CONFLICTS'),
+      guestKey('SYNC_BASE_WEBDAV'),
+      guestKey('SYNC_BASE_ONEDRIVE'),
+      guestKey('SEMANTIC_CACHE'),
     ];
 
-    if (this.useIndexedDB) {
-      for (const key of guestKeys) {
-        await IDB.deleteItem(key);
+    const moves: [string, string, () => Promise<void>][] = [
+      [
+        guestKey('SETTINGS'),
+        this.settingsKey,
+        async () => {
+          const settings = await this.readFromEitherStore<UserSettings>(guestKey('SETTINGS'));
+          if (settings && !(await this.setSettingsAsync(settings))) {
+            throw new Error('Failed to save settings');
+          }
+        },
+      ],
+      [
+        guestKey('WEBDAV_CONFIG'),
+        this.webdavConfigKey,
+        () =>
+          this.moveGuestSyncConfig<WebDAVConfig>(
+            guestKey('WEBDAV_CONFIG'),
+            this.webdavConfigKey,
+            WEBDAV_SECRET_FIELDS,
+            WEBDAV_VAULT_KEY_STORAGE_KEY,
+            LEGACY_WEBDAV_PASSPHRASE,
+          ),
+      ],
+      [
+        guestKey('ONEDRIVE_CONFIG'),
+        this.oneDriveConfigKey,
+        () =>
+          this.moveGuestSyncConfig<OneDriveConfig>(
+            guestKey('ONEDRIVE_CONFIG'),
+            this.oneDriveConfigKey,
+            ONEDRIVE_SECRET_FIELDS,
+            ONEDRIVE_VAULT_KEY_STORAGE_KEY,
+            LEGACY_ONEDRIVE_PASSPHRASE,
+          ),
+      ],
+    ];
+    for (const [fromKey, toKey, move] of moves) {
+      try {
+        // the account's own copy wins; the guest's is then discarded
+        if ((await this.readFromEitherStore(toKey)) === null) await move();
+        toDelete.push(fromKey);
+      } catch (e) {
+        console.warn(`[NoteStorage] 无法把 ${fromKey} 迁移到账号，已保留访客副本`, e);
       }
     }
-    guestKeys.forEach((key) => localStorage.removeItem(key));
+
+    for (const key of toDelete) {
+      await IDB.deleteItem(key).catch(() => {});
+      localStorage.removeItem(key);
+    }
+  }
+
+  /** Reads `key` from IndexedDB, else localStorage, whether or not IndexedDB is enabled. */
+  private async readFromEitherStore<T>(key: string): Promise<T | null> {
+    const fromIdb = await IDB.getItem<T>(key);
+    if (fromIdb !== undefined && fromIdb !== null) return fromIdb;
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  }
+
+  /** Decrypts a guest sync config with the device key and saves it sealed for the user. */
+  private async moveGuestSyncConfig<T extends object>(
+    fromKey: string,
+    toKey: string,
+    secretFields: (keyof T & string)[],
+    vaultKeyStorageKey: string,
+    legacyPassphrase: string,
+  ): Promise<void> {
+    const stored = await this.readFromEitherStore<Record<string, unknown>>(fromKey);
+    if (!stored) return;
+    const config = { ...stored };
+    for (const field of secretFields) {
+      const value = config[field];
+      if (typeof value !== 'string' || !value.startsWith('encrypted:')) continue;
+      // throws if it no longer decrypts: never save ciphertext as the secret
+      config[field] = (
+        await decryptConfigSecret(value, vaultKeyStorageKey, legacyPassphrase)
+      ).value;
+    }
+    await this.writeSyncConfig(toKey, config as T, secretFields, vaultKeyStorageKey);
   }
 
   /**
