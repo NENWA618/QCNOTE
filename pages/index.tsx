@@ -59,11 +59,6 @@ export default function Home() {
                 price: '0',
                 priceCurrency: 'CNY',
               },
-              aggregateRating: {
-                '@type': 'AggregateRating',
-                ratingValue: '4.8',
-                ratingCount: '1000',
-              },
             }),
           }}
         />
