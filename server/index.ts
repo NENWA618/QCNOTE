@@ -9,6 +9,11 @@ import { UGCService } from './ugc-service';
 import logger from '../lib/logger';
 import { setUgcService } from './context';
 import { getSessionIdentity } from './session';
+import {
+  CLIENT_IP_HEADER,
+  CLIENT_IP_SIGNATURE_HEADER,
+  isValidClientIpSignature,
+} from '../lib/internalAuth';
 import { getNextUtc8Midnight, getUtc8DayString } from './utils';
 import type { BackendRequest, ExtendedFastifyInstance } from './types';
 import { registerCoreRoutes } from './routes/core';
@@ -29,20 +34,37 @@ if (ALLOWED_ORIGINS.length === 0) {
 }
 
 function buildFastify() {
-  // 后端总是在反向代理（平台负载均衡 / 前端的 /api 代理）之后：不信任代理的话 request.ip
-  // 永远是代理自己的地址，所有用户会共用同一个限流桶。前端代理只转发一个客户端 IP，
-  // 平台负载均衡再把前端的地址追加在后面，所以最左边的才是客户端。
-  const fastify = Fastify({ logger: true, bodyLimit: 256 * 1024, trustProxy: true });
+  // request.ip 只用于匿名请求的限流。只信任离后端最近的 TRUST_PROXY_HOPS 跳，从
+  // X-Forwarded-For 的右边取地址：右边的条目是我们信任的负载均衡追加的，左边的
+  // 是调用方自己写的。trustProxy: true 会取最左边，任何人直接访问后端时都能自带一个
+  // X-Forwarded-For 冒充任意 IP。默认 1 跳对应 Render 的负载均衡；没有反向代理
+  // （如 docker-compose 内网）时设为 0。
+  // （不能直接传数字：Fastify 5 把数字形式的 trustProxy 当作什么都不信任。）
+  const configuredHops = Number(process.env.TRUST_PROXY_HOPS ?? 1);
+  const trustProxyHops =
+    Number.isInteger(configuredHops) && configuredHops >= 0 ? configuredHops : 1;
+  const fastify = Fastify({
+    logger: true,
+    bodyLimit: 256 * 1024,
+    trustProxy: (_address: string, hop: number) => hop < trustProxyHops,
+  });
   fastify.register(helmet);
   // 全局兜底限流；敏感接口在路由上用 config.rateLimit 收紧。
-  // 已登录用户按 userId 计数（不受 X-Forwarded-For 伪造影响），匿名请求才退回到 IP
+  // 已登录用户按 userId 计数；匿名请求按 IP：经前端代理来的请求用代理签过名的客户端
+  // IP（否则所有人都是前端服务器这一个地址），其余用 request.ip。
   fastify.register(rateLimit, {
     global: true,
     max: 600,
     timeWindow: '1 minute',
     keyGenerator: async (request) => {
       const identity = await getSessionIdentity(request, { quiet: true });
-      return identity ? `user:${identity.userId}` : request.ip;
+      if (identity) return `user:${identity.userId}`;
+      const clientIp = request.headers[CLIENT_IP_HEADER];
+      const signature = request.headers[CLIENT_IP_SIGNATURE_HEADER];
+      if (isValidClientIpSignature(clientIp, signature, process.env.NEXTAUTH_SECRET)) {
+        return `ip:${clientIp}`;
+      }
+      return `ip:${request.ip}`;
     },
   });
   fastify.register(cors, {

@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { forwardedHeaders } from '../lib/backend-proxy';
-import { getInternalApiToken, isValidInternalApiToken } from '../lib/internalAuth';
+import {
+  CLIENT_IP_HEADER,
+  CLIENT_IP_SIGNATURE_HEADER,
+  getInternalApiToken,
+  isValidClientIpSignature,
+  isValidInternalApiToken,
+  signClientIp,
+} from '../lib/internalAuth';
 import { isAllowedPushEndpoint } from '../lib/pushEndpoint';
 
 describe('internal API token', () => {
@@ -116,16 +123,29 @@ describe('CSRF protection', () => {
 
 describe('forwardedHeaders (client IP for backend rate limiting)', () => {
   const socket = { remoteAddress: '10.0.0.9' } as never;
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
 
   it('sends a single client IP: the leftmost X-Forwarded-For entry set by the platform proxy', () => {
+    vi.stubEnv('NEXTAUTH_SECRET', 'a-strong-secret-value');
     const headers = forwardedHeaders({
       headers: { 'x-forwarded-for': '203.0.113.7, 10.1.1.1' },
       socket,
     });
-    expect(headers['x-forwarded-for']).toBe('203.0.113.7');
+    expect(headers[CLIENT_IP_HEADER]).toBe('203.0.113.7');
+    expect(
+      isValidClientIpSignature(
+        '203.0.113.7',
+        headers[CLIENT_IP_SIGNATURE_HEADER],
+        'a-strong-secret-value',
+      ),
+    ).toBe(true);
+    expect(headers['x-forwarded-for']).toBeUndefined();
   });
 
   it('falls back to the socket address and forwards session credentials', () => {
+    vi.stubEnv('NEXTAUTH_SECRET', 'a-strong-secret-value');
     const headers = forwardedHeaders({
       headers: { cookie: 'session=abc', authorization: 'Bearer t' },
       socket,
@@ -133,8 +153,26 @@ describe('forwardedHeaders (client IP for backend rate limiting)', () => {
     expect(headers).toEqual({
       cookie: 'session=abc',
       authorization: 'Bearer t',
-      'x-forwarded-for': '10.0.0.9',
+      [CLIENT_IP_HEADER]: '10.0.0.9',
+      [CLIENT_IP_SIGNATURE_HEADER]: signClientIp('10.0.0.9', 'a-strong-secret-value'),
     });
+  });
+
+  it('never sends the internal API token, which would authorize internal routes', () => {
+    vi.stubEnv('NEXTAUTH_SECRET', 'a-strong-secret-value');
+    const headers = forwardedHeaders({ headers: {}, socket });
+    expect(Object.values(headers)).not.toContain(getInternalApiToken('a-strong-secret-value'));
+  });
+});
+
+describe('client IP signature', () => {
+  it('only vouches for the IP it was made for, under the same secret', () => {
+    const sig = signClientIp('203.0.113.7', 'secret-a');
+    expect(isValidClientIpSignature('203.0.113.7', sig, 'secret-a')).toBe(true);
+    expect(isValidClientIpSignature('203.0.113.8', sig, 'secret-a')).toBe(false);
+    expect(isValidClientIpSignature('203.0.113.7', sig, 'secret-b')).toBe(false);
+    expect(isValidClientIpSignature('203.0.113.7', undefined, 'secret-a')).toBe(false);
+    expect(isValidClientIpSignature('203.0.113.7', sig, undefined)).toBe(false);
   });
 });
 

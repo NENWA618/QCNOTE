@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createErrorResponse } from './api-utils';
+import { CLIENT_IP_HEADER, CLIENT_IP_SIGNATURE_HEADER, signClientIp } from './internalAuth';
 
 /**
  * 转发给后端的通用请求头：会话凭证 + 客户端 IP。
@@ -7,6 +8,9 @@ import { createErrorResponse } from './api-utils';
  * 后端看到的连接方永远是这台前端服务器，不带客户端 IP 的话按 IP 的限流会把所有用户
  * 算成同一个。只转发一个值（平台代理已设置则取其最左项，否则用直连地址），
  * 不把调用方自带的整条 X-Forwarded-For 链原样透传。
+ *
+ * 客户端 IP 放在单独的请求头里并附上签名：后端只在签名有效时采信它。否则任何人
+ * 直接访问后端、自带一个 X-Forwarded-For，就能冒充任意 IP 绕过限流。
  */
 export function forwardedHeaders(
   req: Pick<NextApiRequest, 'headers' | 'socket'>,
@@ -16,10 +20,13 @@ export function forwardedHeaders(
     ?.split(',')[0]
     ?.trim();
   const clientIp = first || req.socket?.remoteAddress;
+  const signature = clientIp ? signClientIp(clientIp, process.env.NEXTAUTH_SECRET) : null;
   return {
     ...(req.headers.authorization ? { authorization: req.headers.authorization } : {}),
     ...(req.headers.cookie ? { cookie: req.headers.cookie } : {}),
-    ...(clientIp ? { 'x-forwarded-for': clientIp } : {}),
+    ...(clientIp && signature
+      ? { [CLIENT_IP_HEADER]: clientIp, [CLIENT_IP_SIGNATURE_HEADER]: signature }
+      : {}),
   };
 }
 

@@ -30,6 +30,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=10000
+      # 前端容器直连后端，中间没有反向代理：不从 X-Forwarded-For 取客户端 IP
+      - TRUST_PROXY_HOPS=0
       - REDIS_URL=redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379
       # PostgreSQL is not part of this compose file; point this at your own instance
       - DATABASE_URL=${DATABASE_URL:?set DATABASE_URL}
