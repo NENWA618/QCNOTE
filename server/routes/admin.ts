@@ -2,7 +2,6 @@ import type { FastifyReply } from 'fastify';
 import type { BackendRequest, ExtendedFastifyInstance } from '../types';
 import { requireUser, requireAdmin, isAdminUser } from '../session';
 import { initPostgresClient } from '../postgres-client';
-import { getUgcService } from '../context';
 import logger from '../../lib/logger';
 
 export function registerAdminRoutes(app: ExtendedFastifyInstance) {
@@ -44,9 +43,8 @@ export function registerAdminRoutes(app: ExtendedFastifyInstance) {
       const adminUserId = await requireAdmin(request, reply);
       if (!adminUserId) return;
 
-      const { email, username, userId } = request.body as {
+      const { email, userId } = request.body as {
         email?: string;
-        username?: string;
         userId?: string;
       };
       if (!email && !userId) {
@@ -70,20 +68,15 @@ export function registerAdminRoutes(app: ExtendedFastifyInstance) {
           [email],
         );
         user = result.rows[0];
-        if (!user && username) {
-          await getUgcService().createUserProfile(email!, email!, username);
-          const newResult = await pool.query(
-            'SELECT id, username AS name, email, username FROM users WHERE email = $1',
-            [email],
-          );
-          user = newResult.rows[0];
-        }
       }
 
+      // Never create the user here: a placeholder row would get an id that no
+      // OAuth sign-in ever matches, so the role would silently never apply.
       if (!user) {
-        return reply
-          .status(404)
-          .send({ success: false, error: 'User not found and could not be created' });
+        return reply.status(404).send({
+          success: false,
+          error: 'User not found. They need to sign in once before they can be made an admin.',
+        });
       }
 
       await pool.query(

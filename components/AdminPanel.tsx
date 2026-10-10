@@ -67,7 +67,6 @@ export default function AdminPanel() {
   const [saving, setSaving] = useState(false);
   const [showSetAdmin, setShowSetAdmin] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
-  const [adminUsername, setAdminUsername] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
@@ -168,7 +167,6 @@ export default function AdminPanel() {
     try {
       const response = await axios.post(withApiBaseUrl('/api/admin/set-admin'), {
         email: adminEmail.trim(),
-        username: adminUsername.trim() || adminEmail.split('@')[0],
       });
 
       if (response.data.success) {
@@ -177,7 +175,6 @@ export default function AdminPanel() {
           text: `管理员设置成功：${response.data.user.name} (${response.data.user.email})`,
         });
         setAdminEmail('');
-        setAdminUsername('');
         setShowSetAdmin(false);
         await loadData();
       }
@@ -308,20 +305,9 @@ export default function AdminPanel() {
                   placeholder="user@gmail.com"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
-                <p className="text-xs text-gray-500 mt-1">OAuth用户的邮箱地址</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  用户名
-                </label>
-                <input
-                  type="text"
-                  value={adminUsername}
-                  onChange={(e) => setAdminUsername(e.target.value)}
-                  placeholder="自动从邮箱生成"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
-                <p className="text-xs text-gray-500 mt-1">可选，不填则从邮箱自动生成</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  OAuth 用户的邮箱地址；对方需要先登录过一次
+                </p>
               </div>
             </div>
             <div className="mt-4 flex justify-end space-x-3">
@@ -329,7 +315,6 @@ export default function AdminPanel() {
                 onClick={() => {
                   setShowSetAdmin(false);
                   setAdminEmail('');
-                  setAdminUsername('');
                 }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
               >
