@@ -103,37 +103,6 @@ export class UGCService {
     return profile;
   }
 
-  async getDeviceFingerprints(
-    userId: string,
-  ): Promise<Record<string, { firstSeen: number; lastSeen: number }>> {
-    const result = await this.db.query(`SELECT device_fingerprints FROM users WHERE id = $1`, [
-      userId,
-    ]);
-
-    if (!result.rowCount) {
-      return {};
-    }
-
-    return (result.rows[0].device_fingerprints ?? {}) as Record<
-      string,
-      { firstSeen: number; lastSeen: number }
-    >;
-  }
-
-  async saveDeviceFingerprints(
-    userId: string,
-    fingerprints: Record<string, { firstSeen: number; lastSeen: number }>,
-  ): Promise<void> {
-    const result = await this.db.query(`UPDATE users SET device_fingerprints = $1 WHERE id = $2`, [
-      JSON.stringify(fingerprints),
-      userId,
-    ]);
-
-    if (result.rowCount === 0) {
-      throw new Error(`User not found while saving device fingerprints: ${userId}`);
-    }
-  }
-
   private getDeviceSessionSecret(): Uint8Array {
     const secret = process.env.DEVICE_SESSION_SECRET || process.env.NEXTAUTH_SECRET;
     if (!secret) {
@@ -225,26 +194,39 @@ export class UGCService {
     }
   }
 
+  // Each step is one conditional UPDATE, not a read followed by a write: two
+  // devices signing in for the first time at once would otherwise both read
+  // "no device yet", both be allowed, and only the later write would stay
+  // registered. Postgres re-checks the WHERE of a blocked UPDATE against the
+  // row the other one committed, so exactly one of them registers.
   async verifyDeviceFingerprint(
     userId: string,
     fingerprint: string,
   ): Promise<{ allowed: boolean; firstTime: boolean }> {
-    const fingerprints = await this.getDeviceFingerprints(userId);
     const now = Date.now();
-    const hasAny = Object.keys(fingerprints).length > 0;
 
-    if (!hasAny) {
-      fingerprints[fingerprint] = { firstSeen: now, lastSeen: now };
-      await this.saveDeviceFingerprints(userId, fingerprints);
-      return { allowed: true, firstTime: true };
+    const registered = await this.db.query(
+      `UPDATE users
+       SET device_fingerprints = jsonb_build_object(
+         $2::text, jsonb_build_object('firstSeen', $3::bigint, 'lastSeen', $3::bigint))
+       WHERE id = $1 AND (device_fingerprints IS NULL OR device_fingerprints = '{}'::jsonb)`,
+      [userId, fingerprint, now],
+    );
+    if (registered.rowCount) return { allowed: true, firstTime: true };
+
+    const known = await this.db.query(
+      `UPDATE users
+       SET device_fingerprints = jsonb_set(
+         device_fingerprints, ARRAY[$2::text, 'lastSeen'], to_jsonb($3::bigint))
+       WHERE id = $1 AND device_fingerprints ? $2::text`,
+      [userId, fingerprint, now],
+    );
+    if (known.rowCount) return { allowed: true, firstTime: false };
+
+    const user = await this.db.query(`SELECT 1 FROM users WHERE id = $1`, [userId]);
+    if (!user.rowCount) {
+      throw new Error(`User not found while verifying device fingerprint: ${userId}`);
     }
-
-    if (fingerprints[fingerprint]) {
-      fingerprints[fingerprint].lastSeen = now;
-      await this.saveDeviceFingerprints(userId, fingerprints);
-      return { allowed: true, firstTime: false };
-    }
-
     return { allowed: false, firstTime: false };
   }
 
