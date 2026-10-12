@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import WebDAVSyncManager from '../lib/webdavSyncManager';
-import type { NoteStorage, WebDAVConfig } from '../lib/storage';
+import type { NoteItem, NoteStorage, WebDAVConfig } from '../lib/storage';
 
 // A stand-in for NoteStorage with just what the manager uses. Its
 // userGeneration bumps on setCurrentUser, like the real one.
@@ -18,7 +18,13 @@ const makeStorage = () => {
     pullFromWebDAVAsync: vi.fn(async () => true),
     getConflictsAsync: vi.fn(async () => []),
     resolveConflictAsync: vi.fn(async () => true),
-    setWebDAVConfigAsync: vi.fn(async () => true),
+    dismissConflictAsync: vi.fn(async () => true),
+    savedConfig: null as WebDAVConfig | null,
+    getWebDAVConfigAsync: vi.fn(async (): Promise<WebDAVConfig | null> => storage.savedConfig),
+    setWebDAVConfigAsync: vi.fn(async (config: WebDAVConfig) => {
+      storage.savedConfig = config;
+      return true;
+    }),
     runIfSameUser: async (g: number, task: () => Promise<unknown>) => {
       if (g !== generation) return false;
       await task();
@@ -104,9 +110,63 @@ describe('WebDAVSyncManager across user switches', () => {
   });
 
   it('still records sync status for the same user', async () => {
+    storage.savedConfig = conf();
     await manager.syncNow(conf());
     expect(storage.setWebDAVConfigAsync).toHaveBeenCalledWith(
       expect.objectContaining({ lastSyncStatus: 'success' }),
     );
+  });
+});
+
+describe('WebDAVSyncManager config handling', () => {
+  let storage: ReturnType<typeof makeStorage>;
+  let manager: WebDAVSyncManager;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    storage = makeStorage();
+    manager = new WebDAVSyncManager(storage as unknown as NoteStorage);
+  });
+
+  afterEach(() => {
+    manager.stop();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('records only the sync status, never the config the sync ran with', async () => {
+    storage.savedConfig = conf({ password: 'saved-password' });
+    await manager.syncNow(conf({ password: 'unsaved-form-password' }));
+    expect(storage.savedConfig).toEqual(
+      expect.objectContaining({ password: 'saved-password', lastSyncStatus: 'success' }),
+    );
+  });
+
+  it('does not recreate a config that was cleared during the sync', async () => {
+    await manager.syncNow(conf());
+    expect(storage.setWebDAVConfigAsync).not.toHaveBeenCalled();
+  });
+
+  it('restarts auto-sync with the new config when it is saved while running', async () => {
+    const oldConf = conf({ password: 'old-password' });
+    const newConf = conf({ password: 'new-password' });
+    await manager.start(oldConf);
+    await manager.updateConfig(newConf);
+    storage.syncWithWebDAVAsync.mockClear();
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(storage.syncWithWebDAVAsync).toHaveBeenCalledTimes(1);
+    expect(storage.syncWithWebDAVAsync).toHaveBeenCalledWith(newConf, false);
+  });
+
+  it('resolves prefer-local conflicts by keeping the current note, not the snapshot', async () => {
+    const snapshot = { id: 'n1', title: 'stale', content: '' } as unknown as NoteItem;
+    storage.getConflictsAsync.mockResolvedValueOnce([
+      { id: 'n1', local: snapshot, remote: snapshot, resolved: false, createdAt: 0 },
+    ] as never);
+    await manager.syncNow(conf({ conflictStrategy: 'prefer-local' }));
+    expect(storage.dismissConflictAsync).toHaveBeenCalledWith('n1');
+    expect(storage.resolveConflictAsync).not.toHaveBeenCalled();
   });
 });

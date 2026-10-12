@@ -137,32 +137,45 @@ export class WebDAVSyncManager {
       this.lastSyncStatus = 'success';
       this.lastSyncError = null;
 
-      // Update config with sync status
-      config.lastSyncTime = this.lastSyncTime;
-      config.lastSyncStatus = 'success';
-      config.lastSyncError = undefined;
-
-      await storage.runIfSameUser(generation, () => storage.setWebDAVConfigAsync(config));
+      await this.saveSyncStatus(generation, {
+        lastSyncTime: this.lastSyncTime,
+        lastSyncStatus: 'success',
+        lastSyncError: undefined,
+      });
       logger.info('[WebDAVSyncManager] Sync completed successfully');
     } catch (error) {
       this.lastSyncStatus = 'failure';
       this.lastSyncError = error instanceof Error ? error.message : String(error);
 
-      // Update config with error status
-      config.lastSyncTime = Date.now();
-      config.lastSyncStatus = 'failure';
-      config.lastSyncError = this.lastSyncError;
-
-      // Saving this config under another user would hand them its credentials
-      await storage
-        .runIfSameUser(generation, () => storage.setWebDAVConfigAsync(config))
-        .catch((e) => logger.error('[WebDAVSyncManager] Saving sync status failed:', e));
+      await this.saveSyncStatus(generation, {
+        lastSyncTime: Date.now(),
+        lastSyncStatus: 'failure',
+        lastSyncError: this.lastSyncError,
+      }).catch((e) => logger.error('[WebDAVSyncManager] Saving sync status failed:', e));
       logger.error('[WebDAVSyncManager] Sync failed:', error);
     } finally {
       this.syncInProgress = false;
       this.calculateNextSyncTime(config.syncInterval || 0);
       this.notifyStatusChange();
     }
+  }
+
+  /**
+   * Records the outcome on the saved config. Only the status fields are
+   * written: the config this sync ran with may be an unsaved form state or
+   * one the user has since replaced, and saving it would overwrite theirs.
+   */
+  private async saveSyncStatus(
+    generation: number,
+    status: Pick<WebDAVConfig, 'lastSyncTime' | 'lastSyncStatus' | 'lastSyncError'>,
+  ): Promise<void> {
+    const storage = this.storage;
+    if (!storage) return;
+    // Saving under another user would hand them this session's credentials
+    await storage.runIfSameUser(generation, async () => {
+      const saved = await storage.getWebDAVConfigAsync();
+      if (saved) await storage.setWebDAVConfigAsync({ ...saved, ...status });
+    });
   }
 
   /**
@@ -192,9 +205,13 @@ export class WebDAVSyncManager {
       const conflicts = await this.storage.getConflictsAsync();
 
       for (const conflict of conflicts) {
-        const resolvedNote = strategy === 'prefer-local' ? conflict.local : conflict.remote;
-
-        await this.storage.resolveConflictAsync(conflict.id, resolvedNote);
+        if (strategy === 'prefer-local') {
+          // Keep the note as it is now: conflict.local is a snapshot from
+          // when the conflict was found and would undo later edits.
+          await this.storage.dismissConflictAsync(conflict.id);
+        } else {
+          await this.storage.resolveConflictAsync(conflict.id, conflict.remote);
+        }
       }
 
       if (conflicts.length > 0) {
@@ -264,13 +281,12 @@ export class WebDAVSyncManager {
   async updateConfig(newConfig: WebDAVConfig): Promise<void> {
     if (!this.storage) return;
 
-    const isAutoSyncChanging = newConfig.autoSyncEnabled !== this.getStatus().isRunning;
-
-    if (isAutoSyncChanging) {
-      this.stop();
-      if (newConfig.autoSyncEnabled) {
-        await this.start(newConfig);
-      }
+    // The running interval captured the old config (credentials, path,
+    // interval): restart it whenever the config is saved, not only when
+    // auto-sync is switched on or off.
+    this.stop();
+    if (newConfig.autoSyncEnabled) {
+      await this.start(newConfig);
     }
   }
 

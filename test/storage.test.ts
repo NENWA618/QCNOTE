@@ -262,6 +262,24 @@ describe('NoteStorage', () => {
       expect(reloaded?.password).toBe('legacy-plaintext-password');
     });
 
+    it('never returns or re-saves ciphertext as a secret that no longer decrypts', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const conf = {
+        url: 'https://example.com/webdav',
+        username: 'user',
+        // encrypted under neither this device's key nor the legacy passphrase
+        password: `encrypted:${await encryptText('real-password', 'some-other-key')}`,
+        remotePath: 'notes.json',
+      };
+      await storage.setWebDAVConfigAsync(conf);
+      const before = await IDB.getItem(storage['webdavConfigKey']);
+
+      expect(await storage.getWebDAVConfigAsync()).toBeNull();
+
+      await new Promise((r) => setTimeout(r, 0));
+      expect(await IDB.getItem(storage['webdavConfigKey'])).toEqual(before);
+    });
+
     it('should use different device vault keys across independent devices/profiles', async () => {
       const conf = {
         url: 'https://example.com/webdav',

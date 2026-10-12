@@ -437,6 +437,25 @@ export class NoteStorage implements SemanticCacheStore {
     });
   }
 
+  /**
+   * Resolves a conflict in favour of the note as it is on this device now,
+   * edits made since the conflict was recorded included. The next sync
+   * uploads it.
+   */
+  async dismissConflictAsync(id: string): Promise<boolean> {
+    return this.lock.run(async () => {
+      let conflicts: NoteConflict[];
+      try {
+        conflicts = await this.readConflicts();
+      } catch (e) {
+        console.error('[NoteStorage] dismissConflictAsync failed', e);
+        return false;
+      }
+      if (!conflicts.some((c) => c.id === id)) return false;
+      return this.setConflictsAsync(conflicts.filter((c) => c.id !== id));
+    });
+  }
+
   private semanticCacheKey(): string {
     return this.getNamespacedKey('SEMANTIC_CACHE', this.currentUserId);
   }

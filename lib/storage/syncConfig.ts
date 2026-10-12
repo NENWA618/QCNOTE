@@ -42,7 +42,8 @@ export interface SyncConfigStore {
  * guest's has its secret fields encrypted with the per-device key. Configs
  * in an older format (device-key or legacy-passphrase fields, plaintext
  * secrets, or not yet sealed for a signed-in user) are re-saved in the
- * current one through `write`.
+ * current one through `write`. Throws, writing nothing, if a secret no
+ * longer decrypts.
  */
 export async function readSyncConfig<T extends object>(
   store: SyncConfigStore,
@@ -63,17 +64,13 @@ export async function readSyncConfig<T extends object>(
       needsRewrite = true; // a secret stored in plaintext
       continue;
     }
-    try {
-      const result = await decryptConfigSecret(
-        value,
-        spec.vaultKeyStorageKey,
-        spec.legacyPassphrase,
-      );
-      config[field] = result.value;
-      needsRewrite = needsRewrite || result.needsReencrypt;
-    } catch (e) {
-      console.warn(`[NoteStorage] Failed to decrypt config field ${field}`, e);
-    }
+    // Throws if the secret no longer decrypts (e.g. the device key is gone).
+    // Never fall through with the ciphertext as the secret: it would be sent
+    // as the password, used as the sync encryption key, and sealed by the
+    // rewrite below in place of the real value.
+    const result = await decryptConfigSecret(value, spec.vaultKeyStorageKey, spec.legacyPassphrase);
+    config[field] = result.value;
+    needsRewrite = needsRewrite || result.needsReencrypt;
   }
   if (needsRewrite) {
     await write(config as T).catch((err) => {
