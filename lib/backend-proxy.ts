@@ -3,11 +3,42 @@ import { createErrorResponse } from './api-utils';
 import { CLIENT_IP_HEADER, CLIENT_IP_SIGNATURE_HEADER, signClientIp } from './internalAuth';
 
 /**
+ * 前端前面有几层反向代理，与后端的 TRUST_PROXY_HOPS 同义，但描述的是前端自己的部署。
+ * 未设置时：在 Vercel 上为 1（Vercel 会用真实客户端地址覆盖 X-Forwarded-For，不保留调用方
+ * 自带的值），其他环境为 0，只认直连地址。宁少勿多：设多了会采信调用方伪造的 IP。
+ */
+function frontendTrustProxyHops(): number {
+  const configured = process.env.FRONTEND_TRUST_PROXY_HOPS;
+  if (configured !== undefined && configured !== '') {
+    const hops = Number(configured);
+    return Number.isInteger(hops) && hops >= 0 ? hops : 0;
+  }
+  return process.env.VERCEL ? 1 : 0;
+}
+
+/**
+ * 客户端 IP：从直连地址开始，沿 X-Forwarded-For 从右往左，跳过受信任的代理。
+ * 右边的条目是我们自己的代理追加的，最左边的是调用方自己写的，不能直接采信。
+ * 与后端 Fastify 的 trustProxy（hop < TRUST_PROXY_HOPS）取到的是同一个地址。
+ */
+export function clientIpFor(req: Pick<NextApiRequest, 'headers' | 'socket'>): string | undefined {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const entries = (Array.isArray(forwardedFor) ? forwardedFor.join(',') : (forwardedFor ?? ''))
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  // 离前端最近的在前：直连地址，然后是 X-Forwarded-For 从右往左
+  const chain = [req.socket?.remoteAddress, ...entries.reverse()];
+  const hops = Math.min(frontendTrustProxyHops(), chain.length - 1);
+  return chain[hops] || undefined;
+}
+
+/**
  * 转发给后端的通用请求头：会话凭证 + 客户端 IP。
  *
  * 后端看到的连接方永远是这台前端服务器，不带客户端 IP 的话按 IP 的限流会把所有用户
- * 算成同一个。只转发一个值（平台代理已设置则取其最左项，否则用直连地址），
- * 不把调用方自带的整条 X-Forwarded-For 链原样透传。
+ * 算成同一个。只转发一个值（见 clientIpFor），不把调用方自带的整条 X-Forwarded-For
+ * 链原样透传。
  *
  * 客户端 IP 放在单独的请求头里并附上签名：后端只在签名有效时采信它。否则任何人
  * 直接访问后端、自带一个 X-Forwarded-For，就能冒充任意 IP 绕过限流。
@@ -15,11 +46,7 @@ import { CLIENT_IP_HEADER, CLIENT_IP_SIGNATURE_HEADER, signClientIp } from './in
 export function forwardedHeaders(
   req: Pick<NextApiRequest, 'headers' | 'socket'>,
 ): Record<string, string> {
-  const forwardedFor = req.headers['x-forwarded-for'];
-  const first = (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)
-    ?.split(',')[0]
-    ?.trim();
-  const clientIp = first || req.socket?.remoteAddress;
+  const clientIp = clientIpFor(req);
   const signature = clientIp ? signClientIp(clientIp, process.env.NEXTAUTH_SECRET) : null;
   return {
     ...(req.headers.authorization ? { authorization: req.headers.authorization } : {}),

@@ -145,7 +145,7 @@ upgrade-insecure-requests
 | `Referrer-Policy`        | `strict-origin-when-cross-origin`          |
 | `Permissions-Policy`     | `camera=(), microphone=(), geolocation=()` |
 
-后端另外使用 `@fastify/helmet` 和 `@fastify/rate-limit`；按 IP 限流时，只信任 `TRUST_PROXY_HOPS` 层代理追加的 `X-Forwarded-For` 条目。
+后端另外使用 `@fastify/helmet` 和 `@fastify/rate-limit`；按 IP 限流时，只信任 `TRUST_PROXY_HOPS` 层代理追加的 `X-Forwarded-For` 条目。经前端代理的请求，客户端 IP 由前端按 `FRONTEND_TRUST_PROXY_HOPS` 用同样的规则取出并签名，后端只采信签名有效的值。
 
 ## Service Worker
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { forwardedHeaders } from '../lib/backend-proxy';
+import { clientIpFor, forwardedHeaders } from '../lib/backend-proxy';
 import {
   CLIENT_IP_HEADER,
   CLIENT_IP_SIGNATURE_HEADER,
@@ -127,10 +127,11 @@ describe('forwardedHeaders (client IP for backend rate limiting)', () => {
     vi.unstubAllEnvs();
   });
 
-  it('sends a single client IP: the leftmost X-Forwarded-For entry set by the platform proxy', () => {
+  it('sends a single, signed client IP and not the X-Forwarded-For chain', () => {
     vi.stubEnv('NEXTAUTH_SECRET', 'a-strong-secret-value');
+    vi.stubEnv('FRONTEND_TRUST_PROXY_HOPS', '1');
     const headers = forwardedHeaders({
-      headers: { 'x-forwarded-for': '203.0.113.7, 10.1.1.1' },
+      headers: { 'x-forwarded-for': '10.1.1.1, 203.0.113.7' },
       socket,
     });
     expect(headers[CLIENT_IP_HEADER]).toBe('203.0.113.7');
@@ -142,6 +143,44 @@ describe('forwardedHeaders (client IP for backend rate limiting)', () => {
       ),
     ).toBe(true);
     expect(headers['x-forwarded-for']).toBeUndefined();
+  });
+
+  describe('clientIpFor', () => {
+    // the caller wrote 198.51.100.66 itself; the proxies appended the rest
+    const req = (xff?: string) => ({
+      headers: xff ? { 'x-forwarded-for': xff } : {},
+      socket,
+    });
+
+    it('trusts no X-Forwarded-For entry by default', () => {
+      vi.stubEnv('VERCEL', '');
+      vi.stubEnv('FRONTEND_TRUST_PROXY_HOPS', '');
+      expect(clientIpFor(req('198.51.100.66'))).toBe('10.0.0.9');
+    });
+
+    it('skips exactly the configured proxies, from the right', () => {
+      vi.stubEnv('FRONTEND_TRUST_PROXY_HOPS', '1');
+      expect(clientIpFor(req('198.51.100.66, 203.0.113.7'))).toBe('203.0.113.7');
+      vi.stubEnv('FRONTEND_TRUST_PROXY_HOPS', '2');
+      expect(clientIpFor(req('198.51.100.66, 203.0.113.7, 10.2.2.2'))).toBe('203.0.113.7');
+    });
+
+    it('never goes past the leftmost entry', () => {
+      vi.stubEnv('FRONTEND_TRUST_PROXY_HOPS', '5');
+      expect(clientIpFor(req('203.0.113.7'))).toBe('203.0.113.7');
+      expect(clientIpFor(req())).toBe('10.0.0.9');
+    });
+
+    it('trusts the one entry Vercel writes when nothing is configured', () => {
+      vi.stubEnv('FRONTEND_TRUST_PROXY_HOPS', '');
+      vi.stubEnv('VERCEL', '1');
+      expect(clientIpFor(req('203.0.113.7'))).toBe('203.0.113.7');
+    });
+
+    it('treats an invalid setting as 0', () => {
+      vi.stubEnv('FRONTEND_TRUST_PROXY_HOPS', 'two');
+      expect(clientIpFor(req('203.0.113.7'))).toBe('10.0.0.9');
+    });
   });
 
   it('falls back to the socket address and forwards session credentials', () => {
