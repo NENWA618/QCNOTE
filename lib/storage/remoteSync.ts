@@ -4,6 +4,13 @@
 import { arrayBufferToBase64 } from './crypto';
 import type { OneDriveConfig, WebDAVConfig } from './types';
 
+// Every request here must see the remote as it is now. Without no-store a
+// browser may answer a GET or HEAD from its HTTP cache (heuristically fresh
+// when the server sends Last-Modified but no Cache-Control), and a stale
+// download looks unchanged to the pre-upload checks: the upload would then
+// overwrite what another device uploaded in the meantime.
+const NO_STORE: RequestCache = 'no-store';
+
 export function normalizeWebDAVUrl(config: WebDAVConfig): string {
   const base = config.url.trim().replace(/\/+$/, '');
   const path = config.remotePath.trim().replace(/^\/+/, '');
@@ -26,7 +33,7 @@ export async function webdavFetch(
     const credentials = new TextEncoder().encode(`${config.username}:${config.password}`);
     headers.Authorization = `Basic ${arrayBufferToBase64(credentials.buffer as ArrayBuffer)}`;
   }
-  return fetch(url, { method, headers, body });
+  return fetch(url, { method, headers, body, cache: NO_STORE });
 }
 
 export function normalizeOneDrivePath(path: string): string {
@@ -52,13 +59,14 @@ export async function oneDriveFetch(
     'Content-Type': 'application/octet-stream',
     ...extraHeaders,
   };
-  return fetch(`${oneDriveItemUrl(config)}:/content`, { method, headers, body });
+  return fetch(`${oneDriveItemUrl(config)}:/content`, { method, headers, body, cache: NO_STORE });
 }
 
 /** The file's current eTag, or null if it doesn't exist; throws on any other failure. */
 async function oneDriveETag(config: OneDriveConfig): Promise<string | null> {
   const response = await fetch(`${oneDriveItemUrl(config)}?$select=eTag`, {
     headers: { Authorization: `Bearer ${config.accessToken}` },
+    cache: NO_STORE,
   });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`OneDrive metadata GET failed (${response.status})`);
