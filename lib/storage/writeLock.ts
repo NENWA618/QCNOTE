@@ -6,10 +6,18 @@ export class UserChangedError extends Error {
   }
 }
 
+/** Web Locks name shared by every tab of this origin. */
+export const NOTES_WEB_LOCK = 'qcnote:notes-write';
+
 /**
  * The notes write queue. Every read-modify-write of the notes, and every
- * user switch, runs through run() so two saves in this tab can't interleave
- * and overwrite each other.
+ * user switch, runs through run() so two saves can't interleave and
+ * overwrite each other: in this tab via the promise chain, and across tabs
+ * via the Web Locks API where the browser has it. Without the cross-tab
+ * lock, a sync in one tab could delete a note (removed on the remote) that
+ * another tab saved an edit to after the sync read the notes.
+ *
+ * Tasks must not call run() themselves: they would wait for their own lock.
  */
 export class WriteLock {
   /** Tail of the queue. */
@@ -33,7 +41,8 @@ export class WriteLock {
   }
 
   run<T>(task: () => Promise<T>): Promise<T> {
-    const run = this.chain.then(task, task);
+    const exclusive = () => withCrossTabLock(task);
+    const run = this.chain.then(exclusive, exclusive);
     this.chain = run.catch(() => {});
     return run;
   }
@@ -49,4 +58,11 @@ export class WriteLock {
   assertGeneration(generation: number): void {
     if (generation !== this.generationCounter) throw new UserChangedError();
   }
+}
+
+/** Runs `task` holding NOTES_WEB_LOCK, or just runs it where Web Locks are missing. */
+function withCrossTabLock<T>(task: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (!locks?.request) return task();
+  return locks.request(NOTES_WEB_LOCK, task) as Promise<T>;
 }

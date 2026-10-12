@@ -5,6 +5,21 @@ import logger from '../logger';
 
 export const DEVICE_SESSION_TOKEN_KEY = 'qcnote:deviceSessionToken';
 
+/**
+ * Upper bound for each unlock request. Opening the notes DB awaits these
+ * inside the notes write lock, which every tab of this origin shares (see
+ * ./writeLock): a request that never settles would block saves everywhere.
+ * On timeout the request fails like any other, the DB reads as locked, and
+ * the next read retries.
+ */
+export const UNLOCK_REQUEST_TIMEOUT_MS = 15_000;
+
+function unlockRequestSignal(): AbortSignal | undefined {
+  return typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+    ? AbortSignal.timeout(UNLOCK_REQUEST_TIMEOUT_MS)
+    : undefined;
+}
+
 function getBaseUrl(): string {
   return typeof window !== 'undefined' && window.location?.origin
     ? window.location.origin
@@ -82,6 +97,7 @@ export async function validateDeviceSessionToken(token: string): Promise<boolean
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, fingerprint }),
+      signal: unlockRequestSignal(),
     });
     const result = await response.json();
     return response.ok && result?.success === true;
@@ -111,6 +127,7 @@ export async function fetchVaultKey(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, fingerprint }),
+      signal: unlockRequestSignal(),
     });
     const result = await response.json();
     if (!response.ok || !result?.success || typeof result.kek !== 'string') {

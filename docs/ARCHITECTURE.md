@@ -78,7 +78,7 @@
 所有笔记读写都经过 `lib/storage.ts` 的 `NoteStorage`。下面几条约束保证不丢数据，改存储相关代码时必须守住：
 
 - **严格读取**：`loadNotesAsync()` 读不出来就抛 `NoteStorageError`（`kind` 为 `locked`、`read` 或 `write`）。会写回或导出的路径都必须用它；`getDataAsync()` 失败时返回空列表，只能用于显示。
-- **串行的读改写**：所有修改都经过 `mutateNotes()`，在同一个标签页内排队执行（`runExclusive`）。`setCurrentUser()` 也排在这个队列里，所以一次保存不会读 A 用户的笔记、再写进 B 用户的库。
+- **串行的读改写**：所有修改都经过 `mutateNotes()`，排队执行：同一标签页内靠 Promise 队列，跨标签页靠 Web Locks（`navigator.locks`，锁名 `qcnote:notes-write`；不支持的浏览器只做标签页内排队）。`setCurrentUser()` 也排在这个队列里，所以一次保存不会读 A 用户的笔记、再写进 B 用户的库。
 - **原子、只写差异**：`mutateNotes()` 对比前后两份列表，只把变化的笔记交给 `QCDb.bulkWrite()`，在一个 IndexedDB 事务里完成全部 put / delete，要么全成功，要么全不变。
 - **失败要让用户知道**：增删改保存失败时抛错，控制台统一提示，并保留编辑器里的内容。
 
@@ -173,6 +173,8 @@ user_vault_keys.wrapped_key            QCNOTE_NOTES_DB_<userId>__qcnote_meta__
 
 WebDAV 和 OneDrive 都把**全部笔记**（包括回收站）存成远端的一个文件。填写了同步加密密钥时，文件内容是 `base64(salt‖iv‖AES-GCM 密文)`，密钥用 PBKDF2（SHA-256，250,000 次）派生；**没填就是明文 JSON**。
 
+填了密钥后，遇到明文的远端文件（开启加密之前写的）仍会读取，并在这次同步里加密上传，即使合并没有改动任何笔记。同步基线记录远端上次是不是密文（`SyncBase.encrypted`）：一旦是密文，之后再遇到明文就中止同步。否则任何能写远端的人都可以换上一份明文，绕过 AES-GCM 的完整性校验，往本地注入笔记。确实要用本机笔记覆盖远端时，用“覆盖上传”。
+
 ### 6.1 三方合并
 
 `storage/syncEngine.ts` 以**同步基线**为依据逐条合并。基线是上次同步成功时双方一致的状态，每条笔记记录一个摘要（`noteSyncHash`，只覆盖标题、正文、分类、标签、颜色、着色、删除标记，不含时间戳和派生字段）。
@@ -196,10 +198,12 @@ WebDAV 和 OneDrive 都把**全部笔记**（包括回收站）存成远端的�
 
 `NoteStorage.runSync()`：
 
-1. 下载远端文件。文件存在但**解不开或解析失败**时中止，绝不覆盖读不懂的远端。
+1. 下载远端文件（`cache: 'no-store'`，见下文）。文件存在但**解不开或解析失败**时中止，绝不覆盖读不懂的远端。
 2. 在写锁内做三方合并，保存本地结果，记录新的冲突。
 3. 远端需要更新时**条件上传**：WebDAV 用 `If-Match`（新文件用 `If-None-Match: *`），服务器回 412 说明期间被别的设备改过；服务器不给 ETag 或只给弱 ETag（`W/"…"`，`If-Match` 永远匹配不上）时，上传前再下载一次比对。OneDrive 下载前先读文件元数据里的 `eTag`，上传前再读一次比对，并带上 `If-Match`（Graph 只在上传会话里写明支持它，所以前面的比对不能省）。
 4. 冲突时从第 1 步重试，最多 3 次；成功后记录新基线。
+
+所有同步请求都带 `cache: 'no-store'`。很多 WebDAV 服务器只给 `Last-Modified`、不给 `Cache-Control`，浏览器会按启发式规则直接拿缓存的旧文件应答 GET 和 HEAD；上传前的比对用的也是同一份旧文件，结果显示“没变”，于是覆盖掉别的设备刚上传的修改。
 
 ### 6.3 入口
 
