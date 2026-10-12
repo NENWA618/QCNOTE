@@ -14,6 +14,12 @@ import {
 import logger from '../lib/logger';
 import { MAX_PUBLIC_NOTES_PER_USER, makePreview, type PublishPayload } from './public-notes';
 
+// A day's best run is kept whole: fewer steps wins, then less time (the
+// leaderboard's order). Taking the minimum of each column separately would
+// pair one run's steps with another run's time.
+const BETTER_RUN =
+  '(EXCLUDED.steps, EXCLUDED.time_ms) < (maze_submissions.steps, maze_submissions.time_ms)';
+
 export class UGCService {
   private redis: RedisClientType;
   private db: Pool;
@@ -494,13 +500,11 @@ export class UGCService {
         `INSERT INTO maze_submissions (user_id, day, steps, time_ms, username, avatar, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (user_id, day) DO UPDATE
-         SET steps = CASE
-           WHEN EXCLUDED.steps < maze_submissions.steps THEN EXCLUDED.steps
-           ELSE maze_submissions.steps
-         END,
-         time_ms = CASE
-           WHEN EXCLUDED.time_ms < maze_submissions.time_ms THEN EXCLUDED.time_ms
-           ELSE maze_submissions.time_ms
+         SET steps = CASE WHEN ${BETTER_RUN} THEN EXCLUDED.steps ELSE maze_submissions.steps END,
+         time_ms = CASE WHEN ${BETTER_RUN} THEN EXCLUDED.time_ms ELSE maze_submissions.time_ms END,
+         created_at = CASE
+           WHEN ${BETTER_RUN} THEN EXCLUDED.created_at
+           ELSE maze_submissions.created_at
          END,
          username = EXCLUDED.username,
          avatar = EXCLUDED.avatar`,
@@ -509,15 +513,22 @@ export class UGCService {
     }
 
     const score = 1000000 - (normalizedSteps * 1000 + Math.floor(normalizedTimeMs / 1000));
-    await this.redis.zAdd(leaderboardKey, { score, value: userId });
+    // GT: only a better score replaces the stored one; CH: report whether it did
+    const improved = await this.redis.zAdd(
+      leaderboardKey,
+      { score, value: userId },
+      { comparison: 'GT', CH: true },
+    );
     await this.redis.set(
       `leaderboard:${leaderboardKey}:${userId}:info`,
       JSON.stringify({ username, avatar }),
     );
-    await this.redis.set(
-      `${leaderboardKey}:user:${userId}`,
-      JSON.stringify({ steps, timeMs, submittedAt: Date.now() }),
-    );
+    if (improved > 0) {
+      await this.redis.set(
+        `${leaderboardKey}:user:${userId}`,
+        JSON.stringify({ steps, timeMs, submittedAt: Date.now() }),
+      );
+    }
   }
 
   async getGameLeaderboard(
