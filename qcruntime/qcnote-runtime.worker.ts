@@ -593,8 +593,11 @@ async function getOrCreateWrappedDek(name: string, kek: CryptoKey): Promise<Cryp
   // created a DEK since our read. Overwriting it would leave whatever that
   // open already encrypted undecryptable, so only store ours if none exists
   // and otherwise converge on the stored one.
-  if (await addMetaIfAbsent(name, 'wrappedDEK', base64Encode(iv) + '.' + base64Encode(wrapped))) {
-    return dek;
+  const stored = base64Encode(iv) + '.' + base64Encode(wrapped);
+  if (await addMetaIfAbsent(name, 'wrappedDEK', stored)) {
+    // `dek` had to be extractable to be wrapped; hand out the same key
+    // unwrapped as non-extractable, like every later open gets.
+    return unwrap(stored);
   }
   const winner = await readMeta<string>(name, 'wrappedDEK');
   if (!winner) throw new Error('[QCNOTE] wrappedDEK vanished while opening the database');

@@ -60,6 +60,73 @@ export function forwardedHeaders(
 interface ProxyOptions {
   extraHeaders?: Record<string, string>;
   preserveQuery?: boolean;
+  /** Sent instead of req.body, so a route can forward only the fields it validated. */
+  body?: unknown;
+}
+
+/** BACKEND_URL joined with `backendPath`, or null when no backend is configured. */
+export function backendUrlFor(backendPath: string): URL | null {
+  const backendUrl = process.env.BACKEND_URL;
+  if (!backendUrl) return null;
+  return new URL(`${backendUrl.replace(/\/+$/, '')}${backendPath}`);
+}
+
+const FORWARDED_RESPONSE_HEADERS = [
+  'content-type',
+  'content-length',
+  'cache-control',
+  'etag',
+  'x-request-id',
+];
+
+/**
+ * Sends the request to `targetUrl` and relays the backend's status, selected
+ * headers and body. Throws if the backend can't be reached.
+ */
+export async function relayToBackend(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  targetUrl: URL,
+  options: ProxyOptions = {},
+) {
+  if (options.preserveQuery !== false && req.url?.includes('?')) {
+    targetUrl.search = req.url.substring(req.url.indexOf('?') + 1);
+  }
+
+  const fetchOptions: RequestInit = {
+    method: req.method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...forwardedHeaders(req),
+      ...options.extraHeaders,
+    },
+  };
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    const body = 'body' in options ? options.body : req.body;
+    if (body !== undefined && body !== null) {
+      fetchOptions.body = JSON.stringify(body);
+    }
+  }
+
+  const response = await fetch(targetUrl.toString(), fetchOptions);
+  const responseData = await response.text();
+
+  FORWARDED_RESPONSE_HEADERS.forEach((header) => {
+    const value = response.headers.get(header);
+    if (value) {
+      res.setHeader(header, value);
+    }
+  });
+
+  res.status(response.status);
+
+  try {
+    const jsonData = JSON.parse(responseData);
+    return res.json(jsonData);
+  } catch {
+    return res.send(responseData);
+  }
 }
 
 export async function proxyToBackend(
@@ -68,8 +135,8 @@ export async function proxyToBackend(
   backendPath: string,
   options: ProxyOptions = {},
 ) {
-  const backendUrl = process.env.BACKEND_URL;
-  if (!backendUrl) {
+  const targetUrl = backendUrlFor(backendPath);
+  if (!targetUrl) {
     return res.status(503).json(
       createErrorResponse('Backend service unavailable', 'BACKEND_URL_NOT_CONFIGURED', {
         message: 'BACKEND_URL environment variable is not set',
@@ -77,56 +144,8 @@ export async function proxyToBackend(
     );
   }
 
-  const targetUrl = new URL(`${backendUrl}${backendPath}`);
-
-  if (options.preserveQuery !== false && req.url?.includes('?')) {
-    const search = req.url.substring(req.url.indexOf('?') + 1);
-    targetUrl.search = search;
-  }
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...forwardedHeaders(req),
-    ...options.extraHeaders,
-  };
-
-  const fetchOptions: RequestInit = {
-    method: req.method,
-    headers,
-  };
-
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    if (req.body !== undefined && req.body !== null) {
-      fetchOptions.body = JSON.stringify(req.body);
-    }
-  }
-
   try {
-    const response = await fetch(targetUrl.toString(), fetchOptions);
-    const responseData = await response.text();
-
-    const headersToForward = [
-      'content-type',
-      'content-length',
-      'cache-control',
-      'etag',
-      'x-request-id',
-    ];
-    headersToForward.forEach((header) => {
-      const value = response.headers.get(header);
-      if (value) {
-        res.setHeader(header, value);
-      }
-    });
-
-    res.status(response.status);
-
-    try {
-      const jsonData = JSON.parse(responseData);
-      return res.json(jsonData);
-    } catch {
-      return res.send(responseData);
-    }
+    return await relayToBackend(req, res, targetUrl, options);
   } catch (error) {
     // 错误详情只进服务端日志：里面可能带有内部后端地址
     console.error('[Backend Proxy] Error:', error);

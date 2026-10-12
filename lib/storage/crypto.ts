@@ -89,6 +89,11 @@ export async function decryptText(encryptedBase64: string, passphrase: string): 
  * WebDAV/OneDrive secrets at rest, generating and persisting one on
  * first use. This replaces the old hardcoded passphrases: the key never
  * leaves the device and isn't recoverable from the source or bundle.
+ *
+ * It lives in the same origin's storage as the ciphertext, so it only
+ * keeps the secrets out of plain sight (exports, casual inspection of
+ * storage). Anything that can run script on this origin or read the
+ * browser profile can read both and decrypt.
  */
 export function getOrCreateDeviceVaultKeyMaterial(storageKey: string): string {
   if (typeof localStorage === 'undefined') {

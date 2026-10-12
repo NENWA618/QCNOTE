@@ -1,4 +1,4 @@
-import { forwardedHeaders } from '../../../lib/backend-proxy';
+import { proxyToBackend } from '../../../lib/backend-proxy';
 import { withCsrfProtection } from '../../../lib/csrfProtection';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
@@ -13,13 +13,6 @@ type SessionUserWithId = {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const backendUrl = process.env.BACKEND_URL;
-  if (!backendUrl) {
-    return res
-      .status(503)
-      .json(createErrorResponse('Backend service unavailable', 'BACKEND_URL_NOT_CONFIGURED'));
-  }
-
   const session = await getServerSession(req, res, authOptions);
   const userId = (session?.user as SessionUserWithId | undefined)?.id;
 
@@ -31,26 +24,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(405).json(createErrorResponse('Method not allowed', 'METHOD_NOT_ALLOWED'));
   }
 
-  const targetUrl = `${backendUrl.replace(/\/$/, '')}/api/device/reset`;
-
-  const response = await fetch(targetUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...forwardedHeaders(req),
-    },
-    body: JSON.stringify({}),
-  });
-
-  const responseText = await response.text();
-  res.status(response.status);
-
-  try {
-    const jsonBody = JSON.parse(responseText);
-    return res.json(jsonBody);
-  } catch {
-    return res.send(responseText);
-  }
+  // 后端只看会话，不需要请求体
+  return proxyToBackend(req, res, '/api/device/reset', { body: {} });
 }
 
 export default withCsrfProtection(withErrorHandler(handler));

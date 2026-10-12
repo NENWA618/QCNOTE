@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { decryptText, encryptText } from './crypto';
 import { normalizeNote, syncLinkGraph } from './linkGraph';
 import { normalizeWebDAVUrl, webdavFetch, webdavTransport, type SyncTransport } from './remoteSync';
@@ -29,6 +30,59 @@ export interface SyncHost {
   writeSyncBase(provider: SyncProvider, base: SyncBase): Promise<void>;
 }
 
+const remoteColoredRange = z.object({
+  startIndex: z.number().int().nonnegative(),
+  endIndex: z.number().int().nonnegative(),
+  color: z.string(),
+});
+
+/**
+ * Shape of one note in a downloaded notes file. Lenient on what older
+ * clients may have left out, strict on types, and keeps unknown fields so a
+ * newer client's data survives the round trip.
+ */
+const remoteNoteSchema = z.looseObject({
+  id: z.string().min(1),
+  title: z.string().default(''),
+  content: z.string().default(''),
+  category: z.string().default(''),
+  tags: z.array(z.string()).default([]),
+  color: z.string().default(''),
+  // purely cosmetic: drop malformed ranges instead of rejecting the note
+  coloredRanges: z
+    .array(z.unknown())
+    .optional()
+    .transform((ranges) =>
+      ranges?.flatMap((range) => {
+        const parsed = remoteColoredRange.safeParse(range);
+        return parsed.success && parsed.data.startIndex < parsed.data.endIndex ? [parsed.data] : [];
+      }),
+    ),
+  createdAt: z.number().optional(),
+  updatedAt: z.number().optional(),
+  isDeleted: z.boolean().optional(),
+  links: z.array(z.string()).optional(),
+  backlinks: z.array(z.string()).optional(),
+  versions: z.array(z.unknown()).optional(),
+});
+
+/**
+ * Validates a parsed notes file. All or nothing: dropping one bad note
+ * would read as "deleted on the remote" and delete it locally too.
+ */
+function validateRemoteNotes(value: unknown): NoteItem[] | null {
+  if (!Array.isArray(value)) return null;
+  const ids = new Set<string>();
+  const notes: NoteItem[] = [];
+  for (const item of value) {
+    const parsed = remoteNoteSchema.safeParse(item);
+    if (!parsed.success || ids.has(parsed.data.id)) return null;
+    ids.add(parsed.data.id);
+    notes.push(normalizeNote(parsed.data as NoteItem));
+  }
+  return notes;
+}
+
 /**
  * Decodes a downloaded notes file, or returns null if it isn't one we can
  * read. With a key, a plaintext file is still accepted (a remote written
@@ -37,8 +91,7 @@ export interface SyncHost {
 async function parseRemoteNotes(raw: string, key?: string): Promise<NoteItem[] | null> {
   const parseArray = (text: string): NoteItem[] | null => {
     try {
-      const parsed = JSON.parse(text);
-      return Array.isArray(parsed) ? parsed.map((note) => normalizeNote(note as NoteItem)) : null;
+      return validateRemoteNotes(JSON.parse(text));
     } catch {
       return null;
     }
