@@ -170,8 +170,10 @@ export const NormalMarkdown: React.FC<NormalMarkdownProps> = ({ content }) => {
               {children}
             </code>
           ),
+          // 代码块里的 <code> 也会走上面的 code 渲染器；它是行内元素，px-2 只会加在
+          // 第一行开头，导致首行右偏。这里把行内代码的内边距、背景和圆角去掉。
           pre: ({ children }) => (
-            <pre className="bg-gray-100 dark:bg-dark-surface-light p-4 rounded overflow-x-auto mb-4 text-gray-800 dark:text-dark-text">
+            <pre className="bg-gray-100 dark:bg-dark-surface-light p-4 rounded overflow-x-auto mb-4 text-gray-800 dark:text-dark-text [&>code]:p-0 [&>code]:bg-transparent [&>code]:rounded-none">
               {children}
             </pre>
           ),
