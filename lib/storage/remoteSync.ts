@@ -53,13 +53,19 @@ export async function oneDriveFetch(
   config: OneDriveConfig,
   body?: string,
   extraHeaders: Record<string, string> = {},
+  query = '',
 ): Promise<Response> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${config.accessToken}`,
     'Content-Type': 'application/octet-stream',
     ...extraHeaders,
   };
-  return fetch(`${oneDriveItemUrl(config)}:/content`, { method, headers, body, cache: NO_STORE });
+  return fetch(`${oneDriveItemUrl(config)}:/content${query}`, {
+    method,
+    headers,
+    body,
+    cache: NO_STORE,
+  });
 }
 
 /** The file's current eTag, or null if it doesn't exist; throws on any other failure. */
@@ -181,8 +187,12 @@ export function oneDriveTransport(config: OneDriveConfig): SyncTransport {
       // race window is one metadata round trip, as with stillMatches.
       if ((await oneDriveETag(config)) !== (expected?.etag ?? null)) return 'conflict';
       const headers: Record<string, string> = expected?.etag ? { 'If-Match': expected.etag } : {};
-      const response = await oneDriveFetch('PUT', config, body, headers);
+      // Creating the file: conflictBehavior=fail makes Graph answer 409
+      // instead of replacing a file another device created after our check.
+      const query = expected === null ? '?@microsoft.graph.conflictBehavior=fail' : '';
+      const response = await oneDriveFetch('PUT', config, body, headers, query);
       if (response.status === 412) return 'conflict';
+      if (response.status === 409 && expected === null) return 'conflict';
       if (!response.ok) throw new Error(`OneDrive PUT failed (${response.status})`);
       return 'ok';
     },

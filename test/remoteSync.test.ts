@@ -54,3 +54,42 @@ describe('sync transports bypass the HTTP cache', () => {
     expect(calls.every((c) => c.init.cache === 'no-store')).toBe(true);
   });
 });
+
+describe('OneDrive upload of a new file', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const created = (status: number) =>
+    stubFetch((url) =>
+      url.includes('$select=eTag')
+        ? new Response(null, { status: 404 })
+        : new Response('{}', { status }),
+    );
+
+  it('asks Graph to fail rather than replace a file created meanwhile', async () => {
+    const calls = created(201);
+    expect(await oneDriveTransport(onedrive).put('[]', null)).toBe('ok');
+
+    const put = calls.find((c) => c.init.method === 'PUT')!;
+    expect(put.url).toMatch(/:\/content\?@microsoft\.graph\.conflictBehavior=fail$/);
+  });
+
+  it('reports a 409 as a conflict, so the sync downloads and merges again', async () => {
+    created(409);
+    expect(await oneDriveTransport(onedrive).put('[]', null)).toBe('conflict');
+  });
+
+  it('does not add the query when replacing a known file', async () => {
+    const calls = stubFetch((url) =>
+      url.includes('$select=eTag')
+        ? new Response(JSON.stringify({ eTag: '"e1"' }), { status: 200 })
+        : new Response('{}', { status: 200 }),
+    );
+    await oneDriveTransport(onedrive).put('[]', { body: '[]', etag: '"e1"' });
+
+    const put = calls.find((c) => c.init.method === 'PUT')!;
+    expect(put.url).toMatch(/:\/content$/);
+    expect((put.init.headers as Record<string, string>)['If-Match']).toBe('"e1"');
+  });
+});
