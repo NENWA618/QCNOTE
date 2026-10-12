@@ -160,6 +160,26 @@ describe('WebDAVSyncManager config handling', () => {
     expect(storage.syncWithWebDAVAsync).toHaveBeenCalledWith(newConf, false);
   });
 
+  it('keeps a single interval when restarted during the first sync', async () => {
+    const first = manager.start(conf());
+    const second = manager.updateConfig(conf({ password: 'new-password' }));
+    await Promise.all([first, second]);
+    storage.syncWithWebDAVAsync.mockClear();
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(storage.syncWithWebDAVAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not schedule an interval when stopped during the first sync', async () => {
+    const started = manager.start(conf());
+    manager.stop();
+    await started;
+
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(storage.syncWithWebDAVAsync).toHaveBeenCalledTimes(1);
+    expect(manager.getStatus().isRunning).toBe(false);
+  });
+
   it('resolves prefer-local conflicts by keeping the current note, not the snapshot', async () => {
     const snapshot = { id: 'n1', title: 'stale', content: '' } as unknown as NoteItem;
     storage.getConflictsAsync.mockResolvedValueOnce([

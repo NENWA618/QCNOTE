@@ -37,6 +37,17 @@ import { useSemanticSearch } from '../lib/hooks/useSemanticSearch';
 
 const SEMANTIC_SEARCH_STORAGE_KEY = 'qcnote:semantic-search-enabled';
 
+const DEFAULT_WEBDAV_CONFIG = {
+  url: '',
+  username: '',
+  password: '',
+  remotePath: 'notes.json',
+  encryptionKey: '',
+  autoSyncEnabled: false,
+  syncInterval: 5 * 60 * 1000, // 5 minutes default
+  conflictStrategy: 'manual' as 'manual' | 'prefer-local' | 'prefer-remote',
+};
+
 // 存储层保存失败时会抛错（而不是假装成功），这里统一提示用户
 const reportSaveError = (action: string, err: unknown) => {
   console.error(`[Dashboard] ${action}失败`, err);
@@ -76,16 +87,7 @@ const Dashboard: React.FC = () => {
   const [viewMode, setViewMode] = useState<
     'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts' | 'tags' | 'cloud'
   >('list');
-  const [webdavConfig, setWebdavConfig] = useState({
-    url: '',
-    username: '',
-    password: '',
-    remotePath: 'notes.json',
-    encryptionKey: '',
-    autoSyncEnabled: false,
-    syncInterval: 5 * 60 * 1000, // 5 minutes default
-    conflictStrategy: 'manual' as 'manual' | 'prefer-local' | 'prefer-remote',
-  });
+  const [webdavConfig, setWebdavConfig] = useState(DEFAULT_WEBDAV_CONFIG);
   const [onedriveConfig, setOnedriveConfig] = useState<OneDriveConfig>({
     accessToken: '',
     folderPath: 'Notes/notes.json',
@@ -140,6 +142,11 @@ const Dashboard: React.FC = () => {
         conflictStrategy: config.conflictStrategy || 'manual',
       });
       setLastSyncTime(config.lastSyncTime ? new Date(config.lastSyncTime) : null);
+    } else {
+      // No config for this user (or it can't be read): never keep showing,
+      // or auto-syncing with, the previous user's.
+      setWebdavConfig(DEFAULT_WEBDAV_CONFIG);
+      setLastSyncTime(null);
     }
 
     const oneDriveConfig = await s.getOneDriveConfigAsync();
@@ -198,25 +205,26 @@ const Dashboard: React.FC = () => {
       onUserChange: resetLoadedData,
     });
 
-  // Auto-sync effect
+  // WebDAVSyncManager runs the only auto-sync loop, following the saved
+  // config (it stops itself on a user switch). Keyed on the settings, not the
+  // object: loadNotes() sets a fresh copy after every note change.
+  const webdavConfigKey = JSON.stringify(webdavConfig);
   useEffect(() => {
-    if (!webdavConfig.autoSyncEnabled || !storageRef.current) return;
+    if (!syncManager) return;
+    void syncManager.updateConfig(JSON.parse(webdavConfigKey) as WebDAVConfig);
+  }, [syncManager, webdavConfigKey]);
 
-    const interval = setInterval(async () => {
-      const s = storageRef.current;
-      if (!s) return;
-
-      // Notes with unresolved conflicts are left alone by the sync itself, so
-      // the rest can keep syncing.
-      const config = { ...webdavConfig };
-      if (await s.syncWithWebDAVAsync(config, Boolean(config.encryptionKey))) {
-        setLastSyncTime(new Date());
-        await loadNotes(); // Refresh data
-      }
-    }, webdavConfig.syncInterval);
-
-    return () => clearInterval(interval);
-  }, [webdavConfig, loadNotes]);
+  // Show what any manager sync (auto or "立即同步") merged in.
+  useEffect(() => {
+    if (!syncManager) return;
+    let seen = syncManager.getStatus().lastSyncTime;
+    return syncManager.onStatusChange(({ lastSyncStatus, lastSyncTime: time }) => {
+      if (lastSyncStatus !== 'success' || time === null || time === seen) return;
+      seen = time;
+      setLastSyncTime(new Date(time));
+      void loadNotes();
+    });
+  }, [syncManager, loadNotes]);
 
   const handleToggleSemantic = useCallback(() => {
     setSemanticEnabled(!semanticEnabled);
@@ -471,12 +479,6 @@ const Dashboard: React.FC = () => {
     return result;
   };
 
-  const handleWebdavConfigChange = async (config: WebDAVConfig) => {
-    if (syncManager) {
-      await syncManager.updateConfig(config);
-    }
-  };
-
   const handleWebdavPush = async (config: WebDAVConfig) => {
     const s = storageRef.current;
     if (!s) return false;
@@ -652,16 +654,7 @@ const Dashboard: React.FC = () => {
     if (!s) return false;
     try {
       await s.clearWebDAVConfigAsync();
-      setWebdavConfig({
-        url: '',
-        username: '',
-        password: '',
-        remotePath: 'notes.json',
-        encryptionKey: '',
-        autoSyncEnabled: false,
-        syncInterval: 5 * 60 * 1000,
-        conflictStrategy: 'manual',
-      });
+      setWebdavConfig(DEFAULT_WEBDAV_CONFIG);
       setLastSyncTime(null);
       return true;
     } catch (error) {
@@ -868,7 +861,6 @@ const Dashboard: React.FC = () => {
                   onPush={handleWebdavPush}
                   onPull={handleWebdavPull}
                   onClearConfig={handleClearWebdavConfig}
-                  onConfigChange={handleWebdavConfigChange}
                 />
                 <OneDriveSync
                   config={onedriveConfig}

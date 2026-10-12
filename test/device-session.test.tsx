@@ -67,6 +67,13 @@ vi.mock('../lib/webdavSyncManager', () => ({
   default: class {
     constructor() {}
     stop() {}
+    async updateConfig() {}
+    getStatus() {
+      return { isRunning: false, lastSyncTime: null, lastSyncStatus: 'idle' };
+    }
+    onStatusChange() {
+      return () => {};
+    }
   },
 }));
 vi.mock('../lib/storage', async () => {

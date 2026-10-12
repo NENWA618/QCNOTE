@@ -18,6 +18,9 @@ export class WebDAVSyncManager {
   // storage.userGeneration when auto-sync started: the config it captured
   // belongs to that session's user, so a later user switch stops it.
   private autoSyncGeneration: number | null = null;
+  // Bumped by every start() and stop(), so a start() still awaiting its
+  // first sync knows not to schedule an interval any more.
+  private startRun = 0;
 
   constructor(storage: NoteStorage) {
     this.storage = storage;
@@ -41,10 +44,14 @@ export class WebDAVSyncManager {
 
     const generation = this.storage?.userGeneration ?? null;
     this.autoSyncGeneration = generation;
+    const run = ++this.startRun;
 
     // Run first sync immediately
     await this.executeSync(config, direction);
 
+    // Superseded by stop() or a newer start() during the first sync: that
+    // one owns the schedule now.
+    if (run !== this.startRun) return;
     // The user may have switched during the first sync
     if (!this.isSameSession(generation)) {
       this.autoSyncGeneration = null;
@@ -70,6 +77,7 @@ export class WebDAVSyncManager {
    * Stop auto-sync
    */
   stop(): void {
+    this.startRun++;
     this.autoSyncGeneration = null;
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
