@@ -494,7 +494,7 @@ export class NoteStorage implements SemanticCacheStore {
           await this.kv.readStoredValue<unknown>(this.syncBaseKey(provider)),
         );
         // A base recorded against another file says nothing about this one.
-        return stored && stored.remoteId === remoteId ? stored.hashes : null;
+        return stored && stored.remoteId === remoteId ? stored : null;
       },
       writeSyncBase: async (provider, base) => {
         await this.kv.writeStoredValue(this.syncBaseKey(provider), await this.sealForUser(base));

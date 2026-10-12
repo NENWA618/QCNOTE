@@ -7,7 +7,6 @@ import {
   noteSyncHash,
   threeWayMerge,
   type SyncBase,
-  type SyncBaseHashes,
   type SyncStrategy,
   type ThreeWayMergeResult,
 } from './syncEngine';
@@ -26,7 +25,8 @@ export interface SyncHost {
   /** Strict read of the conflict list. */
   readConflicts(): Promise<NoteConflict[]>;
   writeConflicts(conflicts: NoteConflict[]): Promise<void>;
-  readSyncBase(provider: SyncProvider, remoteId: string): Promise<SyncBaseHashes | null>;
+  /** The stored base, or null if none was recorded for `remoteId`. */
+  readSyncBase(provider: SyncProvider, remoteId: string): Promise<SyncBase | null>;
   writeSyncBase(provider: SyncProvider, base: SyncBase): Promise<void>;
 }
 
@@ -108,10 +108,14 @@ function validateRemoteNotes(value: unknown): NoteItem[] | null {
 
 /**
  * Decodes a downloaded notes file, or returns null if it isn't one we can
- * read. With a key, a plaintext file is still accepted (a remote written
- * before encryption was turned on); ciphertext under another key is not.
+ * read. With a key, a plaintext file is still decoded (a remote written
+ * before encryption was turned on; runSync decides whether to trust it);
+ * ciphertext under another key is not.
  */
-async function parseRemoteNotes(raw: string, key?: string): Promise<NoteItem[] | null> {
+async function parseRemoteNotes(
+  raw: string,
+  key?: string,
+): Promise<{ notes: NoteItem[]; encrypted: boolean } | null> {
   const parseArray = (text: string): NoteItem[] | null => {
     try {
       return validateRemoteNotes(JSON.parse(text));
@@ -120,13 +124,19 @@ async function parseRemoteNotes(raw: string, key?: string): Promise<NoteItem[] |
     }
   };
   if (key) {
+    let plain: string | null = null;
     try {
-      return parseArray(await decryptText(raw, key));
+      plain = await decryptText(raw, key);
     } catch {
       // not encrypted with this key: fall through to the plaintext check
     }
+    if (plain !== null) {
+      const notes = parseArray(plain);
+      return notes ? { notes, encrypted: true } : null;
+    }
   }
-  return parseArray(raw);
+  const notes = parseArray(raw);
+  return notes ? { notes, encrypted: false } : null;
 }
 
 /**
@@ -145,9 +155,8 @@ export async function pushToWebDAV(
     // the remote copy.
     const allNotes = await host.loadNotes();
     let payload = JSON.stringify(allNotes);
-    if (encrypt && config.encryptionKey && config.encryptionKey.length > 0) {
-      payload = await encryptText(payload, config.encryptionKey);
-    }
+    const encrypted = Boolean(encrypt && config.encryptionKey);
+    if (encrypted) payload = await encryptText(payload, config.encryptionKey!);
     host.lock.assertGeneration(generation);
     const url = normalizeWebDAVUrl(config);
     const response = await webdavFetch('PUT', url, config, payload);
@@ -155,7 +164,11 @@ export async function pushToWebDAV(
     // Both sides now hold exactly these notes.
     const hashes = Object.fromEntries(allNotes.map((n) => [n.id, noteSyncHash(n)]));
     await host.lock.runForGeneration(generation, () =>
-      host.writeSyncBase('webdav', { remoteId: webdavTransport(config).remoteId, hashes }),
+      host.writeSyncBase('webdav', {
+        remoteId: webdavTransport(config).remoteId,
+        hashes,
+        encrypted,
+      }),
     );
     return true;
   } catch (e) {
@@ -198,20 +211,35 @@ export async function runSync(
         return false;
       }
       let remoteNotes: NoteItem[] = [];
+      let remoteEncrypted = false;
       if (snapshot) {
         const parsed = await parseRemoteNotes(snapshot.body, key);
         if (!parsed) {
           console.warn(`[NoteStorage] ${provider} 远程文件无法解密或解析，已中止同步以免覆盖远端`);
           return false;
         }
-        remoteNotes = parsed;
+        remoteNotes = parsed.notes;
+        remoteEncrypted = parsed.encrypted;
       }
+      // With a key, a plaintext remote is ours to encrypt: upload it even if
+      // the merge changed nothing, so it doesn't stay plaintext.
+      const plaintextUnderKey = Boolean(key && snapshot && !remoteEncrypted);
 
       // Base, merge, conflicts and the new base are read and written in
       // one locked step, so they all land in the store of the user this
       // sync started for.
       const result = await host.lock.runForGeneration(generation, async () => {
-        const storedBase = await host.readSyncBase(provider, transport.remoteId);
+        const stored = await host.readSyncBase(provider, transport.remoteId);
+        if (plaintextUnderKey && stored?.encrypted) {
+          // It was ciphertext last time: plaintext now means someone other
+          // than us wrote it. Never merge notes we can't authenticate.
+          console.warn(
+            `[NoteStorage] ${provider} 远程文件上次同步时已加密，现在却是明文，已中止同步` +
+              (provider === 'webdav' ? '。如需用本机笔记覆盖远端，请使用“覆盖上传”' : ''),
+          );
+          return null;
+        }
+        const storedBase = stored?.hashes ?? null;
         const base = applicableBase(storedBase, snapshot ? remoteNotes : null);
         if (storedBase && !base) {
           console.warn(
@@ -247,6 +275,8 @@ export async function runSync(
         await host.writeSyncBase(provider, {
           remoteId: transport.remoteId,
           hashes: mergeResult.baseAfterLocal,
+          // the remote is unchanged so far: once encrypted, stays encrypted
+          encrypted: Boolean(key) && (remoteEncrypted || Boolean(stored?.encrypted)),
         });
         return mergeResult;
       });
@@ -257,7 +287,8 @@ export async function runSync(
       // data going to this user's remote), but skip it: nothing would
       // record the new base for it.
       host.lock.assertGeneration(generation);
-      if (result.remoteChanged) {
+      const uploading = result.remoteChanged || plaintextUnderKey;
+      if (uploading) {
         let payload = JSON.stringify(result.nextRemote);
         if (key) payload = await encryptText(payload, key);
         if ((await transport.put(payload, snapshot)) === 'conflict') {
@@ -269,6 +300,7 @@ export async function runSync(
         host.writeSyncBase(provider, {
           remoteId: transport.remoteId,
           hashes: result.baseAfterUpload,
+          encrypted: Boolean(key) && (uploading || remoteEncrypted),
         }),
       );
       return true;

@@ -1,5 +1,6 @@
 // What a sync does with a downloaded notes file it can't trust.
 import { describe, it, expect } from 'vitest';
+import { decryptText, encryptText } from '../lib/storage/crypto';
 import { runSync, type SyncHost } from '../lib/storage/syncRunner';
 import type { SyncTransport } from '../lib/storage/remoteSync';
 import type { SyncBase } from '../lib/storage/syncEngine';
@@ -32,12 +33,12 @@ function fakeHost(initial: NoteItem[]) {
     },
     readConflicts: async () => [] as NoteConflict[],
     writeConflicts: async () => {},
-    readSyncBase: async () => base?.hashes ?? null,
+    readSyncBase: async (_provider, remoteId) => (base?.remoteId === remoteId ? base : null),
     writeSyncBase: async (_provider, next) => {
       base = next;
     },
   };
-  return { host, notes: () => notes };
+  return { host, notes: () => notes, base: () => base };
 }
 
 function fakeRemote(body: string) {
@@ -110,5 +111,70 @@ describe('runSync with a malformed remote file', () => {
     expect(notes()[0].versions).toEqual([
       { ...good, category: '', tags: [], color: '', coloredRanges: undefined },
     ]);
+  });
+});
+
+describe('runSync with a sync key', () => {
+  const KEY = 'correct horse battery staple';
+
+  /** A remote whose file a test can replace between syncs. */
+  function mutableRemote(initial: string | null) {
+    let body = initial;
+    const transport: SyncTransport = {
+      remoteId: 'test:notes.json',
+      get: async () => (body === null ? null : { body, etag: null }),
+      put: async (payload) => {
+        body = payload;
+        return 'ok';
+      },
+    };
+    return {
+      transport,
+      body: () => body,
+      replace: (next: string) => {
+        body = next;
+      },
+    };
+  }
+
+  const keyedSync = (host: SyncHost, transport: SyncTransport) =>
+    runSync(host, 'webdav', transport, { key: KEY, strategy: 'prefer-local', upload: true });
+
+  it('encrypts a plaintext remote even when the merge changes nothing', async () => {
+    const { host, base } = fakeHost([note('a')]);
+    const remote = mutableRemote(JSON.stringify([note('a')]));
+
+    expect(await keyedSync(host, remote.transport)).toBe(true);
+    const uploaded = JSON.parse(await decryptText(remote.body()!, KEY)) as NoteItem[];
+    expect(uploaded.map((n) => n.id)).toEqual(['a']);
+    expect(base()?.encrypted).toBe(true);
+  });
+
+  it('refuses a plaintext remote once it has been encrypted', async () => {
+    const { host, notes } = fakeHost([note('a')]);
+    const remote = mutableRemote(await encryptText(JSON.stringify([note('a')]), KEY));
+    expect(await keyedSync(host, remote.transport)).toBe(true);
+
+    const injected = JSON.stringify([note('a'), note('evil')]);
+    remote.replace(injected);
+
+    expect(await keyedSync(host, remote.transport)).toBe(false);
+    expect(notes().map((n) => n.id)).toEqual(['a']);
+    expect(remote.body()).toBe(injected);
+  });
+
+  it('still accepts plaintext without a key, after the key is removed', async () => {
+    const { host, notes } = fakeHost([note('a')]);
+    const remote = mutableRemote(await encryptText(JSON.stringify([note('a')]), KEY));
+    expect(await keyedSync(host, remote.transport)).toBe(true);
+
+    remote.replace(JSON.stringify([note('a'), note('b')]));
+
+    expect(await sync(host, remote.transport)).toBe(true);
+    expect(
+      notes()
+        .map((n) => n.id)
+        .sort(),
+    ).toEqual(['a', 'b']);
   });
 });

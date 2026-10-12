@@ -18,6 +18,14 @@ export type SyncBaseHashes = Record<string, string>;
 export interface SyncBase {
   remoteId: string;
   hashes: SyncBaseHashes;
+  /**
+   * The remote file was encrypted with the sync key when this base was
+   * recorded. From then on a plaintext file there is refused: anyone who
+   * can write to the remote could otherwise swap in plaintext notes and
+   * bypass the ciphertext's integrity check. Absent on bases recorded
+   * before this field existed, which then read as false.
+   */
+  encrypted?: boolean;
 }
 
 /** cyrb53: a fast, well-distributed 53-bit string hash. */
