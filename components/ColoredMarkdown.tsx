@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Pluggable } from 'unified';
 import remarkGfm from 'remark-gfm';
@@ -8,8 +8,8 @@ import 'katex/dist/katex.min.css';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeRaw from 'rehype-raw';
 import { ColoredRange } from '../lib/storage';
-import TextColorUtils from '../lib/textColorUtils';
-import { isSafeCssColor, rehypeRestrictUserStyles } from '../lib/markdownSafety';
+import { rehypeRestrictUserStyles } from '../lib/markdownSafety';
+import { rehypeColorRanges } from '../lib/rehypeColorRanges';
 
 interface ColoredMarkdownProps {
   content: string;
@@ -103,7 +103,7 @@ const katexSanitizeSchema = {
 // 靠 NormalMarkdown 外层容器的裁剪兜底。
 const KATEX_MAX_SIZE_EM = 10;
 
-// 顺序很重要：raw → 收紧用户样式 → katex → sanitize
+// 顺序很重要：（着色）→ raw → 收紧用户样式 → katex → sanitize
 const rehypePlugins: Pluggable[] = [
   rehypeRaw as Pluggable,
   rehypeRestrictUserStyles as Pluggable,
@@ -111,52 +111,34 @@ const rehypePlugins: Pluggable[] = [
   [rehypeSanitize, katexSanitizeSchema] as Pluggable,
 ];
 
-/**
- * Component that renders markdown content with mixed text colors
- * Directly embeds HTML span tags for colored text
- */
-export const ColoredMarkdown: React.FC<ColoredMarkdownProps> = ({ content, coloredRanges }) => {
-  // If no colored ranges, just render normally
-  if (!coloredRanges || coloredRanges.length === 0) {
-    return <NormalMarkdown content={content} />;
-  }
-
-  // Get the colored segments
-  const segments = TextColorUtils.renderWithColors(content, coloredRanges);
-
-  // Build content with HTML span tags for colored text
-  let processedContent = '';
-  for (const segment of segments) {
-    // 颜色值来自存储的笔记数据（可能经同步/导入而来），不是合法颜色就当作没有颜色
-    if (segment.color && isSafeCssColor(segment.color)) {
-      // Escape HTML entities in the text
-      const escapedText = segment.text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-      processedContent += `<span style="color: ${segment.color.trim()}">${escapedText}</span>`;
-    } else {
-      processedContent += segment.text;
-    }
-  }
-
-  return <NormalMarkdown content={processedContent} />;
-};
+/** Markdown with the note's text colors applied (see rehypeColorRanges). */
+export const ColoredMarkdown: React.FC<ColoredMarkdownProps> = ({ content, coloredRanges }) => (
+  <NormalMarkdown content={content} coloredRanges={coloredRanges} />
+);
 
 interface NormalMarkdownProps {
   content: string;
+  coloredRanges?: ColoredRange[];
 }
 
-export const NormalMarkdown: React.FC<NormalMarkdownProps> = ({ content }) => {
+export const NormalMarkdown: React.FC<NormalMarkdownProps> = ({ content, coloredRanges }) => {
+  const source = content || '*暂无内容*';
+  // Colors are matched to the tree by source position, so this goes first,
+  // while the tree still lines up with `source`.
+  const plugins = useMemo<Pluggable[]>(
+    () =>
+      coloredRanges && coloredRanges.length > 0
+        ? [[rehypeColorRanges, { source, ranges: coloredRanges }] as Pluggable, ...rehypePlugins]
+        : rehypePlugins,
+    [source, coloredRanges],
+  );
   // 裁剪掉画到笔记区域之外的内容（KaTeX 用负边距排版，`\kern` 的位移可以很大）；
   // 过宽的公式横向滚动
   return (
     <div className="overflow-x-auto overflow-y-hidden">
       <ReactMarkdown
         remarkPlugins={[remarkMath, remarkGfm]}
-        rehypePlugins={rehypePlugins}
+        rehypePlugins={plugins}
         components={{
           h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
           h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
@@ -184,7 +166,7 @@ export const NormalMarkdown: React.FC<NormalMarkdownProps> = ({ content }) => {
           ),
         }}
       >
-        {content || '*暂无内容*'}
+        {source}
       </ReactMarkdown>
     </div>
   );
