@@ -17,7 +17,7 @@
   "author": "LEE YU HAO",
   "license": "MIT",
   "dependencies": {
-    "@huggingface/transformers": "^4.3.0",
+    "@huggingface/transformers": "^4.3.1",
     "axios": "^1.20.0",
     "jose": "^6.2.12",
     "katex": "^0.19.0",
