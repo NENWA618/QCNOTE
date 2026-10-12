@@ -306,31 +306,6 @@ export class WebDAVSyncManager {
       await this.start(newConfig);
     }
   }
-
-  /**
-   * Format last sync time for display
-   */
-  formatLastSyncTime(): string {
-    if (!this.lastSyncTime) {
-      return '未同步';
-    }
-
-    const now = Date.now();
-    const diff = now - this.lastSyncTime;
-
-    if (diff < 60000) {
-      return '刚刚';
-    } else if (diff < 3600000) {
-      const minutes = Math.floor(diff / 60000);
-      return `${minutes} 分钟前`;
-    } else if (diff < 86400000) {
-      const hours = Math.floor(diff / 3600000);
-      return `${hours} 小时前`;
-    } else {
-      const days = Math.floor(diff / 86400000);
-      return `${days} 天前`;
-    }
-  }
 }
 
 export default WebDAVSyncManager;

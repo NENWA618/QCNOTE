@@ -99,6 +99,11 @@ async function stillMatches(
   return expected === null ? current === null : current?.body === expected.body;
 }
 
+/** Weak comparison (RFC 7232 §2.3.2): equal opaque-tags, ignoring any W/ prefix. */
+function sameETag(a: string, b: string): boolean {
+  return a.replace(/^W\//, '') === b.replace(/^W\//, '');
+}
+
 export function webdavTransport(config: WebDAVConfig): SyncTransport {
   const url = normalizeWebDAVUrl(config);
   const get = async (): Promise<RemoteSnapshot | null> => {
@@ -106,6 +111,21 @@ export function webdavTransport(config: WebDAVConfig): SyncTransport {
     if (response.status === 404) return null;
     if (!response.ok) throw new Error(`WebDAV GET failed (${response.status})`);
     return { body: await response.text(), etag: response.headers?.get?.('ETag') ?? null };
+  };
+  /**
+   * Whether the file still is `expected`, for when If-Match can't say so.
+   * With a (weak) ETag a HEAD answers it without the body: a weak ETag
+   * still changes with the content. Only a server that gives no ETag, or
+   * none on HEAD, costs a second full download.
+   */
+  const unchangedSince = async (expected: RemoteSnapshot): Promise<boolean> => {
+    if (expected.etag) {
+      const response = await webdavFetch('HEAD', url, config);
+      if (response.status === 404) return false;
+      const etag = response.ok ? response.headers?.get?.('ETag') : null;
+      if (etag) return sameETag(etag, expected.etag);
+    }
+    return stillMatches(get, expected);
   };
   return {
     remoteId: `webdav:${url}`,
@@ -120,7 +140,7 @@ export function webdavTransport(config: WebDAVConfig): SyncTransport {
         // If-Match compares strongly (RFC 7232 §3.1): a weak ETag never
         // matches, so every upload would fail as a conflict. Fall back below.
         headers['If-Match'] = expected.etag;
-      } else if (!(await stillMatches(get, expected))) {
+      } else if (!(await unchangedSince(expected))) {
         return 'conflict';
       }
       const response = await webdavFetch('PUT', url, config, body, headers);

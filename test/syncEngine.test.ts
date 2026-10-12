@@ -225,6 +225,7 @@ function makeServer({ etags = 'strong' }: { etags?: 'strong' | 'weak' | 'none' }
   let file: { body: string; version: number } | null = null;
   let afterNextGet: (() => Promise<void>) | null = null;
   let putCount = 0;
+  let getCount = 0;
   const reply = (status: number, body = '', headers: Record<string, string> = {}) =>
     ({
       ok: status >= 200 && status < 300,
@@ -241,14 +242,12 @@ function makeServer({ etags = 'strong' }: { etags?: 'strong' | 'weak' | 'none' }
       return reply(200, JSON.stringify({ success: true, kek: TEST_KEK }));
     }
     const headers = (init?.headers ?? {}) as Record<string, string>;
+    const etagHeader = (): Record<string, string> =>
+      etags === 'none' || !file ? {} : { ETag: `${etags === 'weak' ? 'W/' : ''}"${file.version}"` };
+    if (init?.method === 'HEAD') return file ? reply(200, '', etagHeader()) : reply(404);
     if ((init?.method ?? 'GET') === 'GET') {
-      const res = file
-        ? reply(
-            200,
-            file.body,
-            etags === 'none' ? {} : { ETag: `${etags === 'weak' ? 'W/' : ''}"${file.version}"` },
-          )
-        : reply(404);
+      getCount++;
+      const res = file ? reply(200, file.body, etagHeader()) : reply(404);
       if (afterNextGet) {
         const hook = afterNextGet;
         afterNextGet = null;
@@ -272,6 +271,10 @@ function makeServer({ etags = 'strong' }: { etags?: 'strong' | 'weak' | 'none' }
     },
     get putCount() {
       return putCount;
+    },
+    /** Full downloads of the file (HEAD requests not included). */
+    get getCount() {
+      return getCount;
     },
     /** Replaces the remote file as if changed outside the app (null: deletes it). */
     setFile(body: string | null) {
@@ -535,6 +538,19 @@ describe('WebDAV sync between two devices', () => {
       expect(await contents(b)).toEqual(expected);
     },
   );
+
+  it('checks a weak ETag with HEAD instead of downloading the file again', async () => {
+    await setUp({ etags: 'weak' });
+    const n = await a.addNoteAsync({ title: 'n', content: 'v1' });
+    await a.syncWithWebDAVAsync(conf());
+    await a.updateNoteAsync(n.id, { content: 'v2' });
+
+    const gets = server.getCount;
+    const puts = server.putCount;
+    expect(await a.syncWithWebDAVAsync(conf())).toBe(true);
+    expect(server.getCount - gets).toBe(1);
+    expect(server.putCount - puts).toBe(1);
+  });
 
   it('skips the upload when nothing changed', async () => {
     await setUp();
