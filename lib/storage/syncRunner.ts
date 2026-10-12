@@ -4,8 +4,11 @@ import { normalizeNote, syncLinkGraph } from './linkGraph';
 import { normalizeWebDAVUrl, webdavFetch, webdavTransport, type SyncTransport } from './remoteSync';
 import {
   applicableBase,
+  isRolledBack,
   noteSyncHash,
+  remoteBodyHash,
   threeWayMerge,
+  withSeenBody,
   type SyncBase,
   type SyncStrategy,
   type ThreeWayMergeResult,
@@ -163,13 +166,16 @@ export async function pushToWebDAV(
     if (!response.ok) return false;
     // Both sides now hold exactly these notes.
     const hashes = Object.fromEntries(allNotes.map((n) => [n.id, noteSyncHash(n)]));
-    await host.lock.runForGeneration(generation, () =>
-      host.writeSyncBase('webdav', {
-        remoteId: webdavTransport(config).remoteId,
+    const remoteId = webdavTransport(config).remoteId;
+    await host.lock.runForGeneration(generation, async () => {
+      const stored = await host.readSyncBase('webdav', remoteId);
+      await host.writeSyncBase('webdav', {
+        remoteId,
         hashes,
         encrypted,
-      }),
-    );
+        seen: withSeenBody(stored?.seen, remoteBodyHash(payload)),
+      });
+    });
     return true;
   } catch (e) {
     if (e instanceof UserChangedError) {
@@ -224,6 +230,7 @@ export async function runSync(
       // With a key, a plaintext remote is ours to encrypt: upload it even if
       // the merge changed nothing, so it doesn't stay plaintext.
       const plaintextUnderKey = Boolean(key && snapshot && !remoteEncrypted);
+      const downloadedHash = snapshot ? remoteBodyHash(snapshot.body) : null;
 
       // Base, merge, conflicts and the new base are read and written in
       // one locked step, so they all land in the store of the user this
@@ -240,8 +247,15 @@ export async function runSync(
           return null;
         }
         const storedBase = stored?.hashes ?? null;
-        const base = applicableBase(storedBase, snapshot ? remoteNotes : null);
-        if (storedBase && !base) {
+        const rolledBack = downloadedHash !== null && isRolledBack(stored?.seen, downloadedHash);
+        const base = rolledBack ? null : applicableBase(storedBase, snapshot ? remoteNotes : null);
+        if (rolledBack) {
+          // Merged against the base, every note made since that older state
+          // would read as deleted remotely and be deleted here too.
+          console.warn(
+            `[NoteStorage] ${provider} 远程文件回到了之前的某个版本，按首次同步合并（不删除任何笔记）`,
+          );
+        } else if (storedBase && !base) {
           console.warn(
             `[NoteStorage] ${provider} 远程文件不存在或与上次同步的不是同一个，按首次同步合并（不删除任何笔记）`,
           );
@@ -272,35 +286,41 @@ export async function runSync(
             ...mergeResult.conflicts,
           ]);
         }
+        const seen = downloadedHash ? withSeenBody(stored?.seen, downloadedHash) : stored?.seen;
         await host.writeSyncBase(provider, {
           remoteId: transport.remoteId,
           hashes: mergeResult.baseAfterLocal,
           // the remote is unchanged so far: once encrypted, stays encrypted
           encrypted: Boolean(key) && (remoteEncrypted || Boolean(stored?.encrypted)),
+          seen,
         });
-        return mergeResult;
+        return { mergeResult, seen };
       });
       if (!result) return false;
+      const { mergeResult } = result;
+      let seen = result.seen;
 
       if (!opts.upload) return true;
       // Uploading is still safe after a switch (it's this user's merged
       // data going to this user's remote), but skip it: nothing would
       // record the new base for it.
       host.lock.assertGeneration(generation);
-      const uploading = result.remoteChanged || plaintextUnderKey;
+      const uploading = mergeResult.remoteChanged || plaintextUnderKey;
       if (uploading) {
-        let payload = JSON.stringify(result.nextRemote);
+        let payload = JSON.stringify(mergeResult.nextRemote);
         if (key) payload = await encryptText(payload, key);
         if ((await transport.put(payload, snapshot)) === 'conflict') {
           console.info(`[NoteStorage] ${provider} 远端在同步期间被修改，重试 (${attempt})`);
           continue;
         }
+        seen = withSeenBody(seen, remoteBodyHash(payload));
       }
       await host.lock.runForGeneration(generation, () =>
         host.writeSyncBase(provider, {
           remoteId: transport.remoteId,
-          hashes: result.baseAfterUpload,
+          hashes: mergeResult.baseAfterUpload,
           encrypted: Boolean(key) && (uploading || remoteEncrypted),
+          seen,
         }),
       );
       return true;

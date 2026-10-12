@@ -26,6 +26,31 @@ export interface SyncBase {
    * before this field existed, which then read as false.
    */
   encrypted?: boolean;
+  /**
+   * remoteBodyHash() of the remote files this device downloaded or
+   * uploaded, oldest first (at most MAX_SEEN_REMOTE_BODIES). A download
+   * matching one of these but not the last is the remote rolled back to an
+   * earlier state (a restored file version, a replayed upload): merging it
+   * against the base would read every later note as deleted remotely.
+   */
+  seen?: string[];
+}
+
+export const MAX_SEEN_REMOTE_BODIES = 50;
+
+/** Hash of a remote file's raw body, for SyncBase.seen. */
+export function remoteBodyHash(body: string): string {
+  return cyrb53(body);
+}
+
+/** `seen` with `hash` appended as the latest, capped. */
+export function withSeenBody(seen: string[] | undefined, hash: string): string[] {
+  return [...(seen ?? []).filter((h) => h !== hash), hash].slice(-MAX_SEEN_REMOTE_BODIES);
+}
+
+/** True if `hash` is an earlier remote state than the latest one seen. */
+export function isRolledBack(seen: string[] | undefined, hash: string): boolean {
+  return Boolean(seen && seen.length > 1 && seen.includes(hash) && seen[seen.length - 1] !== hash);
 }
 
 /** cyrb53: a fast, well-distributed 53-bit string hash. */
@@ -242,7 +267,10 @@ export function threeWayMerge(input: ThreeWayMergeInput): ThreeWayMergeResult {
         baseAfterLocal[id] = localHash;
         baseAfterUpload[id] = localHash;
       } else if (baseHash !== undefined && localHash === baseHash) {
-        agree(id, remote, remote); // only the remote changed
+        // Only the remote changed. Normally the remote's history already
+        // holds the local content; if the remote went back to an older
+        // state, this keeps the newer local content recoverable.
+        agree(id, withLoserVersion(remote, local, now), remote);
       } else if (baseHash !== undefined && remoteHash === baseHash) {
         agree(id, local, remote); // only the local copy changed
       } else {

@@ -54,6 +54,26 @@ function fakeRemote(body: string) {
   return { transport, puts };
 }
 
+/** A remote whose file a test can replace between syncs. */
+function mutableRemote(initial: string | null) {
+  let body = initial;
+  const transport: SyncTransport = {
+    remoteId: 'test:notes.json',
+    get: async () => (body === null ? null : { body, etag: null }),
+    put: async (payload) => {
+      body = payload;
+      return 'ok';
+    },
+  };
+  return {
+    transport,
+    body: () => body,
+    replace: (next: string) => {
+      body = next;
+    },
+  };
+}
+
 const sync = (host: SyncHost, transport: SyncTransport) =>
   runSync(host, 'webdav', transport, { strategy: 'prefer-local', upload: true });
 
@@ -117,26 +137,6 @@ describe('runSync with a malformed remote file', () => {
 describe('runSync with a sync key', () => {
   const KEY = 'correct horse battery staple';
 
-  /** A remote whose file a test can replace between syncs. */
-  function mutableRemote(initial: string | null) {
-    let body = initial;
-    const transport: SyncTransport = {
-      remoteId: 'test:notes.json',
-      get: async () => (body === null ? null : { body, etag: null }),
-      put: async (payload) => {
-        body = payload;
-        return 'ok';
-      },
-    };
-    return {
-      transport,
-      body: () => body,
-      replace: (next: string) => {
-        body = next;
-      },
-    };
-  }
-
   const keyedSync = (host: SyncHost, transport: SyncTransport) =>
     runSync(host, 'webdav', transport, { key: KEY, strategy: 'prefer-local', upload: true });
 
@@ -176,5 +176,63 @@ describe('runSync with a sync key', () => {
         .map((n) => n.id)
         .sort(),
     ).toEqual(['a', 'b']);
+  });
+});
+
+describe('runSync after the remote goes back to an earlier file', () => {
+  const add = (host: SyncHost, n: NoteItem) => host.mutateNotesUnlocked((notes) => [...notes, n]);
+  const edit = (host: SyncHost, id: string, content: string) =>
+    host.mutateNotesUnlocked((notes) =>
+      notes.map((n) => (n.id === id ? { ...n, content, updatedAt: n.updatedAt + 1 } : n)),
+    );
+  const remoteIds = (body: string | null) =>
+    (JSON.parse(body!) as NoteItem[]).map((n) => n.id).sort();
+
+  it('keeps the notes made since, instead of deleting them', async () => {
+    const { host, notes } = fakeHost([note('a')]);
+    const remote = mutableRemote(null);
+    expect(await sync(host, remote.transport)).toBe(true);
+    const old = remote.body()!;
+
+    await add(host, note('b'));
+    expect(await sync(host, remote.transport)).toBe(true);
+    expect(remoteIds(remote.body())).toEqual(['a', 'b']);
+
+    remote.replace(old); // e.g. an older file version restored on the server
+    expect(await sync(host, remote.transport)).toBe(true);
+    expect(
+      notes()
+        .map((n) => n.id)
+        .sort(),
+    ).toEqual(['a', 'b']);
+    expect(remoteIds(remote.body())).toEqual(['a', 'b']);
+  });
+
+  it('keeps the newer local content when the older remote wins', async () => {
+    const { host, notes } = fakeHost([note('a')]);
+    const remote = mutableRemote(null);
+    expect(await sync(host, remote.transport)).toBe(true);
+    const old = remote.body()!;
+
+    await edit(host, 'a', 'newer');
+    expect(await sync(host, remote.transport)).toBe(true);
+
+    remote.replace(old);
+    expect(
+      await runSync(host, 'webdav', remote.transport, { strategy: 'prefer-remote', upload: true }),
+    ).toBe(true);
+    const a = notes().find((n) => n.id === 'a')!;
+    expect(a.content).toBe('');
+    expect(a.versions?.map((v) => v.content)).toContain('newer');
+  });
+
+  it('still deletes a note deleted on another device', async () => {
+    const { host, notes } = fakeHost([note('a'), note('b')]);
+    const remote = mutableRemote(null);
+    expect(await sync(host, remote.transport)).toBe(true);
+
+    remote.replace(JSON.stringify([note('a')]));
+    expect(await sync(host, remote.transport)).toBe(true);
+    expect(notes().map((n) => n.id)).toEqual(['a']);
   });
 });

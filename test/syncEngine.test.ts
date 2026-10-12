@@ -103,6 +103,24 @@ describe('threeWayMerge', () => {
     expect(r.conflicts).toEqual([]);
   });
 
+  it('keeps the replaced local content in history unless the remote already has it', () => {
+    const a = note('a', { content: 'v1' });
+    const fresh = merge([a], [{ ...a, content: 'v2' }], baseOf(a));
+    expect(byId(fresh.nextLocal, 'a')?.versions?.map((v) => v.content)).toEqual(['v1']);
+
+    const v1 = {
+      versionId: 'x',
+      title: 'a',
+      content: 'v1',
+      category: '生活',
+      tags: [],
+      color: '#000',
+      updatedAt: 1,
+    };
+    const known = merge([a], [{ ...a, content: 'v2', versions: [v1] }], baseOf(a));
+    expect(byId(known.nextLocal, 'a')?.versions).toEqual([v1]);
+  });
+
   it('pushes a change made only locally', () => {
     const a = note('a', { content: 'v1' });
     const local = { ...a, content: 'v2' };
