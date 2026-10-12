@@ -4,12 +4,18 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Vercel 预览部署的评论工具（Vercel Toolbar）从 vercel.live 加载脚本和 iframe。
+// 只在预览部署里放行：生产和自托管用不到它，多一个外部脚本来源只会扩大 XSS 的攻击面。
+// VERCEL_ENV 由 Vercel 在构建时注入（production / preview / development）。
+const VERCEL_LIVE =
+  process.env.VERCEL_ENV === 'preview' ? ' https://vercel.live https://*.vercel.live' : '';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   compress: true,
   productionBrowserSourceMaps: process.env.ENABLE_SOURCE_MAPS === 'true',
-  
+
   // Security headers
   async headers() {
     return [
@@ -42,7 +48,7 @@ const nextConfig = {
               // 它把 WASM 胶水代码包成 blob: URL 当脚本加载，且 WebAssembly.instantiate 在该实现下
               // 需要显式的 wasm-unsafe-eval 授权（这个指令只放开 WASM 编译，不等同于放开 'unsafe-eval'
               // 那样允许任意 eval/Function 字符串求值，攻击面小得多）。这段代码是我们自己打包进来的，不是外部输入。
-              `script-src 'self' blob: 'wasm-unsafe-eval'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''} https://vercel.live https://*.vercel.live`,
+              `script-src 'self' blob: 'wasm-unsafe-eval'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''}${VERCEL_LIVE}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
@@ -50,12 +56,12 @@ const nextConfig = {
               // （浏览器直接调用，不经过 QCNOTE 后端，所以无法预先把域名加入白名单），
               // 已覆盖 lwl12.com/jinrishici.com/hitokoto.cn/vercel.live 等原先单独列出的域名。
               "connect-src 'self' https:",
-              "frame-src 'self' https://vercel.live https://*.vercel.live",
+              `frame-src 'self'${VERCEL_LIVE}`,
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
               "frame-ancestors 'none'",
-              "upgrade-insecure-requests",
+              'upgrade-insecure-requests',
             ].join('; '),
           },
           {

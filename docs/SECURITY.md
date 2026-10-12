@@ -112,12 +112,12 @@ NextAuth 自己的 `/api/auth/*` 使用其内置的 CSRF 令牌。
 
 ```
 default-src 'self'
-script-src 'self' blob: 'wasm-unsafe-eval' https://vercel.live https://*.vercel.live   # 开发环境另加 'unsafe-eval'
+script-src 'self' blob: 'wasm-unsafe-eval'   # 开发环境另加 'unsafe-eval'；Vercel 预览部署另加 vercel.live
 style-src 'self' 'unsafe-inline'
 img-src 'self' data: https:
 font-src 'self' data:
 connect-src 'self' https:
-frame-src 'self' https://vercel.live https://*.vercel.live
+frame-src 'self'                              # Vercel 预览部署另加 vercel.live
 object-src 'none'
 base-uri 'self'
 form-action 'self'
@@ -132,7 +132,7 @@ upgrade-insecure-requests
 | `connect-src https:`          | `/models` 里用户可以配置任意 AI 服务地址，同步也会直连用户的 WebDAV / OneDrive，无法预先列白名单                                                                                             |
 | `img-src https:`              | 用户头像是任意外链                                                                                                                                                                           |
 | `style-src 'unsafe-inline'`   | 框架和组件的内联样式                                                                                                                                                                         |
-| `vercel.live`                 | Vercel 预览环境的评论工具，是唯一的外部脚本来源                                                                                                                                              |
+| `vercel.live`                 | 仅 Vercel 预览部署（`VERCEL_ENV=preview`），评论工具需要；生产和自托管不放行任何外部脚本                                                                                                     |
 
 `script-src` **不包含** `'unsafe-inline'`，所以页面里不能有可执行的内联脚本（JSON-LD 这类非执行脚本不受影响）。需要提前执行的脚本只能放成同源的独立文件。
 
