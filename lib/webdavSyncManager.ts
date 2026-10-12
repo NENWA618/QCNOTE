@@ -9,7 +9,8 @@ export type SyncDirection = 'push' | 'pull' | 'both';
 export class WebDAVSyncManager {
   private storage: NoteStorage | null = null;
   private syncInterval: ReturnType<typeof setInterval> | null = null;
-  private syncInProgress = false;
+  // The sync running now, if any; settles (never rejects) when it ends.
+  private currentSync: Promise<void> | null = null;
   private lastSyncTime: number | null = null;
   private lastSyncStatus: 'success' | 'failure' | 'pending' | 'idle' = 'idle';
   private lastSyncError: string | null = null;
@@ -89,17 +90,22 @@ export class WebDAVSyncManager {
   }
 
   /**
-   * Execute a single sync operation
+   * Execute a single sync operation, unless one is already running
    */
-  private async executeSync(
-    config: WebDAVConfig,
-    direction: SyncDirection = 'both',
-  ): Promise<void> {
-    if (!this.storage || this.syncInProgress) {
-      return;
+  private executeSync(config: WebDAVConfig, direction: SyncDirection = 'both'): Promise<void> {
+    if (!this.storage || this.currentSync) {
+      return Promise.resolve();
     }
+    const sync = this.runSyncOnce(config, direction).finally(() => {
+      this.currentSync = null;
+    });
+    this.currentSync = sync;
+    return sync;
+  }
 
-    this.syncInProgress = true;
+  private async runSyncOnce(config: WebDAVConfig, direction: SyncDirection): Promise<void> {
+    if (!this.storage) return;
+
     this.lastSyncStatus = 'pending';
     this.lastSyncError = null;
     this.notifyStatusChange();
@@ -162,7 +168,6 @@ export class WebDAVSyncManager {
       }).catch((e) => logger.error('[WebDAVSyncManager] Saving sync status failed:', e));
       logger.error('[WebDAVSyncManager] Sync failed:', error);
     } finally {
-      this.syncInProgress = false;
       this.calculateNextSyncTime(config.syncInterval || 0);
       this.notifyStatusChange();
     }
@@ -195,6 +200,10 @@ export class WebDAVSyncManager {
     }
 
     try {
+      // Wait out a sync already running (auto-sync, or an earlier click),
+      // then run this one: skipping it would report a failure that never
+      // happened and miss whatever changed after that sync read the notes.
+      while (this.currentSync) await this.currentSync;
       await this.executeSync(config, direction);
       return this.lastSyncStatus === 'success';
     } catch (error) {

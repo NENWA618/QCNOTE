@@ -180,6 +180,20 @@ describe('WebDAVSyncManager config handling', () => {
     expect(manager.getStatus().isRunning).toBe(false);
   });
 
+  it('Sync Now waits for a running sync and then syncs again instead of failing', async () => {
+    let finishFirst!: () => void;
+    storage.syncWithWebDAVAsync.mockImplementationOnce(
+      () => new Promise<boolean>((resolve) => (finishFirst = () => resolve(true))),
+    );
+    const running = manager.start(conf());
+    const manual = manager.syncNow(conf());
+
+    finishFirst();
+    await running;
+    expect(await manual).toBe(true);
+    expect(storage.syncWithWebDAVAsync).toHaveBeenCalledTimes(2);
+  });
+
   it('resolves prefer-local conflicts by keeping the current note, not the snapshot', async () => {
     const snapshot = { id: 'n1', title: 'stale', content: '' } as unknown as NoteItem;
     storage.getConflictsAsync.mockResolvedValueOnce([

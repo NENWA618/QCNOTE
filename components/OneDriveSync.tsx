@@ -52,35 +52,40 @@ const OneDriveSync: React.FC<OneDriveSyncProps> = ({
   const set = (key: keyof OneDriveConfig) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setLocal((prev) => ({ ...prev, [key]: e.target.value }));
 
-  const handleSync = async () => {
-    setBusy('sync');
+  // 回调抛错时也要恢复按钮，否则面板会一直停在“同步中…”
+  const run = async (kind: NonNullable<typeof busy>, fn: () => Promise<Status>) => {
+    setBusy(kind);
     setStatus(null);
-    const result = await onSync(local);
-    setBusy(null);
-    if (result.ok) {
-      setLastSyncTime(new Date());
-      setStatus({ type: 'success', text: '同步完成' });
-    } else {
-      setStatus({ type: 'error', text: result.error });
+    try {
+      setStatus(await fn());
+    } catch (e) {
+      setStatus({ type: 'error', text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy(null);
     }
   };
 
-  const handleSave = async () => {
-    setBusy('save');
-    setStatus(null);
-    const ok = await onSaveConfig(local);
-    setBusy(null);
-    setStatus(ok ? { type: 'success', text: '配置已保存' } : { type: 'error', text: '保存失败' });
-  };
+  const handleSync = () =>
+    run('sync', async () => {
+      const result = await onSync(local);
+      if (!result.ok) return { type: 'error', text: result.error };
+      setLastSyncTime(new Date());
+      return { type: 'success', text: '同步完成' };
+    });
 
-  const handleClear = async () => {
+  const handleSave = () =>
+    run('save', async () =>
+      (await onSaveConfig(local))
+        ? { type: 'success', text: '配置已保存' }
+        : { type: 'error', text: '保存失败' },
+    );
+
+  const handleClear = () => {
     if (!window.confirm('清除本机保存的 OneDrive 配置（包括访问令牌）？远端文件不受影响。')) return;
-    setBusy('clear');
-    setStatus(null);
-    const ok = await onClearConfig();
-    setBusy(null);
-    setStatus(
-      ok ? { type: 'success', text: '已清除配置' } : { type: 'error', text: '清除配置失败' },
+    void run('clear', async () =>
+      (await onClearConfig())
+        ? { type: 'success', text: '已清除配置' }
+        : { type: 'error', text: '清除配置失败' },
     );
   };
 
