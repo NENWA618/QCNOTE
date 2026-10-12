@@ -1,9 +1,10 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import NoteEditor from '../components/NoteEditor';
+import SentimentUtil from '../lib/sentiment';
 import { NoteItem, NoteVersion } from '../lib/storage';
 
 describe('NoteEditor Component', () => {
@@ -276,5 +277,34 @@ describe('NoteEditor Component', () => {
     expect(screen.getByDisplayValue('Old Title')).toBeInTheDocument();
     expect(screen.getByDisplayValue('old content')).toBeInTheDocument();
     expect(screen.getByDisplayValue('old')).toBeInTheDocument();
+  });
+
+  it('analyzes sentiment once on open, then only after typing pauses', () => {
+    vi.useFakeTimers();
+    try {
+      const analyze = vi.spyOn(SentimentUtil, 'analyzeEmotion');
+      render(React.createElement(NoteEditor, mockProps));
+      act(() => {
+        vi.advanceTimersByTime(0);
+      });
+      expect(analyze).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('当前情绪：平静')).toBeInTheDocument();
+
+      const content = screen.getByDisplayValue(/This is a test note/);
+      for (const text of ['I', 'I love', 'I love it', 'I love it, wonderful']) {
+        fireEvent.change(content, { target: { value: text } });
+      }
+      expect(analyze).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      expect(analyze).toHaveBeenCalledTimes(2);
+      expect(analyze).toHaveBeenLastCalledWith('Test Note I love it, wonderful');
+      expect(screen.getByText('当前情绪：正面')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    }
   });
 });

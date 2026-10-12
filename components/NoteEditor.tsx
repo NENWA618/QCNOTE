@@ -83,33 +83,44 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   }
 
+  // 情绪分析要扫一遍全文：只在打开笔记时立即算，输入时等停顿 800ms 再算，
+  // 而不是每次按键（每次渲染）都分析一次，长笔记会拖慢输入
+  const noteId = localNote?.id;
+  const noteTitle = localNote?.title;
+  const noteContent = localNote?.content;
+  const [sentiment, setSentiment] = useState<{
+    noteId: string;
+    score: number;
+    comparative: number;
+  } | null>(null);
+  const analyzedNoteIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    if (!localNote) {
+    if (noteId === undefined) {
       return;
     }
 
-    const sentiment = SentimentUtil.analyzeEmotion(`${localNote.title} ${localNote.content}`);
-    const payload = {
-      noteId: localNote.id,
-      score: sentiment.score,
-      comparative: sentiment.comparative,
-      title: localNote.title,
-    };
-
+    const delay = analyzedNoteIdRef.current === noteId ? 800 : 0;
     const debounceId = window.setTimeout(() => {
       try {
-        window.dispatchEvent(new CustomEvent('qcnote:sentiment-update', { detail: payload }));
+        const result = SentimentUtil.analyzeEmotion(`${noteTitle} ${noteContent}`);
+        analyzedNoteIdRef.current = noteId;
+        setSentiment({ noteId, ...result });
+        window.dispatchEvent(
+          new CustomEvent('qcnote:sentiment-update', {
+            detail: { noteId, ...result, title: noteTitle },
+          }),
+        );
       } catch (e) {
         console.warn('[NoteEditor] 无法更新情感状态', e);
       }
-    }, 800);
+    }, delay);
 
     return () => {
       window.clearTimeout(debounceId);
     };
-  }, [localNote?.id, localNote?.title, localNote?.content, localNote]);
+  }, [noteId, noteTitle, noteContent]);
 
   const isOpen = isVisible && !!localNote;
   const dirty = !!localNote && noteFingerprint(localNote) !== snapshot;
@@ -280,11 +291,10 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
     '#85c1e9',
   ];
 
-  const currentSentiment = SentimentUtil.analyzeEmotion(`${localNote.title} ${localNote.content}`);
-  const currentSentimentCategory = SentimentUtil.getSentimentCategory(
-    currentSentiment.score,
-    currentSentiment.comparative,
-  );
+  const currentSentimentCategory =
+    sentiment && sentiment.noteId === localNote.id
+      ? SentimentUtil.getSentimentCategory(sentiment.score, sentiment.comparative)
+      : 'neutral';
   const sentimentLabel = `当前情绪：${
     currentSentimentCategory === 'positive'
       ? '正面'
