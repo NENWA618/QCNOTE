@@ -151,6 +151,22 @@ describe('threeWayMerge', () => {
     );
   });
 
+  it('files the losing edit once when the same conflict is merged again', () => {
+    // local wins but the upload fails (or the sync is pull-only), so the
+    // next merge starts from the saved winner and the unchanged base
+    const a = note('a', { content: 'v1' });
+    const remote = { ...a, content: 'theirs', updatedAt: 10 };
+    let local: NoteItem = { ...a, content: 'mine', updatedAt: 20 };
+    let base = baseOf(a);
+    for (const strategy of ['newest', 'prefer-local', 'newest'] as const) {
+      const r = merge([local], [remote], base, strategy);
+      local = byId(r.nextLocal, 'a')!;
+      base = r.baseAfterLocal;
+    }
+    expect(local.content).toBe('mine');
+    expect(local.versions?.map((v) => v.content)).toEqual(['theirs']);
+  });
+
   it('propagates a permanent deletion in either direction', () => {
     const a = note('a');
     const b = note('b');

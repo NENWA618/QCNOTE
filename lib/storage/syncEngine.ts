@@ -103,8 +103,29 @@ export interface ThreeWayMergeResult {
   baseAfterUpload: SyncBaseHashes;
 }
 
-/** Keeps the losing side of an auto-resolved conflict in the winner's history. */
+/** Hash of the content a version records, comparable between notes and versions. */
+function versionContentHash(v: Omit<NoteVersion, 'versionId' | 'updatedAt'>): string {
+  return cyrb53(
+    JSON.stringify([
+      v.title ?? '',
+      v.content ?? '',
+      v.category ?? '',
+      v.tags ?? [],
+      v.color ?? '',
+      v.coloredRanges ?? [],
+    ]),
+  );
+}
+
+/**
+ * Keeps the losing side of an auto-resolved conflict in the winner's history.
+ * Until the winner is uploaded (or forever, for a pull-only sync) the next
+ * merge sees the same conflict again: skip the loser if it is already there,
+ * or each retry would add another copy and push real versions out of the cap.
+ */
 function withLoserVersion(winner: NoteItem, loser: NoteItem, now: number): NoteItem {
+  const loserHash = versionContentHash(loser);
+  if ((winner.versions ?? []).some((v) => versionContentHash(v) === loserHash)) return winner;
   const version: NoteVersion = {
     versionId: `sync_${now}_${loser.updatedAt}`,
     title: loser.title,

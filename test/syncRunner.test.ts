@@ -96,4 +96,19 @@ describe('runSync with a malformed remote file', () => {
     expect(await sync(host, transport)).toBe(true);
     expect(notes()[0].coloredRanges).toEqual([{ startIndex: 0, endIndex: 2, color: '#f00' }]);
   });
+
+  it('drops only the malformed versions of a note', async () => {
+    const { host, notes } = fakeHost([]);
+    const good = { versionId: 'v1', title: 'T', content: 'old', updatedAt: 1 };
+    const remote = {
+      ...note('a'),
+      versions: [null, good, { ...good, versionId: 'v2', content: 42 }, { versionId: 'v3' }],
+    };
+    const { transport } = fakeRemote(JSON.stringify([remote]));
+
+    expect(await sync(host, transport)).toBe(true);
+    expect(notes()[0].versions).toEqual([
+      { ...good, category: '', tags: [], color: '', coloredRanges: undefined },
+    ]);
+  });
 });

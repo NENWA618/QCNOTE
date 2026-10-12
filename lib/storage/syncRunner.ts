@@ -36,6 +36,28 @@ const remoteColoredRange = z.object({
   color: z.string(),
 });
 
+// purely cosmetic: drop malformed ranges instead of rejecting the note
+const remoteColoredRanges = z
+  .array(z.unknown())
+  .optional()
+  .transform((ranges) =>
+    ranges?.flatMap((range) => {
+      const parsed = remoteColoredRange.safeParse(range);
+      return parsed.success && parsed.data.startIndex < parsed.data.endIndex ? [parsed.data] : [];
+    }),
+  );
+
+const remoteVersion = z.looseObject({
+  versionId: z.string().min(1),
+  title: z.string().default(''),
+  content: z.string().default(''),
+  category: z.string().default(''),
+  tags: z.array(z.string()).default([]),
+  color: z.string().default(''),
+  coloredRanges: remoteColoredRanges,
+  updatedAt: z.number(),
+});
+
 /**
  * Shape of one note in a downloaded notes file. Lenient on what older
  * clients may have left out, strict on types, and keeps unknown fields so a
@@ -48,22 +70,23 @@ const remoteNoteSchema = z.looseObject({
   category: z.string().default(''),
   tags: z.array(z.string()).default([]),
   color: z.string().default(''),
-  // purely cosmetic: drop malformed ranges instead of rejecting the note
-  coloredRanges: z
-    .array(z.unknown())
-    .optional()
-    .transform((ranges) =>
-      ranges?.flatMap((range) => {
-        const parsed = remoteColoredRange.safeParse(range);
-        return parsed.success && parsed.data.startIndex < parsed.data.endIndex ? [parsed.data] : [];
-      }),
-    ),
+  coloredRanges: remoteColoredRanges,
   createdAt: z.number().optional(),
   updatedAt: z.number().optional(),
   isDeleted: z.boolean().optional(),
   links: z.array(z.string()).optional(),
   backlinks: z.array(z.string()).optional(),
-  versions: z.array(z.unknown()).optional(),
+  // history only: drop malformed versions instead of rejecting the whole
+  // file, but never let one through to code that reads them
+  versions: z
+    .array(z.unknown())
+    .optional()
+    .transform((versions) =>
+      versions?.flatMap((version) => {
+        const parsed = remoteVersion.safeParse(version);
+        return parsed.success ? [parsed.data] : [];
+      }),
+    ),
 });
 
 /**
