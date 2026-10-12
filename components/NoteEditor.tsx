@@ -160,6 +160,18 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
     onChange(field, value);
   };
 
+  // 正文变化时，着色区间要跟着移动，否则颜色会落到别的文字上
+  const handleContentChange = (content: string) => {
+    const ranges = localNote.coloredRanges;
+    handleFieldChange('content', content);
+    if (ranges && ranges.length > 0) {
+      handleFieldChange(
+        'coloredRanges',
+        TextColorUtils.rebaseRanges(localNote.content, content, ranges),
+      );
+    }
+  };
+
   const handlePublish = async () => {
     if (!onPublish) return;
     if (!localNote.content.trim()) {
@@ -443,7 +455,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                 <textarea
                   ref={contentTextareaRef}
                   value={localNote.content}
-                  onChange={(e) => handleFieldChange('content', e.target.value)}
+                  onChange={(e) => handleContentChange(e.target.value)}
                   onSelect={handleTextSelection}
                   onMouseUp={handleTextSelection}
                   onKeyUp={handleTextSelection}
