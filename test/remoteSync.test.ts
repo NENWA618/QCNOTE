@@ -1,6 +1,10 @@
 // Sync transports must never read the remote from the browser's HTTP cache.
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { oneDriveTransport, webdavTransport } from '../lib/storage/remoteSync';
+import {
+  oneDriveTransport,
+  SYNC_REQUEST_TIMEOUT_MS,
+  webdavTransport,
+} from '../lib/storage/remoteSync';
 import type { OneDriveConfig, WebDAVConfig } from '../lib/storage/types';
 
 const webdav = {
@@ -91,5 +95,49 @@ describe('OneDrive upload of a new file', () => {
     const put = calls.find((c) => c.init.method === 'PUT')!;
     expect(put.url).toMatch(/:\/content$/);
     expect((put.init.headers as Record<string, string>)['If-Match']).toBe('"e1"');
+  });
+});
+
+describe('sync transports give up on a server that never answers', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('every request carries a timeout signal', async () => {
+    const webdavCalls = stubFetch(
+      () => new Response('[]', { status: 200, headers: { ETag: 'W/"1"' } }),
+    );
+    const dav = webdavTransport(webdav);
+    await dav.put('[]', await dav.get());
+    expect(webdavCalls.every((c) => c.init.signal instanceof AbortSignal)).toBe(true);
+
+    const oneDriveCalls = stubFetch((url) =>
+      url.includes('$select=eTag')
+        ? new Response(JSON.stringify({ eTag: '"e1"' }), { status: 200 })
+        : new Response('[]', { status: 200 }),
+    );
+    const od = oneDriveTransport(onedrive);
+    await od.put('[]', await od.get());
+    expect(oneDriveCalls.every((c) => c.init.signal instanceof AbortSignal)).toBe(true);
+  });
+
+  it('a hung download fails once the timeout fires', async () => {
+    // AbortSignal.timeout runs on a native timer, out of reach of fake timers
+    const controller = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, init: RequestInit = {}) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+          }),
+      ),
+    );
+    const download = webdavTransport(webdav).get();
+    expect(timeout).toHaveBeenCalledWith(SYNC_REQUEST_TIMEOUT_MS);
+    controller.abort(new DOMException('timed out', 'TimeoutError'));
+    await expect(download).rejects.toThrow('timed out');
+    timeout.mockRestore();
   });
 });

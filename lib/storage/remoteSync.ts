@@ -11,6 +11,20 @@ import type { OneDriveConfig, WebDAVConfig } from './types';
 // overwrite what another device uploaded in the meantime.
 const NO_STORE: RequestCache = 'no-store';
 
+/**
+ * Cap on one sync request. fetch() has no timeout of its own, so a server
+ * that accepts the connection and never answers would hold the sync open
+ * forever, and auto-sync skips every run while one is in flight. Generous
+ * enough for uploading a large notes file over a slow connection.
+ */
+export const SYNC_REQUEST_TIMEOUT_MS = 120_000;
+
+function syncRequestSignal(): AbortSignal | undefined {
+  return typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+    ? AbortSignal.timeout(SYNC_REQUEST_TIMEOUT_MS)
+    : undefined;
+}
+
 export function normalizeWebDAVUrl(config: WebDAVConfig): string {
   const base = config.url.trim().replace(/\/+$/, '');
   const path = config.remotePath.trim().replace(/^\/+/, '');
@@ -33,7 +47,7 @@ export async function webdavFetch(
     const credentials = new TextEncoder().encode(`${config.username}:${config.password}`);
     headers.Authorization = `Basic ${arrayBufferToBase64(credentials.buffer as ArrayBuffer)}`;
   }
-  return fetch(url, { method, headers, body, cache: NO_STORE });
+  return fetch(url, { method, headers, body, cache: NO_STORE, signal: syncRequestSignal() });
 }
 
 export function normalizeOneDrivePath(path: string): string {
@@ -65,6 +79,7 @@ export async function oneDriveFetch(
     headers,
     body,
     cache: NO_STORE,
+    signal: syncRequestSignal(),
   });
 }
 
@@ -73,6 +88,7 @@ async function oneDriveETag(config: OneDriveConfig): Promise<string | null> {
   const response = await fetch(`${oneDriveItemUrl(config)}?$select=eTag`, {
     headers: { Authorization: `Bearer ${config.accessToken}` },
     cache: NO_STORE,
+    signal: syncRequestSignal(),
   });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`OneDrive metadata GET failed (${response.status})`);
