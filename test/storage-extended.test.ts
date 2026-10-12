@@ -567,23 +567,54 @@ describe('NoteStorage (extended)', () => {
       ...over,
     });
 
+    const isMetadata = (url: string) => url.endsWith('?$select=eTag');
     const callsOf = (method: string) =>
       (global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(
-        (c) => c[1]?.method === method,
+        (c) => (c[1]?.method ?? 'GET') === method && !isMetadata(String(c[0])),
       );
 
-    /** Mock Graph API: GET returns `remoteBody` (or a status), PUT is recorded. */
-    const mockGraph = (opts: { remoteBody?: string; getStatus?: number; putOk?: boolean }) => {
-      const { remoteBody = '', getStatus = 200, putOk = true } = opts;
-      (global.fetch as any).mockImplementation(async (_url: string, init: any) => {
-        if (init?.method === 'GET') {
-          return { ok: getStatus === 200, status: getStatus, text: async () => remoteBody };
+    /**
+     * Mock Graph API: GET returns `remoteBody` (or a status) and the item's
+     * eTag, PUT is recorded and honours If-Match. `onETag` runs after each
+     * eTag read, to simulate another device writing at that moment.
+     */
+    const mockGraph = (opts: {
+      remoteBody?: string;
+      getStatus?: number;
+      putOk?: boolean;
+      onETag?: (read: number) => string | void;
+    }) => {
+      const { getStatus = 200, putOk = true, onETag } = opts;
+      let file: { body: string; version: number } | null =
+        getStatus === 404 ? null : { body: opts.remoteBody ?? '', version: 1 };
+      let eTagReads = 0;
+      const eTagOf = (f: { version: number }) => `"{ITEM},${f.version}"`;
+      (global.fetch as any).mockImplementation(async (url: string, init: any) => {
+        const method = init?.method ?? 'GET';
+        if (method === 'GET' && isMetadata(url)) {
+          const status = file ? getStatus : 404;
+          const eTag = file && eTagOf(file);
+          const res = { ok: status === 200, status, json: async () => ({ eTag }) };
+          const replaced = onETag?.(++eTagReads);
+          if (typeof replaced === 'string') {
+            file = { body: replaced, version: (file?.version ?? 0) + 1 };
+          }
+          return res;
         }
-        if (init?.method === 'PUT') {
-          return { ok: putOk, status: putOk ? 200 : 500, statusText: 'Server Error' };
+        if (method === 'GET') {
+          if (!file) return { ok: false, status: 404 };
+          return { ok: getStatus === 200, status: getStatus, text: async () => file!.body };
+        }
+        if (method === 'PUT') {
+          const ifMatch = init.headers['If-Match'];
+          if (ifMatch && (!file || ifMatch !== eTagOf(file))) return { ok: false, status: 412 };
+          if (!putOk) return { ok: false, status: 500, statusText: 'Server Error' };
+          file = { body: init.body, version: (file?.version ?? 0) + 1 };
+          return { ok: true, status: 200 };
         }
         return { ok: true, json: async () => ({ success: true }) };
       });
+      return { body: () => file?.body ?? null };
     };
 
     it('rejects incomplete configs without touching the network', async () => {
@@ -596,15 +627,44 @@ describe('NoteStorage (extended)', () => {
       expect(spy).not.toHaveBeenCalled();
     });
 
-    it('builds a Graph URL with trimmed, per-segment-encoded path and Bearer auth', async () => {
-      mockGraph({ getStatus: 404 });
+    it('builds Graph URLs with trimmed, per-segment-encoded path and Bearer auth', async () => {
+      const item = 'https://graph.microsoft.com/v1.0/me/drive/root:/my%20notes/backup.json';
+      mockGraph({ remoteBody: '[]' });
       await storage.syncWithOneDriveAsync(odConf());
 
-      const [url, init] = callsOf('GET')[0];
-      expect(url).toBe(
-        'https://graph.microsoft.com/v1.0/me/drive/root:/my%20notes/backup.json:/content',
+      const calls = (global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls.map((c) => String(c[0]))).toEqual(
+        expect.arrayContaining([`${item}?$select=eTag`, `${item}:/content`]),
       );
-      expect(init.headers.Authorization).toBe('Bearer tok');
+      for (const [, init] of calls) expect(init.headers.Authorization).toBe('Bearer tok');
+    });
+
+    it('uploads only over the eTag it downloaded', async () => {
+      await storage.addNoteAsync({ title: 'only local' });
+      mockGraph({ remoteBody: '[]' });
+
+      expect(await storage.syncWithOneDriveAsync(odConf())).toBe(true);
+      expect(callsOf('PUT').at(-1)![1].headers['If-Match']).toBe('"{ITEM},1"');
+    });
+
+    it.each([
+      // eTag reads: 1 = before the download, 2 = right before the upload
+      ['between reading the eTag and the download', 1],
+      ['after the pre-upload eTag check (caught by If-Match)', 2],
+    ])('retries instead of overwriting when another device writes %s', async (_label, atRead) => {
+      vi.spyOn(console, 'info').mockImplementation(() => {});
+      await storage.addNoteAsync({ title: 'mine' });
+      const graph = mockGraph({
+        remoteBody: '[]',
+        onETag: (read) =>
+          read === atRead
+            ? JSON.stringify([makeNote({ id: 'theirs', title: 'theirs' })])
+            : undefined,
+      });
+
+      expect(await storage.syncWithOneDriveAsync(odConf())).toBe(true);
+      const uploaded = JSON.parse(graph.body()!);
+      expect(uploaded.map((x: NoteItem) => x.title).sort()).toEqual(['mine', 'theirs']);
     });
 
     it('uploads local notes when the remote file does not exist', async () => {

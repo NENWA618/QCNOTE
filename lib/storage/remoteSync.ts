@@ -33,24 +33,38 @@ export function normalizeOneDrivePath(path: string): string {
   return path.trim().replace(/^\/+|\/+$/g, '');
 }
 
-export async function oneDriveFetch(
-  method: string,
-  config: OneDriveConfig,
-  body?: string,
-): Promise<Response> {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${config.accessToken}`,
-    'Content-Type': 'application/octet-stream',
-  };
+function oneDriveItemUrl(config: OneDriveConfig): string {
   const path = normalizeOneDrivePath(config.folderPath)
     .split('/')
     .map((segment) => encodeURIComponent(segment))
     .join('/');
-  return fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${path}:/content`, {
-    method,
-    headers,
-    body,
+  return `https://graph.microsoft.com/v1.0/me/drive/root:/${path}`;
+}
+
+export async function oneDriveFetch(
+  method: string,
+  config: OneDriveConfig,
+  body?: string,
+  extraHeaders: Record<string, string> = {},
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${config.accessToken}`,
+    'Content-Type': 'application/octet-stream',
+    ...extraHeaders,
+  };
+  return fetch(`${oneDriveItemUrl(config)}:/content`, { method, headers, body });
+}
+
+/** The file's current eTag, or null if it doesn't exist; throws on any other failure. */
+async function oneDriveETag(config: OneDriveConfig): Promise<string | null> {
+  const response = await fetch(`${oneDriveItemUrl(config)}?$select=eTag`, {
+    headers: { Authorization: `Bearer ${config.accessToken}` },
   });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`OneDrive metadata GET failed (${response.status})`);
+  const { eTag } = (await response.json()) as { eTag?: unknown };
+  if (typeof eTag !== 'string' || !eTag) throw new Error('OneDrive item has no eTag');
+  return eTag;
 }
 
 /** A downloaded remote file; `etag` is null when the server doesn't expose one. */
@@ -102,7 +116,9 @@ export function webdavTransport(config: WebDAVConfig): SyncTransport {
       const headers: Record<string, string> = {};
       if (expected === null) {
         headers['If-None-Match'] = '*';
-      } else if (expected.etag) {
+      } else if (expected.etag && !expected.etag.startsWith('W/')) {
+        // If-Match compares strongly (RFC 7232 §3.1): a weak ETag never
+        // matches, so every upload would fail as a conflict. Fall back below.
         headers['If-Match'] = expected.etag;
       } else if (!(await stillMatches(get, expected))) {
         return 'conflict';
@@ -117,19 +133,27 @@ export function webdavTransport(config: WebDAVConfig): SyncTransport {
 
 export function oneDriveTransport(config: OneDriveConfig): SyncTransport {
   const get = async (): Promise<RemoteSnapshot | null> => {
+    // /content redirects to a download URL whose ETag isn't the item's, so
+    // read the item's eTag first. Taken before the download, it can only be
+    // older than the body: a change in between fails the upload as a
+    // conflict (and retries), it never lets a stale upload through.
+    const etag = await oneDriveETag(config);
+    if (etag === null) return null;
     const response = await oneDriveFetch('GET', config);
     if (response.status === 404) return null;
     if (!response.ok) throw new Error(`OneDrive GET failed (${response.status})`);
-    // /content redirects to a download URL whose ETag isn't the item's, so
-    // rely on the re-download check instead.
-    return { body: await response.text(), etag: null };
+    return { body: await response.text(), etag };
   };
   return {
     remoteId: `onedrive:${normalizeOneDrivePath(config.folderPath)}`,
     get,
     async put(body, expected) {
-      if (!(await stillMatches(get, expected))) return 'conflict';
-      const response = await oneDriveFetch('PUT', config, body);
+      // Graph documents If-Match for upload sessions but not for this simple
+      // upload, so also compare the eTag first: if the header is ignored, the
+      // race window is one metadata round trip, as with stillMatches.
+      if ((await oneDriveETag(config)) !== (expected?.etag ?? null)) return 'conflict';
+      const headers: Record<string, string> = expected?.etag ? { 'If-Match': expected.etag } : {};
+      const response = await oneDriveFetch('PUT', config, body, headers);
       if (response.status === 412) return 'conflict';
       if (!response.ok) throw new Error(`OneDrive PUT failed (${response.status})`);
       return 'ok';

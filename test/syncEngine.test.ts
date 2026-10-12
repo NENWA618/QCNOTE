@@ -220,7 +220,8 @@ describe('threeWayMerge', () => {
 const TEST_KEK = btoa(String.fromCharCode(...Array.from({ length: 32 }, (_, i) => i)));
 
 /** In-memory WebDAV file with optional ETag / conditional-request support. */
-function makeServer({ etags = true }: { etags?: boolean } = {}) {
+/** `etags`: strong, weak (`W/"…"`, which If-Match never matches), or none. */
+function makeServer({ etags = 'strong' }: { etags?: 'strong' | 'weak' | 'none' } = {}) {
   let file: { body: string; version: number } | null = null;
   let afterNextGet: (() => Promise<void>) | null = null;
   let putCount = 0;
@@ -242,7 +243,11 @@ function makeServer({ etags = true }: { etags?: boolean } = {}) {
     const headers = (init?.headers ?? {}) as Record<string, string>;
     if ((init?.method ?? 'GET') === 'GET') {
       const res = file
-        ? reply(200, file.body, etags ? { ETag: `"${file.version}"` } : {})
+        ? reply(
+            200,
+            file.body,
+            etags === 'none' ? {} : { ETag: `${etags === 'weak' ? 'W/' : ''}"${file.version}"` },
+          )
         : reply(404);
       if (afterNextGet) {
         const hook = afterNextGet;
@@ -310,7 +315,7 @@ describe('WebDAV sync between two devices', () => {
   let a: NoteStorage;
   let b: NoteStorage;
 
-  const setUp = async (opts?: { etags?: boolean }) => {
+  const setUp = async (opts?: Parameters<typeof makeServer>[0]) => {
     server = makeServer(opts);
     vi.spyOn(global, 'fetch').mockImplementation(server.handler as typeof fetch);
     a = await device();
@@ -507,7 +512,7 @@ describe('WebDAV sync between two devices', () => {
     expect((await b.getConflictsAsync()).map((c) => c.id).sort()).toEqual([n.id, other.id].sort());
   });
 
-  it.each([true, false])(
+  it.each(['strong', 'weak', 'none'] as const)(
     'retries instead of overwriting when another device uploads mid-sync (ETag: %s)',
     async (etags) => {
       await setUp({ etags });
