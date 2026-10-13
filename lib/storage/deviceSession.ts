@@ -69,8 +69,9 @@ export async function getDeviceFingerprint(): Promise<string> {
     String(screen.width),
     String(screen.height),
     String(screen.colorDepth),
-    String((navigator as any).hardwareConcurrency ?? ''),
-    String((navigator as any).deviceMemory ?? ''),
+    String(navigator.hardwareConcurrency ?? ''),
+    // deviceMemory 只有 Chromium 支持，lib.dom 里没有它的类型
+    String((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? ''),
     String(navigator.maxTouchPoints ?? ''),
   ].filter(Boolean);
 

@@ -1,4 +1,5 @@
-import { type NextAuthOptions } from 'next-auth';
+import { type Account, type NextAuthOptions, type Profile, type User } from 'next-auth';
+import { type AdapterUser } from 'next-auth/adapters';
 import { type JWT } from 'next-auth/jwt';
 import GoogleProvider from 'next-auth/providers/google';
 import GitHubProvider from 'next-auth/providers/github';
@@ -34,7 +35,15 @@ type ExtendedJWT = {
 
 const NEXTAUTH_SECRET = env.NEXTAUTH_SECRET;
 
-function getStableUserId(user: any, account: any, profile: any, token: JWT): string {
+// 部分 provider（如 GitHub）的 profile 用 id 而不是 sub，且可能是数字
+type ProviderProfile = Profile & { id?: string | number };
+
+function getStableUserId(
+  user: User | AdapterUser | undefined,
+  account: Account | null | undefined,
+  profile: ProviderProfile | undefined,
+  token: JWT,
+): string {
   const providerAccountId = account?.providerAccountId;
   const profileId = profile?.sub || profile?.id;
   const provider = account?.provider;
@@ -42,7 +51,7 @@ function getStableUserId(user: any, account: any, profile: any, token: JWT): str
   return (
     user?.id ||
     (provider && providerAccountId ? `${provider}:${providerAccountId}` : undefined) ||
-    profileId ||
+    (profileId ? String(profileId) : undefined) ||
     token.sub ||
     uuidv4()
   );
@@ -96,10 +105,10 @@ export const authOptions: NextAuthOptions = {
       const typedToken = token as ExtendedJWT;
       if (user) {
         typedToken.id = getStableUserId(user, account, profile, token);
-        typedToken.email = (user as any).email;
-        typedToken.name = (user as any).name;
-        typedToken.image = (user as any).image;
-        typedToken.provider = (account as any)?.provider;
+        typedToken.email = user.email;
+        typedToken.name = user.name;
+        typedToken.image = user.image;
+        typedToken.provider = account?.provider;
       } else if (!typedToken.id) {
         typedToken.id = token.sub;
       }
@@ -128,9 +137,8 @@ export const authOptions: NextAuthOptions = {
           return true;
         }
         const userId = getStableUserId(user, account, profile, {} as JWT);
-        const username = (user as any).name || (user as any).email?.split('@')[0] || 'user';
-        const email =
-          (user as any).email || `${username}@${(account as any)?.provider || 'local'}.local`;
+        const username = user.name || user.email?.split('@')[0] || 'user';
+        const email = user.email || `${username}@${account?.provider || 'local'}.local`;
 
         const response = await fetch(`${backendUrl}/api/ugc/user/init`, {
           method: 'POST',

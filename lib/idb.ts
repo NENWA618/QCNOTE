@@ -10,7 +10,7 @@ function openDB(): Promise<IDBDatabase> {
   if (connection) return connection;
   const opening = new Promise<IDBDatabase>((resolve, reject) => {
     // support both browser (window) and Node.js (globalThis) environments
-    const env: any = typeof window !== 'undefined' ? window : globalThis;
+    const env: { indexedDB?: IDBFactory } = typeof window !== 'undefined' ? window : globalThis;
     if (!env.indexedDB) return reject('IndexedDB not supported');
     const req = env.indexedDB.open(DB_NAME, 1);
     req.onupgradeneeded = () => {

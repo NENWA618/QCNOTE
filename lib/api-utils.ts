@@ -4,10 +4,10 @@ import { ZodError } from 'zod';
 export interface ApiError {
   message: string;
   code?: string;
-  details?: any;
+  details?: unknown;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: ApiError;
@@ -19,7 +19,7 @@ export interface ApiResponse<T = any> {
 export function createErrorResponse(
   message: string,
   code: string = 'INTERNAL_ERROR',
-  details?: any,
+  details?: unknown,
 ): ApiResponse {
   return {
     success: false,

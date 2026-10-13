@@ -7,17 +7,18 @@
 
 import type { HTMLAttributes } from 'react';
 import NoteStorage from '@/lib/storage';
+import type Utils from '@/lib/utils';
 
 /**
  * Browser global Window extensions used by the app.
  *
  * `window.storage` is a shared runtime entry for the local note storage manager.
- * `window.Utils` is a generic extension point for ad hoc helpers.
+ * `window.Utils` exposes the shared helpers from `@/lib/utils`.
  */
 declare global {
   interface Window {
     storage?: NoteStorage;
-    Utils?: any;
+    Utils?: typeof Utils;
   }
 }
 

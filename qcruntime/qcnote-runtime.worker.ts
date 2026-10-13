@@ -45,9 +45,9 @@ function base64Encode(buffer: ArrayBuffer | Uint8Array): string {
   return btoa(binary);
 }
 
-function base64Decode(value: string): Uint8Array {
+function base64Decode(value: string): Uint8Array<ArrayBuffer> {
   const binary = atob(value);
-  const bytes: Uint8Array = new Uint8Array(binary.length);
+  const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
   }
@@ -99,7 +99,7 @@ async function decryptField(encoded: string, key: CryptoKey): Promise<unknown> {
   const iv = base64Decode(ivB64);
   const cipher = base64Decode(cipherB64);
   const plain = await crypto.subtle.decrypt(
-    { name: ALGO, iv: iv as any, tagLength: TAG_LEN } as AesGcmParams,
+    { name: ALGO, iv, tagLength: TAG_LEN },
     key,
     cipher.buffer as ArrayBuffer,
   );
@@ -111,7 +111,7 @@ function evalWhere(record: Record<string, unknown>, where: QCWhere): boolean {
   if ('or' in where) return where.or.some((w) => evalWhere(record, w));
   if ('not' in where) return !evalWhere(record, where.not);
 
-  const { field, op, value } = where as any;
+  const { field, op, value } = where;
   const rv = record[field];
 
   switch (op) {
@@ -569,7 +569,7 @@ async function getOrCreateWrappedDek(name: string, kek: CryptoKey): Promise<Cryp
       'raw',
       wrapped.buffer as ArrayBuffer,
       kek,
-      { name: ALGO, iv: iv as any, tagLength: TAG_LEN } as AesGcmParams,
+      { name: ALGO, iv, tagLength: TAG_LEN },
       { name: ALGO, length: KEY_LEN },
       false,
       ['encrypt', 'decrypt'],
@@ -918,7 +918,9 @@ async function handleDbMethod(args: unknown[]): Promise<unknown> {
   const [dbId, method, methodArgs] = args as [number, string, unknown[]];
   const db = dbInstances.get(dbId);
   if (!db) throw new Error(`QCDb instance ${dbId} not found`);
-  const result = await (db as any)[method](...methodArgs);
+  const fn = (db as unknown as Record<string, unknown>)[method];
+  if (typeof fn !== 'function') throw new Error(`QCDb has no method ${method}`);
+  const result = await fn.apply(db, methodArgs);
   if (method === 'close') {
     dbInstances.delete(dbId);
   }
@@ -985,8 +987,8 @@ export async function handleWorkerRequest(event: WorkerRequest): Promise<WorkerR
 
 const isWorkerThread =
   typeof self !== 'undefined' &&
-  typeof (self as any).document === 'undefined' &&
-  typeof (self as any).postMessage === 'function';
+  typeof (self as { document?: unknown }).document === 'undefined' &&
+  typeof (self as { postMessage?: unknown }).postMessage === 'function';
 
 if (isWorkerThread) {
   self.onmessage = async (event: MessageEvent<WorkerRequest>) => {

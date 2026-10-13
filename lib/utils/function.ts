@@ -58,21 +58,21 @@ export function pipe<T>(...fns: Array<(arg: T) => T>): (arg: T) => T {
 /**
  * Memoize function results
  */
-export function memoize<T extends (...args: any[]) => any>(fn: T): T {
-  const cache = new Map();
+export function memoize<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R {
+  const cache = new Map<string, R>();
 
-  return ((...args: any[]) => {
+  return (...args: A) => {
     const key = JSON.stringify(args);
 
     if (cache.has(key)) {
-      return cache.get(key);
+      return cache.get(key) as R;
     }
 
     const result = fn(...args);
     cache.set(key, result);
 
     return result;
-  }) as T;
+  };
 }
 
 const functionUtils = {
