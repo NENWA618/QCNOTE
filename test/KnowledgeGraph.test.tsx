@@ -1,125 +1,101 @@
 import React from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { KnowledgeGraph } from '../components/KnowledgeGraph';
 import { NoteItem } from '../lib/storage';
 
+const makeNote = (over: Partial<NoteItem>): NoteItem => ({
+  id: 'n',
+  title: 'Note',
+  content: '',
+  category: 'Tech',
+  tags: [],
+  color: '#ff0000',
+  createdAt: 0,
+  updatedAt: 0,
+  links: [],
+  backlinks: [],
+  ...over,
+});
+
+const CANVAS_SIZE = 300;
+
 describe('KnowledgeGraph Component', () => {
-  const mockNotes: NoteItem[] = [
-    {
-      id: '1',
-      title: 'Machine Learning',
-      content: 'ML content [[Deep Learning]] [[AI]]',
-      category: 'Tech',
-      tags: ['ml', 'ai'],
-      color: '#ff0000',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      links: ['2', '3'],
-      backlinks: [],
-    },
-    {
-      id: '2',
-      title: 'Deep Learning',
-      content: 'DL content [[Machine Learning]]',
-      category: 'Tech',
-      tags: ['dl', 'neural'],
-      color: '#00ff00',
-      createdAt: Date.now() - 1000,
-      updatedAt: Date.now() - 1000,
-      links: ['1'],
-      backlinks: ['1'],
-    },
-    {
-      id: '3',
-      title: 'AI Ethics',
-      content: 'Ethics content',
-      category: 'Philosophy',
-      tags: ['ethics'],
-      color: '#0000ff',
-      createdAt: Date.now() - 2000,
-      updatedAt: Date.now() - 2000,
-      links: [],
-      backlinks: ['1'],
-    },
+  const linkedNotes: NoteItem[] = [
+    makeNote({ id: '1', title: 'Machine Learning', links: ['Deep Learning', 'AI Ethics'] }),
+    makeNote({ id: '2', title: 'Deep Learning', links: ['Machine Learning'], backlinks: ['1'] }),
+    makeNote({ id: '3', title: 'AI Ethics', backlinks: ['1'] }),
   ];
 
-  const defaultProps = {
-    notes: mockNotes,
-    onNodeClick: vi.fn(),
-    onNodeDoubleClick: vi.fn(),
-    searchQuery: '',
-    selectedTags: [],
-  };
-
   beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should render graph container', () => {
-    render(<KnowledgeGraph {...defaultProps} />);
-    expect(screen.getByTestId('knowledge-graph')).toBeInTheDocument();
-  });
-
-  it('should display nodes for each note', async () => {
-    render(<KnowledgeGraph {...defaultProps} />);
-    await waitFor(() => {
-      mockNotes.forEach((note) => {
-        expect(screen.getByText(note.title)).toBeInTheDocument();
-      });
+    // jsdom 没有 canvas 实现：给一个所有绘图方法都是空操作的 2D 上下文
+    const ctx = new Proxy({} as Record<string, unknown>, {
+      get: (target, prop: string) => (prop in target ? target[prop] : () => {}),
+      set: (target, prop: string, value) => {
+        target[prop] = value;
+        return true;
+      },
     });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      ctx as unknown as CanvasRenderingContext2D,
+    );
+    vi.spyOn(HTMLCanvasElement.prototype, 'clientWidth', 'get').mockReturnValue(CANVAS_SIZE);
+    vi.spyOn(HTMLCanvasElement.prototype, 'clientHeight', 'get').mockReturnValue(CANVAS_SIZE);
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    // 固定随机布局：没有连线时节点不受力，停在画布正中
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
   });
 
-  it('should call onNodeClick when node is clicked', async () => {
-    render(<KnowledgeGraph {...defaultProps} />);
-    await waitFor(() => {
-      const node = screen.getByText('Machine Learning');
-      fireEvent.click(node);
-      expect(defaultProps.onNodeClick).toHaveBeenCalledWith(mockNotes[0]);
-    });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  it('should call onNodeDoubleClick when node is double-clicked', async () => {
-    render(<KnowledgeGraph {...defaultProps} />);
-    await waitFor(() => {
-      const node = screen.getByText('Machine Learning');
-      fireEvent.doubleClick(node);
-      expect(defaultProps.onNodeDoubleClick).toHaveBeenCalledWith(mockNotes[0]);
-    });
+  it('summarises note and link counts, and labels the canvas for screen readers', () => {
+    render(<KnowledgeGraph notes={linkedNotes} />);
+    expect(screen.getByRole('heading', { name: '知识图谱' })).toBeInTheDocument();
+    expect(screen.getByText('3 篇笔记 · 3 条链接')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '知识图谱：3 篇笔记，3 条链接' })).toBeInTheDocument();
+    expect(screen.queryByText(/笔记之间还没有链接/)).not.toBeInTheDocument();
   });
 
-  it('should filter nodes based on search query', async () => {
-    const props = { ...defaultProps, searchQuery: 'Deep' };
-    render(<KnowledgeGraph {...props} />);
-    await waitFor(() => {
-      expect(screen.getByText('Deep Learning')).toBeInTheDocument();
-      expect(screen.queryByText('Machine Learning')).not.toBeInTheDocument();
-    });
+  it('leaves out deleted notes and hints how to link when there are no links', () => {
+    render(
+      <KnowledgeGraph
+        notes={[
+          makeNote({ id: '1', title: 'Alone' }),
+          makeNote({ id: '2', title: 'Gone', links: ['Alone'], isDeleted: true }),
+        ]}
+      />,
+    );
+    expect(screen.getByText('1 篇笔记 · 0 条链接')).toBeInTheDocument();
+    expect(screen.getByText(/笔记之间还没有链接/)).toBeInTheDocument();
   });
 
-  it('should filter nodes based on selected tags', async () => {
-    const props = { ...defaultProps, selectedTags: ['ai'] };
-    render(<KnowledgeGraph {...props} />);
-    await waitFor(() => {
-      expect(screen.getByText('Machine Learning')).toBeInTheDocument();
-      expect(screen.queryByText('AI Ethics')).not.toBeInTheDocument();
-    });
+  it('shows an empty state instead of a canvas when there are no notes', () => {
+    render(<KnowledgeGraph notes={[]} />);
+    expect(screen.getByText('还没有笔记')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
-  it('should handle empty notes array', () => {
-    const props = { ...defaultProps, notes: [] };
-    render(<KnowledgeGraph {...props} />);
-    expect(screen.getByTestId('knowledge-graph')).toBeInTheDocument();
-    expect(screen.getByText('No notes to display')).toBeInTheDocument();
-  });
+  it('opens the note whose node is clicked, and ignores clicks on empty space', () => {
+    const onSelectNote = vi.fn();
+    const note = makeNote({ id: '1', title: 'Only Note' });
+    render(<KnowledgeGraph notes={[note]} onSelectNote={onSelectNote} />);
+    const canvas = screen.getByRole('img');
 
-  it('should render links between connected notes', async () => {
-    render(<KnowledgeGraph {...defaultProps} />);
-    await waitFor(() => {
-      // Check if links are rendered (implementation dependent)
-      const graph = screen.getByTestId('knowledge-graph');
-      expect(graph).toBeInTheDocument();
-    });
+    fireEvent.click(canvas, { clientX: 5, clientY: 5 });
+    expect(onSelectNote).not.toHaveBeenCalled();
+
+    const center = CANVAS_SIZE / 2;
+    fireEvent.click(canvas, { clientX: center, clientY: center });
+    expect(onSelectNote).toHaveBeenCalledWith(note);
   });
 });

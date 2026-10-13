@@ -23,9 +23,6 @@ export default defineConfig({
       '.claude/**',
       'dist',
       'e2e/**/*.spec.ts',
-      'test/Calendar.test.tsx',
-      'test/KnowledgeGraph.test.tsx',
-      'test/NoteList.test.tsx',
     ],
   },
 });
