@@ -50,7 +50,9 @@ export async function callChatCompletion({
     );
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as {
+    choices?: { message?: { content?: unknown } }[];
+  } | null;
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content !== 'string' || !content) {
     throw new Error(

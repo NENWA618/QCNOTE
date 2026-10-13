@@ -20,6 +20,9 @@ import { MAX_PUBLIC_NOTES_PER_USER, makePreview, type PublishPayload } from './p
 const BETTER_RUN =
   '(EXCLUDED.steps, EXCLUDED.time_ms) < (maze_submissions.steps, maze_submissions.time_ms)';
 
+// 排行榜里缓存在 Redis 的用户展示信息
+type LeaderboardUserInfo = { username?: string; avatar?: string };
+
 export class UGCService {
   private redis: RedisClientType;
   private db: Pool;
@@ -414,7 +417,7 @@ export class UGCService {
     return entries.map((entry, index) => {
       const userId = entry.value as string;
       const info = userInfos[index];
-      const parsed = info ? JSON.parse(info) : {};
+      const parsed = (info ? JSON.parse(info) : {}) as LeaderboardUserInfo;
 
       return {
         userId,
@@ -581,8 +584,11 @@ export class UGCService {
       const userId = entry.value as string;
       const info = userInfos[index];
       const submission = submissions[index];
-      const parsedInfo = info ? JSON.parse(info) : {};
-      const parsedSubmission = submission ? JSON.parse(submission) : {};
+      const parsedInfo = (info ? JSON.parse(info) : {}) as LeaderboardUserInfo;
+      const parsedSubmission = (submission ? JSON.parse(submission) : {}) as {
+        steps?: number;
+        timeMs?: number;
+      };
 
       return {
         userId,

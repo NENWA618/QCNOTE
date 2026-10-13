@@ -7,6 +7,6 @@
     "noEmit": false,
     "composite": false
   },
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.tsx", "../types/reset.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

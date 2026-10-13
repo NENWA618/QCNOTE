@@ -30,6 +30,14 @@ const getApiUrl = (path: string) => {
   return path;
 };
 
+// /api/device/* 接口的通用响应结构
+type DeviceApiResult = {
+  success?: boolean;
+  token?: string;
+  firstTime?: boolean;
+  error?: { message?: string };
+};
+
 async function validateDeviceSessionToken(token: string, fingerprint: string): Promise<boolean> {
   try {
     const response = await fetch(getApiUrl('/api/device/session/validate'), {
@@ -37,7 +45,7 @@ async function validateDeviceSessionToken(token: string, fingerprint: string): P
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, fingerprint }),
     });
-    const result = await response.json();
+    const result = (await response.json()) as DeviceApiResult | null;
     return response.ok && result?.success === true;
   } catch (error) {
     console.error('[Device Session] Validation error', error);
@@ -54,7 +62,7 @@ async function createDeviceSessionTokenOnServer(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fingerprint }),
     });
-    const result = await response.json();
+    const result = (await response.json()) as DeviceApiResult | null;
     if (!response.ok || !result?.success) {
       return {
         error:
@@ -354,7 +362,7 @@ export function useDeviceVerification({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fingerprint }),
       });
-      const result = await response.json();
+      const result = (await response.json()) as DeviceApiResult | null;
       if (!response.ok || !result?.success) {
         return {
           allowed: false,
@@ -386,7 +394,7 @@ export function useDeviceVerification({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      const result = await response.json();
+      const result = (await response.json()) as DeviceApiResult | null;
       if (!response.ok || !result?.success) {
         throw new Error(result?.error?.message || '设备指纹重置失败');
       }

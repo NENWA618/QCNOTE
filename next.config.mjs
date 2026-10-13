@@ -36,7 +36,13 @@ const nextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            value:
+              'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), browsing-topics=()',
+          },
+          {
+            // 隔离浏览上下文：跨站打开的窗口拿不到 window.opener。登录走整页重定向，不依赖弹窗
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
           },
           {
             key: 'Content-Security-Policy',
@@ -56,7 +62,8 @@ const nextConfig = {
               // （浏览器直接调用，不经过 QCNOTE 后端，所以无法预先把域名加入白名单），
               // 已覆盖 lwl12.com/jinrishici.com/hitokoto.cn/vercel.live 等原先单独列出的域名。
               "connect-src 'self' https:",
-              `frame-src 'self'${VERCEL_LIVE}`,
+              // 站内没有 iframe；只有预览部署要嵌 Vercel Toolbar
+              `frame-src ${VERCEL_LIVE ? VERCEL_LIVE.trim() : "'none'"}`,
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

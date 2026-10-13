@@ -32,8 +32,8 @@ const Header: React.FC = () => {
         : `userId=${encodeURIComponent(userId)}`;
 
       fetch(withApiBaseUrl(`/api/admin/roles?${query}`))
-        .then((res) => res.json())
-        .then((data: { success?: boolean; role?: string; error?: string }) => {
+        .then((res) => res.json() as Promise<{ success?: boolean; role?: string; error?: string }>)
+        .then((data) => {
           if (data.success) {
             setUserRole(data.role ?? 'user');
           } else {
@@ -51,8 +51,14 @@ const Header: React.FC = () => {
     let cancelled = false;
     const load = () => {
       fetch(withApiBaseUrl(`/api/ugc/user/${encodeURIComponent(userId)}`))
-        .then((res) => res.json())
-        .then((data: { success?: boolean; profile?: { username?: string; avatar?: string } }) => {
+        .then(
+          (res) =>
+            res.json() as Promise<{
+              success?: boolean;
+              profile?: { username?: string; avatar?: string };
+            }>,
+        )
+        .then((data) => {
           if (!cancelled && data.success && data.profile) {
             setProfile({ username: data.profile.username, avatar: data.profile.avatar });
           }

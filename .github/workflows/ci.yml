@@ -79,6 +79,10 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      # 根 tsconfig 排除了 server/，后端又用 tsx 运行（不做类型检查），这里单独检查
+      - name: Type check (backend)
+        run: npx tsc --noEmit -p server/tsconfig.server.json
+
       - name: Run unit tests
         run: CI=true npm run test -- --run --reporter=dot
 

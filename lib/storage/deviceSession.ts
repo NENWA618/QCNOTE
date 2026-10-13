@@ -100,7 +100,7 @@ export async function validateDeviceSessionToken(token: string): Promise<boolean
       body: JSON.stringify({ token, fingerprint }),
       signal: unlockRequestSignal(),
     });
-    const result = await response.json();
+    const result = (await response.json()) as { success?: boolean } | null;
     return response.ok && result?.success === true;
   } catch (error) {
     logger.warn('[NoteStorage] Device session token validation failed', error);
@@ -130,7 +130,7 @@ export async function fetchVaultKey(
       body: JSON.stringify({ token, fingerprint }),
       signal: unlockRequestSignal(),
     });
-    const result = await response.json();
+    const result = (await response.json()) as { success?: boolean; kek?: unknown } | null;
     if (!response.ok || !result?.success || typeof result.kek !== 'string') {
       return null;
     }

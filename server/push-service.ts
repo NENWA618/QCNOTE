@@ -134,7 +134,10 @@ export class PushService {
         .map((row: { endpoint: string; keys: PushSubscription['keys'] | string }) => ({
           endpoint: row.endpoint,
           // keys 列是 JSONB，pg 会直接返回对象；兼容旧数据里以字符串存储的情况
-          keys: typeof row.keys === 'string' ? JSON.parse(row.keys) : row.keys,
+          keys:
+            typeof row.keys === 'string'
+              ? (JSON.parse(row.keys) as PushSubscription['keys'])
+              : row.keys,
         }));
     } catch (error) {
       console.error('Failed to retrieve push subscriptions:', error);

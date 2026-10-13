@@ -99,7 +99,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       };
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as { role?: string } | null;
     return {
       props: {
         userRole: data?.role || 'user',
