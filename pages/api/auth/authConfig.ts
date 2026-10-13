@@ -62,28 +62,33 @@ export const authOptions: NextAuthOptions = {
       clientId: env.DISCORD_CLIENT_ID || '',
       clientSecret: env.DISCORD_CLIENT_SECRET || '',
     }),
-    CredentialsProvider({
-      // 允许本地开发测试
-      id: 'test',
-      name: 'Test Login',
-      credentials: {
-        username: { label: 'Username', type: 'text' },
-      },
-      async authorize(credentials: Record<string, string> | undefined) {
-        if (process.env.NODE_ENV !== 'development') {
-          return null;
-        }
-        if (!credentials?.username) {
-          return null;
-        }
-        const normalizedUsername = credentials.username.trim().toLowerCase();
-        return {
-          id: `dev-user:${normalizedUsername}`,
-          name: credentials.username,
-          email: `${normalizedUsername}@test.local`,
-        };
-      },
-    }),
+    // 仅本地开发注册测试登录，生产环境登录页不会出现这个入口
+    ...(process.env.NODE_ENV === 'development'
+      ? [
+          CredentialsProvider({
+            id: 'test',
+            name: 'Test Login',
+            credentials: {
+              username: { label: 'Username', type: 'text' },
+            },
+            async authorize(credentials: Record<string, string> | undefined) {
+              // 双重保险：即使 provider 被意外注册，非开发环境也拒绝登录
+              if (process.env.NODE_ENV !== 'development') {
+                return null;
+              }
+              if (!credentials?.username) {
+                return null;
+              }
+              const normalizedUsername = credentials.username.trim().toLowerCase();
+              return {
+                id: `dev-user:${normalizedUsername}`,
+                name: credentials.username,
+                email: `${normalizedUsername}@test.local`,
+              };
+            },
+          }),
+        ]
+      : []),
   ],
 
   callbacks: {
