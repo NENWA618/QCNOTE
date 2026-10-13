@@ -34,7 +34,7 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "sentiment": "^5.0.1",
-    "uuid": "^14.0.2",
+    "uuid": "^14.0.3",
     "zod": "^4.6.5"
   },
   "devDependencies": {
