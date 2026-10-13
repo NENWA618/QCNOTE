@@ -31,6 +31,7 @@ describe('NoteEditor Component', () => {
     onCancel: vi.fn(),
     onChange: vi.fn(),
     onTogglePreview: vi.fn(),
+    onDelete: vi.fn(),
     onOpenRelatedNote: vi.fn(),
     onRevertVersion: vi.fn(),
   };

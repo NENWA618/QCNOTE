@@ -1,9 +1,11 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { act, render, waitFor } from '@testing-library/react';
-import { QCRuntime, QCDb } from '../qcruntime/qcnote-runtime';
+import { QCRuntime, QCDb, type QCStoreSchema } from '../qcruntime/qcnote-runtime';
 import { NoteStorage } from '../lib/storage';
 import { getDeviceSessionToken, setDeviceSessionToken } from '../lib/storage/deviceSession';
 
+// sessionStorage / localStorage 里设备会话令牌的结构
+type StoredToken = { userId?: string; token?: string };
 const SESSION_TOKEN_KEY = 'qcnote:deviceSessionToken';
 const BROADCAST_KEY = 'qcnote:deviceSessionTokenBroadcast';
 const REQUEST_KEY = 'qcnote:deviceSessionTokenRequest';
@@ -117,7 +119,7 @@ async function deleteDatabase(name: string): Promise<void> {
 }
 
 describe('Device session token and runtime gating', () => {
-  const schema = [
+  const schema: QCStoreSchema[] = [
     {
       name: 'notes',
       keyField: 'id',
@@ -270,7 +272,11 @@ describe('Dashboard cross-tab device session consistency', () => {
     storageListener = null;
     activeStorageListeners.clear();
 
-    window.addEventListener = ((type, listener, options) => {
+    window.addEventListener = ((
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions,
+    ) => {
       if (type === 'storage') {
         const listenerFn = listener as (event: StorageEvent) => void;
         storageListener = listenerFn;
@@ -279,7 +285,11 @@ describe('Dashboard cross-tab device session consistency', () => {
       return originalAddEventListener.call(window, type, listener, options);
     }) as typeof window.addEventListener;
 
-    window.removeEventListener = ((type, listener, options) => {
+    window.removeEventListener = ((
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | EventListenerOptions,
+    ) => {
       if (type === 'storage') {
         activeStorageListeners.delete(listener as (event: StorageEvent) => void);
       }
@@ -339,7 +349,7 @@ describe('Dashboard cross-tab device session consistency', () => {
 
     await dispatchStorageEvent(BROADCAST_KEY, payload);
 
-    const stored = JSON.parse(sessionStorage.getItem(SESSION_TOKEN_KEY) as string);
+    const stored = JSON.parse(sessionStorage.getItem(SESSION_TOKEN_KEY) as string) as StoredToken;
     expect(stored.token).toBe('token-broadcast');
     expect(stored.userId).toBe(userId);
   });
@@ -359,7 +369,7 @@ describe('Dashboard cross-tab device session consistency', () => {
 
     const response = localStorage.getItem(RESPONSE_KEY);
     expect(response).not.toBeNull();
-    const parsed = JSON.parse(response as string);
+    const parsed = JSON.parse(response as string) as StoredToken & { requestId?: string };
     expect(parsed.requestId).toBe('request-1');
     expect(parsed.userId).toBe(userId);
     expect(parsed.token).toBe('current-token');

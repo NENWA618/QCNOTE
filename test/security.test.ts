@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import type { QCStoreSchema } from '../qcruntime/qcnote-runtime';
 
 describe('Security Tests', () => {
   describe('CSRF Protection', () => {
@@ -116,7 +117,7 @@ describe('Security Tests', () => {
 
     it('should report runtime encryption status and not rely on plaintext localStorage secrets', async () => {
       const { QCRuntime, inspectEncryptionState } = await import('../qcruntime/qcnote-runtime');
-      const schema = [
+      const schema: QCStoreSchema[] = [
         {
           name: 'debug_notes',
           keyField: 'id',
@@ -140,7 +141,7 @@ describe('Security Tests', () => {
     it('should migrate legacy localStorage salt into worker metadata on open', async () => {
       const { QCRuntime, inspectEncryptionState, getStoredSalt } =
         await import('../qcruntime/qcnote-runtime');
-      const schema = [
+      const schema: QCStoreSchema[] = [
         {
           name: 'debug_notes',
           keyField: 'id',
@@ -167,7 +168,7 @@ describe('Security Tests', () => {
 
     it('should migrate all legacy salt keys into worker metadata on runtime startup', async () => {
       const { QCRuntime, inspectEncryptionState } = await import('../qcruntime/qcnote-runtime');
-      const schema = [
+      const schema: QCStoreSchema[] = [
         {
           name: 'debug_notes',
           keyField: 'id',
@@ -195,7 +196,7 @@ describe('Security Tests', () => {
   });
 
   describe('Vault KEK (server-issued key wraps a local DEK)', () => {
-    const secretSchema = [
+    const secretSchema: QCStoreSchema[] = [
       {
         name: 'notes',
         keyField: 'id',

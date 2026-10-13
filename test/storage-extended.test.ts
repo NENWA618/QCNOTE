@@ -19,6 +19,9 @@ const resetLocalStorage = () => {
   } as any;
 };
 
+// 推送 / 上传出去的笔记 JSON
+const parseNotes = (text: string) => JSON.parse(text) as NoteItem[];
+
 // base64 of a fixed 32-byte vault key (KEK) returned by the mocked /api/vault/key
 const TEST_KEK = btoa(String.fromCharCode(...Array.from({ length: 32 }, (_, i) => i)));
 
@@ -373,7 +376,7 @@ describe('NoteStorage (extended)', () => {
       const [url, init] = putCalls().at(-1)!;
       expect(url).toBe('https://dav.example.com/root/notes.json');
       expect(init.headers.Authorization).toBe(`Basic ${btoa('u:p')}`);
-      expect(JSON.parse(init.body)[0].title).toBe('Push me');
+      expect(parseNotes(init.body)[0].title).toBe('Push me');
     });
 
     it('sends non-Latin-1 credentials as UTF-8 instead of failing', async () => {
@@ -396,7 +399,7 @@ describe('NoteStorage (extended)', () => {
       expect(body).not.toContain('Top secret title');
       expect(() => JSON.parse(body)).toThrow();
       const plain = await decryptText(body, 'k');
-      expect(JSON.parse(plain)[0].title).toBe('Top secret title');
+      expect(parseNotes(plain)[0].title).toBe('Top secret title');
     });
 
     it('returns false when the server rejects the PUT', async () => {
@@ -663,7 +666,7 @@ describe('NoteStorage (extended)', () => {
       });
 
       expect(await storage.syncWithOneDriveAsync(odConf())).toBe(true);
-      const uploaded = JSON.parse(graph.body()!);
+      const uploaded = parseNotes(graph.body()!);
       expect(uploaded.map((x: NoteItem) => x.title).sort()).toEqual(['mine', 'theirs']);
     });
 
@@ -672,7 +675,7 @@ describe('NoteStorage (extended)', () => {
       mockGraph({ getStatus: 404 });
 
       expect(await storage.syncWithOneDriveAsync(odConf())).toBe(true);
-      const uploaded = JSON.parse(callsOf('PUT').at(-1)![1].body);
+      const uploaded = parseNotes(callsOf('PUT').at(-1)![1].body);
       expect(uploaded.map((x: NoteItem) => x.id)).toEqual([n.id]);
     });
 
@@ -684,7 +687,7 @@ describe('NoteStorage (extended)', () => {
 
       const ids = ((await storage.getDataAsync()) || []).map((x) => x.id).sort();
       expect(ids).toEqual([local.id, 'remote1'].sort());
-      const uploaded = JSON.parse(callsOf('PUT').at(-1)![1].body);
+      const uploaded = parseNotes(callsOf('PUT').at(-1)![1].body);
       expect(uploaded.map((x: NoteItem) => x.id).sort()).toEqual(ids);
     });
 
@@ -732,7 +735,7 @@ describe('NoteStorage (extended)', () => {
 
       const body: string = callsOf('PUT').at(-1)![1].body;
       expect(body).not.toContain('Hidden title');
-      const plain = JSON.parse(await decryptText(body, 'k'));
+      const plain = parseNotes(await decryptText(body, 'k'));
       expect(plain.map((x: NoteItem) => x.title).sort()).toEqual(['Hidden title', 'remote enc']);
     });
 

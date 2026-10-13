@@ -53,7 +53,7 @@ vi.mock('../server/redis-client', () => ({
 }));
 
 describe('Server routes', () => {
-  let app;
+  let app: ReturnType<typeof buildFastify>;
 
   beforeEach(() => {
     app = buildFastify();
@@ -117,7 +117,7 @@ describe('Server routes', () => {
     redisPing.mockResolvedValue('PONG');
     const res = await app.inject({ method: 'GET', url: '/api/health' });
     expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
+    const body = JSON.parse(res.body) as { status?: string; services?: unknown };
     expect(body).toHaveProperty('status', 'healthy');
     expect(body.services).toEqual({ database: 'ok', redis: 'ok' });
   });

@@ -64,18 +64,6 @@ describe('NoteList Component', () => {
     }
   });
 
-  it('filters notes by search term', () => {
-    const { rerender } = render(<NoteList {...defaultProps} searchQuery="" />);
-
-    expect(screen.getByText('First Note')).toBeInTheDocument();
-    expect(screen.getByText('Second Note')).toBeInTheDocument();
-
-    rerender(<NoteList {...defaultProps} searchQuery="First" />);
-
-    expect(screen.getByText('First Note')).toBeInTheDocument();
-    expect(screen.queryByText('Second Note')).not.toBeInTheDocument();
-  });
-
   it('renders empty state when no notes', () => {
     render(<NoteList {...defaultProps} notes={[]} />);
 

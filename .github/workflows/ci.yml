@@ -83,6 +83,9 @@ jobs:
       - name: Type check (backend)
         run: npx tsc --noEmit -p server/tsconfig.server.json
 
+      - name: Type check (tests)
+        run: npx tsc --noEmit -p tsconfig.test.json
+
       - name: Run unit tests
         run: CI=true npm run test -- --run --reporter=dot
 

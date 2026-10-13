@@ -1,6 +1,6 @@
 // Vitest setup file: provide helpers and polyfills for Node environment
 if (typeof process !== 'undefined') {
-  process.env.NODE_ENV = 'test';
+  Object.assign(process.env, { NODE_ENV: 'test' });
 }
 
 import 'fake-indexeddb/auto';

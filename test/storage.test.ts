@@ -48,11 +48,6 @@ describe('NoteStorage', () => {
     if (IDB.clearStore) {
       await IDB.clearStore().catch(() => {});
     }
-    try {
-      await QCRuntime.drop('QCNOTE_NOTES_DB_GUEST');
-    } catch {
-      // ignore if the guest DB does not exist or drop fails
-    }
   });
 
   describe('addNote', () => {
@@ -468,18 +463,23 @@ describe('NoteStorage', () => {
   });
 
   describe('Conflicts', () => {
+    const conflictNote = (title: string, updatedAt: number): NoteItem => ({
+      id: '1',
+      title,
+      content: `${title} content`,
+      category: '',
+      tags: [],
+      color: '',
+      createdAt: 1,
+      updatedAt,
+    });
+
     it('should get and set conflicts', async () => {
       const conflicts = [
         {
           id: '1',
-          local: { id: '1', title: 'Local', content: 'Local content', createdAt: 1, updatedAt: 1 },
-          remote: {
-            id: '1',
-            title: 'Remote',
-            content: 'Remote content',
-            createdAt: 1,
-            updatedAt: 2,
-          },
+          local: conflictNote('Local', 1),
+          remote: conflictNote('Remote', 2),
           resolved: false,
           createdAt: Date.now(),
         },
@@ -492,8 +492,8 @@ describe('NoteStorage', () => {
     it('should add conflict', async () => {
       const conflict = {
         id: '1',
-        local: { id: '1', title: 'Local', content: 'Local content', createdAt: 1, updatedAt: 1 },
-        remote: { id: '1', title: 'Remote', content: 'Remote content', createdAt: 1, updatedAt: 2 },
+        local: conflictNote('Local', 1),
+        remote: conflictNote('Remote', 2),
         resolved: false,
         createdAt: Date.now(),
       };
@@ -506,8 +506,8 @@ describe('NoteStorage', () => {
     it('should resolve conflict', async () => {
       const conflict = {
         id: '1',
-        local: { id: '1', title: 'Local', content: 'Local content', createdAt: 1, updatedAt: 1 },
-        remote: { id: '1', title: 'Remote', content: 'Remote content', createdAt: 1, updatedAt: 2 },
+        local: conflictNote('Local', 1),
+        remote: conflictNote('Remote', 2),
         resolved: false,
         createdAt: Date.now(),
       };
@@ -517,7 +517,7 @@ describe('NoteStorage', () => {
       const conflicts = await storage.getConflictsAsync();
       expect(conflicts).toHaveLength(0);
       const notes = await storage.getDataAsync();
-      const updatedNote = notes.find((n) => n.id === '1');
+      const updatedNote = notes?.find((n) => n.id === '1');
       expect(updatedNote?.content).toBe('Merged content');
     });
   });

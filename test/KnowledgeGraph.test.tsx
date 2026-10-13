@@ -1,8 +1,8 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import KnowledgeGraph from '../components/KnowledgeGraph';
+import { KnowledgeGraph } from '../components/KnowledgeGraph';
 import { NoteItem } from '../lib/storage';
 
 describe('KnowledgeGraph Component', () => {
