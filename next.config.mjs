@@ -16,6 +16,14 @@ const nextConfig = {
   compress: true,
   productionBrowserSourceMaps: process.env.ENABLE_SOURCE_MAPS === 'true',
 
+  experimental: {
+    // Next 16.4 默认开启共享运行时，会把 chunk 启动代码 globalThis["TURBOPACK"].push(...) 以内联 <script>
+    // 写进 HTML。生产 CSP 的 script-src 没有 'unsafe-inline'，这段脚本被拦截后页面永远停在加载界面；
+    // 而且它不带 nonce、内容随路由和构建变化，nonce/hash 都放不行。关掉后启动代码回到外链 chunk。
+    // 见 https://github.com/vercel/next.js/issues/99799
+    turbopackSharedRuntime: false,
+  },
+
   // Security headers
   async headers() {
     return [

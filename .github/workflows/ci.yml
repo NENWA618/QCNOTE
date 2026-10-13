@@ -93,6 +93,10 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
+      # 生产 CSP 不允许内联脚本，Next 升级若又往 HTML 里内联启动代码，页面会卡在加载界面
+      - name: Check prerendered HTML for CSP-blocked inline scripts
+        run: node scripts/check-inline-scripts.mjs
+
       - name: Upload build artifact
         if: success()
         uses: actions/upload-artifact@v7
