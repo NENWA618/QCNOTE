@@ -64,7 +64,8 @@ jobs:
       # server/index.ts, which resolves fastify etc. from server/node_modules.
       - name: Install backend dependencies
         working-directory: server
-        run: npm ci
+        # job 设了 NODE_ENV=production，不显式带上 dev 就装不到 @types/pg 等后端类型检查要用的包
+        run: npm ci --include=dev
 
       - name: Audit dependencies (frontend)
         run: npm audit --audit-level=high --omit=dev
