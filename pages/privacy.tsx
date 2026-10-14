@@ -46,13 +46,24 @@ const sections: LegalSection[] = [
     ),
   },
   {
-    id: 'no-collection',
-    title: '不收集个人数据',
+    id: 'collection',
+    title: '我们收集的数据',
     body: (
-      <p>
-        QCNOTE
-        不主动收集你的笔记内容、账号密码或私人信息。默认情况下不启用第三方分析、广告或追踪功能。
-      </p>
+      <>
+        <p>
+          不登录也可以使用笔记功能，此时 QCNOTE 不会在服务器上保存你的任何数据。QCNOTE
+          不收集你未公开的笔记内容和账号密码，也不使用第三方分析、广告或追踪服务。
+        </p>
+        <p>使用 Google、GitHub 或 Discord 登录后，服务器会保存：</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>登录服务提供的用户 ID、用户名、头像和邮箱地址</li>
+          <li>你填写的个人简介和主动发布的公开笔记</li>
+          <li>活跃记录（热力图、连续活跃天数）和迷宫排行榜成绩</li>
+          <li>用于验证登录设备的设备指纹，以及开启推送通知时的推送订阅</li>
+          <li>用于加密本地笔记的密钥（经服务器主密钥加密保存，服务器无法凭它读取你的笔记）</li>
+        </ul>
+        <p>这些数据仅用于提供账号相关功能和保障账号安全，不会出售或与第三方共享。</p>
+      </>
     ),
   },
   {
@@ -93,6 +104,40 @@ const sections: LegalSection[] = [
     ),
   },
   {
+    id: 'delete-data',
+    title: '账号与数据删除',
+    body: (
+      <>
+        <p>你可以随时删除 QCNOTE 账号及其在服务器上的数据（网页版和安卓 App 相同）：</p>
+        <ol className="list-decimal pl-5 space-y-1">
+          <li>
+            登录后打开{' '}
+            <Link href="/profile" className="text-ink-pink hover:underline">
+              个人资料
+            </Link>{' '}
+            页面；
+          </li>
+          <li>在页面底部找到“注销账号”，按提示确认。</li>
+        </ol>
+        <p>
+          注销后会立即删除：个人资料与公开主页、所有公开笔记、活跃记录、排行榜成绩、推送订阅、设备指纹和笔记加密密钥。其他设备上的登录会话随即失效。
+        </p>
+        <p>
+          为了让旧的登录会话持续失效，我们会保留一条只含用户 ID
+          和注销时间的记录，不含其他个人信息。保存在你设备本地或你自己的 WebDAV / OneDrive
+          中的笔记不在服务器上，需要你自行删除。
+        </p>
+        <p>
+          如果只想删除部分数据而保留账号：可以在笔记上“取消发布”（服务器上的副本会立即删除）、清空个人简介，或关闭推送通知。无法登录时，也可以通过{' '}
+          <Link href="/contact" className="text-ink-pink hover:underline">
+            联系页
+          </Link>{' '}
+          申请删除。
+        </p>
+      </>
+    ),
+  },
+  {
     id: 'contact',
     title: '联系我们',
     body: (
@@ -112,7 +157,7 @@ export default function Privacy() {
     <LegalPage
       title="隐私政策"
       description="QCNOTE 的隐私政策。了解我们如何保护您的个人数据和笔记内容，强调本地存储和隐私优先的设计理念。"
-      updated="2026 年 5 月 21 日"
+      updated="2026 年 10 月 14 日"
       related={{ href: '/terms', label: '使用条款' }}
       intro={
         <p>
