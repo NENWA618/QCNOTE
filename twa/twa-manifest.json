@@ -4,7 +4,6 @@
   "name": "QCNOTE - 个人笔记",
   "launcherName": "QCNOTE",
   "display": "standalone",
-  "orientation": "default",
   "themeColor": "#C8B8C8",
   "themeColorDark": "#C8B8C8",
   "navigationColor": "#C8B8C8",
@@ -22,7 +21,7 @@
     "alias": "qcnote"
   },
   "appVersionName": "1.0.0",
-  "appVersionCode": 1,
+  "appVersionCode": 3,
   "shortcuts": [
     {
       "name": "我的笔记",
@@ -35,9 +34,18 @@
   "webManifestUrl": "https://www.qcnote.com/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://www.qcnote.com/",
-  "minSdkVersion": 21
+  "minSdkVersion": 24,
+  "orientation": "default",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "displayOverride": [],
+  "appVersion": "1.0.0"
 }
