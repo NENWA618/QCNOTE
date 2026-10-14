@@ -74,19 +74,26 @@ const DeleteAccount: React.FC<DeleteAccountProps> = ({ userId }) => {
   };
 
   return (
-    <section className="bg-white/95 dark:bg-dark-surface rounded-2xl border border-red-200 dark:border-red-900/60 p-5 sm:p-6">
-      <h2 className="text-lg font-semibold text-red-700 dark:text-red-400">注销账号</h2>
-      <p className="mt-1 text-sm text-text-light">
-        永久删除你的账号和服务器上的全部数据，此操作无法撤销。
-      </p>
-
-      {!open ? (
-        <div className="mt-4 flex justify-end">
-          <button type="button" className="btn btn-danger" onClick={() => setOpen(true)}>
+    <section className="bg-white/95 dark:bg-dark-surface rounded-2xl border border-primary-light/40 dark:border-dark-border p-5 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold text-ink dark:text-dark-text mb-1">注销账号</h2>
+          <p className="text-sm text-text-light">
+            永久删除你的账号和服务器上的全部数据，此操作无法撤销。
+          </p>
+        </div>
+        {!open && (
+          <button
+            type="button"
+            className="btn btn-secondary shrink-0"
+            onClick={() => setOpen(true)}
+          >
             注销账号…
           </button>
-        </div>
-      ) : (
+        )}
+      </div>
+
+      {open && (
         <form onSubmit={handleDelete} className="mt-4" noValidate>
           <div className="p-4 rounded-xl text-sm bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200">
             <p className="font-medium">注销后将删除：</p>
