@@ -19,16 +19,19 @@ function makeService(scanBatches: string[][], zsetMembers: Record<string, string
 }
 
 describe('UGCService.deleteUserAccount', () => {
-  it('用一条语句删除用户行、推送订阅和迷宫成绩', async () => {
+  it('用一条语句删除用户行、推送订阅和迷宫成绩，并写入注销记录', async () => {
     const { service, query } = makeService([]);
-    await service.deleteUserAccount('github:42');
+    const before = Date.now();
+    const deletedAt = await service.deleteUserAccount('github:42');
+    expect(deletedAt).toBeGreaterThanOrEqual(before);
 
     const deleteCall = query.mock.calls.find(([sql]) => String(sql).includes('DELETE FROM users'));
     expect(deleteCall).toBeDefined();
     const [sql, params] = deleteCall!;
     expect(sql).toContain('DELETE FROM push_subscriptions WHERE user_id = $1');
     expect(sql).toContain('DELETE FROM maze_submissions WHERE user_id = $1');
-    expect(params).toEqual(['github:42']);
+    expect(sql).toContain('INSERT INTO account_deletions (user_id, deleted_at) VALUES ($1, $2)');
+    expect(params).toEqual(['github:42', deletedAt]);
   });
 
   it('清除资料缓存，并从该用户所在的每个排行榜移除', async () => {

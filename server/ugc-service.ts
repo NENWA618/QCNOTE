@@ -392,14 +392,22 @@ export class UGCService {
    * user_vault_keys、public_notes 随外键级联删除；push_subscriptions 与 maze_submissions
    * 没有外键，单独删除。之后清理 Redis 里的资料缓存和排行榜条目——资料缓存没有过期时间，
    * 不删的话公开主页仍会从缓存读出这个用户。
+   *
+   * 同一条语句写入注销记录，让其它设备上仍然有效的会话失效（见 server/session.ts）。
+   * 返回注销时间（毫秒）。
    */
-  async deleteUserAccount(userId: string): Promise<void> {
+  async deleteUserAccount(userId: string): Promise<number> {
     await this.ensureMazeSubmissionTable();
+    const deletedAt = Date.now();
     await this.db.query(
       `WITH push AS (DELETE FROM push_subscriptions WHERE user_id = $1),
-            maze AS (DELETE FROM maze_submissions WHERE user_id = $1)
+            maze AS (DELETE FROM maze_submissions WHERE user_id = $1),
+            tomb AS (
+              INSERT INTO account_deletions (user_id, deleted_at) VALUES ($1, $2)
+              ON CONFLICT (user_id) DO UPDATE SET deleted_at = EXCLUDED.deleted_at
+            )
        DELETE FROM users WHERE id = $1`,
-      [userId],
+      [userId, deletedAt],
     );
 
     await this.redis.del([`user:${userId}:profile`, `user:${userId}:heatmap`]);
@@ -421,6 +429,7 @@ export class UGCService {
         }
       }
     }
+    return deletedAt;
   }
 
   // ==================== 排行榜管理 ====================

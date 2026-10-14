@@ -141,6 +141,13 @@ async function initializeSchema(pool: Pool): Promise<void> {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- 注销记录：登录时间早于 deleted_at 的会话一律失效（见 server/session.ts）。
+    -- 不加外键：用户行删除后它必须保留，同一账号重新登录后也要继续拦住旧会话。
+    CREATE TABLE IF NOT EXISTS account_deletions (
+      user_id TEXT PRIMARY KEY,
+      deleted_at BIGINT NOT NULL
+    );
+
   `);
 
   // CRITICAL INDEXES for query performance

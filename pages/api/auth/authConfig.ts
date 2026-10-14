@@ -31,9 +31,37 @@ type ExtendedJWT = {
   sub?: string;
   iat?: number;
   exp?: number;
+  /** 登录时间（毫秒），之后刷新令牌时保持不变；用来判断会话是否早于账号注销 */
+  signedInAt?: number;
+  /** 上次向后端确认会话未因注销失效的时间（毫秒） */
+  revocationCheckedAt?: number;
 };
 
 const NEXTAUTH_SECRET = env.NEXTAUTH_SECRET;
+
+// 账号在别的设备上注销后，这里最多晚这么久才把会话清掉；期间后端已经拒绝这个会话的请求
+const REVOCATION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
+/** 向后端确认会话是否因注销账号而失效；后端不可用时返回 null（暂不判断，下次再查）。 */
+async function isSessionRevoked(token: ExtendedJWT): Promise<boolean | null> {
+  const backendUrl = process.env.BACKEND_URL?.replace(/\/$/, '');
+  const internalToken = getInternalApiToken(NEXTAUTH_SECRET);
+  if (!backendUrl || !internalToken || !token.id) return null;
+  try {
+    const response = await fetch(`${backendUrl}/api/ugc/session/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', [INTERNAL_TOKEN_HEADER]: internalToken },
+      body: JSON.stringify({ userId: token.id, signedInAt: token.signedInAt }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { revoked?: unknown };
+    return typeof data.revoked === 'boolean' ? data.revoked : null;
+  } catch (error) {
+    console.warn('Failed to check session revocation:', error);
+    return null;
+  }
+}
 
 // 部分 provider（如 GitHub）的 profile 用 id 而不是 sub，且可能是数字
 type ProviderProfile = Profile & { id?: string | number };
@@ -109,8 +137,18 @@ export const authOptions: NextAuthOptions = {
         typedToken.name = user.name;
         typedToken.image = user.image;
         typedToken.provider = account?.provider;
-      } else if (!typedToken.id) {
+        typedToken.signedInAt = Date.now();
+        typedToken.revocationCheckedAt = typedToken.signedInAt;
+        return typedToken;
+      }
+      if (!typedToken.id) {
         typedToken.id = token.sub;
+      }
+      if (Date.now() - (typedToken.revocationCheckedAt ?? 0) > REVOCATION_CHECK_INTERVAL_MS) {
+        const revoked = await isSessionRevoked(typedToken);
+        // 抛错时 NextAuth 会清掉会话 cookie，客户端随之变为未登录
+        if (revoked) throw new Error('Session revoked: account was deleted');
+        if (revoked === false) typedToken.revocationCheckedAt = Date.now();
       }
       return typedToken;
     },

@@ -1,6 +1,6 @@
 import type { FastifyReply } from 'fastify';
 import type { BackendRequest, ExtendedFastifyInstance } from '../types';
-import { requireUser, requireAdmin } from '../session';
+import { isSessionRevoked, rememberAccountDeletion, requireAdmin, requireUser } from '../session';
 import { clampLimit, isHttpUrl } from '../utils';
 import {
   MAX_PUBLIC_NOTES_PER_USER,
@@ -55,6 +55,50 @@ export function registerUgcRoutes(app: ExtendedFastifyInstance) {
         logger.error('User init error:', error);
         reply.status(400).send({ success: false, error: 'Failed to initialize user' });
       }
+    },
+  );
+
+  // 会话是否因注销账号而失效（仅供前端 NextAuth 的 jwt 回调以服务间令牌调用）。
+  // 所有调用都来自前端服务器同一个 IP，所以带有效令牌的请求不计入按 IP 的限流。
+  app.post(
+    '/api/ugc/session/status',
+    {
+      config: {
+        rateLimit: {
+          max: 60,
+          timeWindow: '1 minute',
+          allowList: (request) =>
+            isValidInternalApiToken(
+              request.headers[INTERNAL_TOKEN_HEADER],
+              process.env.NEXTAUTH_SECRET,
+            ),
+        },
+      },
+    },
+    async (
+      request: BackendRequest<{ userId?: unknown; signedInAt?: unknown }>,
+      reply: FastifyReply,
+    ) => {
+      if (
+        !isValidInternalApiToken(
+          request.headers[INTERNAL_TOKEN_HEADER],
+          process.env.NEXTAUTH_SECRET,
+        )
+      ) {
+        return reply.status(401).send({ success: false, error: 'Unauthorized' });
+      }
+
+      const { userId, signedInAt } = request.body ?? {};
+      if (
+        typeof userId !== 'string' ||
+        !userId ||
+        userId.length > 256 ||
+        (signedInAt !== undefined && typeof signedInAt !== 'number')
+      ) {
+        return reply.status(400).send({ success: false, error: 'Invalid parameters' });
+      }
+
+      reply.send({ success: true, revoked: await isSessionRevoked(userId, signedInAt) });
     },
   );
 
@@ -329,7 +373,7 @@ export function registerUgcRoutes(app: ExtendedFastifyInstance) {
       }
 
       try {
-        await getUgcService().deleteUserAccount(userId);
+        rememberAccountDeletion(userId, await getUgcService().deleteUserAccount(userId));
         logger.info(`[Account] ${userId} deleted their account`);
         reply.send({ success: true });
       } catch (error) {
