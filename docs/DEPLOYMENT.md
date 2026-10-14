@@ -65,17 +65,19 @@ Service Worker（安装为应用、离线、推送）只在生产构建中注册
 
 ### 前端
 
-| 变量                                | 必需         | 说明                                                                                            |
-| ----------------------------------- | ------------ | ----------------------------------------------------------------------------------------------- |
-| `NEXTAUTH_URL`                      | 是           | 站点地址，OAuth 回调以它为准                                                                    |
-| `NEXTAUTH_SECRET`                   | 生产环境必需 | 签名登录会话。生产环境下缺失、短于 16 个字符或是已知的默认值时，应用拒绝启动                    |
-| `BACKEND_URL`                       | 使用后端时   | 后端地址，`pages/api/*` 代理到这里                                                              |
-| `DEVICE_SESSION_SECRET`             | 建议         | 签名设备会话令牌；未设置时回退到 `NEXTAUTH_SECRET`                                              |
-| `FRONTEND_TRUST_PROXY_HOPS`         | 否           | 前端前面有几层反向代理，用于取转发给后端的客户端 IP。Vercel 上默认 1，其他环境默认 0；宁少勿多  |
-| `GOOGLE_*`、`GITHUB_*`、`DISCORD_*` | 否           | 各 OAuth 提供方的 `CLIENT_ID` / `CLIENT_SECRET`，回调地址为 `<站点>/api/auth/callback/<提供方>` |
-| `NEXT_PUBLIC_VAPID_PUBLIC`          | 推送         | 推送公钥，**构建时**写入前端代码，修改后要重新构建，见 [VAPID_SETUP.md](VAPID_SETUP.md)         |
-| `LOG_ENDPOINT`                      | 否           | 设置后日志额外 POST 到该地址                                                                    |
-| `ENABLE_SOURCE_MAPS`                | 否           | 设为 `true` 时生产构建输出浏览器 source map                                                     |
+| 变量                                | 必需         | 说明                                                                                                 |
+| ----------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------- |
+| `NEXTAUTH_URL`                      | 是           | 站点地址，OAuth 回调以它为准                                                                         |
+| `NEXTAUTH_SECRET`                   | 生产环境必需 | 签名登录会话。生产环境下缺失、短于 16 个字符或是已知的默认值时，应用拒绝启动                         |
+| `BACKEND_URL`                       | 使用后端时   | 后端地址，`pages/api/*` 代理到这里                                                                   |
+| `DEVICE_SESSION_SECRET`             | 建议         | 签名设备会话令牌；未设置时回退到 `NEXTAUTH_SECRET`                                                   |
+| `FRONTEND_TRUST_PROXY_HOPS`         | 否           | 前端前面有几层反向代理，用于取转发给后端的客户端 IP。Vercel 上默认 1，其他环境默认 0；宁少勿多       |
+| `GOOGLE_*`、`GITHUB_*`、`DISCORD_*` | 否           | 各 OAuth 提供方的 `CLIENT_ID` / `CLIENT_SECRET`，回调地址为 `<站点>/api/auth/callback/<提供方>`      |
+| `NEXT_PUBLIC_VAPID_PUBLIC`          | 推送         | 推送公钥，**构建时**写入前端代码，修改后要重新构建，见 [VAPID_SETUP.md](VAPID_SETUP.md)              |
+| `LOG_ENDPOINT`                      | 否           | 设置后日志额外 POST 到该地址                                                                         |
+| `ENABLE_SOURCE_MAPS`                | 否           | 设为 `true` 时生产构建输出浏览器 source map                                                          |
+| `TWA_SHA256_CERT_FINGERPRINTS`      | Android App  | 安卓 App 签名证书的 SHA-256 指纹，逗号分隔；用于 `/.well-known/assetlinks.json`，见 [TWA.md](TWA.md) |
+| `TWA_PACKAGE_NAME`                  | 否           | 安卓 App 包名，默认 `com.qcnote.app`                                                                 |
 
 ### 后端
 

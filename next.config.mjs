@@ -108,7 +108,8 @@ const nextConfig = {
   // CSRF protection middleware
   async rewrites() {
     return {
-      beforeFiles: [],
+      // TWA 的 Digital Asset Links，指纹来自环境变量，见 lib/assetLinks.ts
+      beforeFiles: [{ source: '/.well-known/assetlinks.json', destination: '/api/assetlinks' }],
       afterFiles: [],
       fallback: [],
     };
