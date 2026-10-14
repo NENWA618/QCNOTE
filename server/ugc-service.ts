@@ -385,6 +385,44 @@ export class UGCService {
     return profile;
   }
 
+  /**
+   * 注销账号：删除该用户在服务器上的全部数据。可重复调用（用户已不存在时什么也不删）。
+   *
+   * Postgres 用一条语句删除，要么全删要么都不删：users 行删除后 user_roles、
+   * user_vault_keys、public_notes 随外键级联删除；push_subscriptions 与 maze_submissions
+   * 没有外键，单独删除。之后清理 Redis 里的资料缓存和排行榜条目——资料缓存没有过期时间，
+   * 不删的话公开主页仍会从缓存读出这个用户。
+   */
+  async deleteUserAccount(userId: string): Promise<void> {
+    await this.ensureMazeSubmissionTable();
+    await this.db.query(
+      `WITH push AS (DELETE FROM push_subscriptions WHERE user_id = $1),
+            maze AS (DELETE FROM maze_submissions WHERE user_id = $1)
+       DELETE FROM users WHERE id = $1`,
+      [userId],
+    );
+
+    await this.redis.del([`user:${userId}:profile`, `user:${userId}:heatmap`]);
+
+    // 排行榜信息键形如 leaderboard:<leaderboardKey>:<userId>:info，由它反推出所在的排行榜
+    const globSafeId = userId.replace(/[*?[\]\\]/g, '\\$&');
+    const infoSuffix = `:${userId}:info`;
+    for await (const keys of this.redis.scanIterator({
+      MATCH: `leaderboard:*:${globSafeId}:info`,
+      COUNT: 200,
+    })) {
+      for (const infoKey of keys) {
+        if (!infoKey.endsWith(infoSuffix)) continue;
+        const leaderboardKey = infoKey.slice('leaderboard:'.length, -infoSuffix.length);
+        // id 以 ":<userId>" 结尾的其他用户也会匹配到（例如 a:b 匹配 x:a:b 的键），那时推出的
+        // 排行榜里没有这个用户，zRem 删不到任何成员，就不能删那把信息键
+        if ((await this.redis.zRem(leaderboardKey, userId)) > 0) {
+          await this.redis.del([infoKey, `${leaderboardKey}:user:${userId}`]);
+        }
+      }
+    }
+  }
+
   // ==================== 排行榜管理 ====================
 
   async addToLeaderboard(

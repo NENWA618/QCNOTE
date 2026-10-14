@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import ManagePublicNotes from './ManagePublicNotes';
 import UserAvatar, { PROFILE_UPDATED_EVENT } from './UserAvatar';
 import CopyLinkButton from './CopyLinkButton';
+import DeleteAccount from './DeleteAccount';
 
 // 订阅状态只能在浏览器里读，不参与服务端渲染
 const PushNotificationSettings = dynamic(() => import('./PushNotificationSettings'), {
@@ -201,7 +202,7 @@ const Profile: React.FC<ProfileProps> = ({ userId }) => {
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-ink dark:text-dark-text">个人资料</h1>
         <p className="mt-1 text-sm sm:text-base text-text-light">
-          编辑公开的个人信息，管理通知与已公开的笔记
+          编辑公开的个人信息，管理通知、已公开的笔记与账号
         </p>
       </div>
 
@@ -373,6 +374,8 @@ const Profile: React.FC<ProfileProps> = ({ userId }) => {
           <PushNotificationSettings />
 
           <ManagePublicNotes userId={userId} />
+
+          <DeleteAccount userId={userId} />
         </div>
       </div>
     </div>

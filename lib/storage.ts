@@ -8,7 +8,7 @@ import { LOCKED_MESSAGE, NoteStorageError } from './storage/errors';
 import { absorbLegacyGuestNotes, migrateGuestDataToUser } from './storage/guestMigration';
 import { KeyValueStore } from './storage/keyValueStore';
 import { normalizeNote, syncLinkGraph } from './storage/linkGraph';
-import { namespacedKey } from './storage/namespace';
+import { STORAGE_KEY_PREFIX, namespacedKey } from './storage/namespace';
 import {
   applyNoteUpdate,
   computeStats,
@@ -63,7 +63,7 @@ export { NOTES_DB_RETRY_MS } from './storage/notesDb';
  * namespace and makes sure every mutation goes through the write lock.
  */
 export class NoteStorage implements SemanticCacheStore {
-  storageKeyPrefix = 'QCNOTE';
+  storageKeyPrefix = STORAGE_KEY_PREFIX;
   storageKey!: string;
   settingsKey!: string;
   webdavConfigKey!: string;

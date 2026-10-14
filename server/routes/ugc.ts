@@ -310,4 +310,32 @@ export function registerUgcRoutes(app: ExtendedFastifyInstance) {
       }
     },
   );
+
+  // 注销账号：只能注销自己的，且请求体必须带 { confirm: 'DELETE' }，防止误发的请求删掉账号。
+  // 用 POST，因为前端代理只放行 GET/POST/PUT。注销后前端需要退出登录，否则下次登录回调会重建资料。
+  app.post(
+    '/api/ugc/user/:userId/delete',
+    { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    async (request: BackendRequest<{ confirm?: unknown }>, reply: FastifyReply) => {
+      const me = await requireUser(request, reply);
+      if (!me) return;
+
+      const { userId } = request.params;
+      if (userId !== me.userId) {
+        return reply.status(403).send({ success: false, error: 'Forbidden' });
+      }
+      if (request.body?.confirm !== 'DELETE') {
+        return reply.status(400).send({ success: false, error: 'Confirmation required' });
+      }
+
+      try {
+        await getUgcService().deleteUserAccount(userId);
+        logger.info(`[Account] ${userId} deleted their account`);
+        reply.send({ success: true });
+      } catch (error) {
+        logger.error('Delete account error:', error);
+        reply.status(500).send({ success: false, error: 'Failed to delete account' });
+      }
+    },
+  );
 }
