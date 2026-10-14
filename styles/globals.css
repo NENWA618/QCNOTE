@@ -48,14 +48,12 @@
   --text-6xl--line-height: initial;
 
   /* 圆角 */
-  --radius-sm: 0.5rem;
   --radius-md: 0.8rem;
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
 
   /* 阴影：粉紫色调，与强调色一致 */
   --shadow-light: 0 4px 12px rgba(200, 180, 210, 0.15);
-  --shadow-medium: 0 8px 25px rgba(200, 180, 210, 0.25);
 
   /* 动画 */
   --animate-fade-in-up: fadeInUp 0.8s ease;
@@ -254,16 +252,6 @@
 
   .page-container {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
-  }
-
-  .hero-panel {
-    @apply transition-all rounded-lg overflow-hidden;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    backdrop-filter: blur(var(--glass-blur));
-    border-radius: 1.5rem;
-    box-shadow: var(--shadow-2);
   }
 
   /* ---- 首页全屏沉浸式 Hero ----
@@ -775,10 +763,6 @@
   }
 
   /* ---- 表单 ---- */
-  .form-input {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-pink focus:border-transparent transition-all;
-  }
-
   .input,
   .select {
     @apply w-full px-4 py-3 border-2 border-primary-light rounded-lg bg-white/50 text-ink transition-all focus:outline-hidden focus:border-accent-pink focus:ring-2 focus:ring-pink-200 focus:bg-white focus:shadow-light min-h-[2.75rem];
