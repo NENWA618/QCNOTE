@@ -5,7 +5,8 @@
 // 不缓存 /api/（含登录、同步、推送）、/admin、/signin 和 /u/（用户公开页，内容随时变化）。
 // 笔记数据本身在 IndexedDB 里，不经过 Service Worker。
 // 改动缓存策略时递增 CACHE_VERSION，旧缓存会在 activate 时清除。
-const CACHE_VERSION = 'v1';
+// v2：清掉旧版本缓存的静态文件，避免新页面加载到旧的存储 Worker。
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `qcnote-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `qcnote-pages-${CACHE_VERSION}`;
 const IMAGE_CACHE = `qcnote-images-${CACHE_VERSION}`;

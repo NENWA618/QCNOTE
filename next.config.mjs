@@ -12,6 +12,10 @@ const VERCEL_LIVE =
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // 每次部署一个 ID：静态资源 URL 带 ?dpl=，浏览器和 Service Worker 不会拿旧缓存冒充新文件；
+  // 页面发现部署已更新时整页刷新，而不是新旧代码混跑（例如新页面配上旧的存储 Worker）。
+  // VERCEL_DEPLOYMENT_ID 由 Vercel 在构建时注入；自托管不设置则保持原行为。
+  deploymentId: process.env.VERCEL_DEPLOYMENT_ID || undefined,
   reactStrictMode: true,
   compress: true,
   productionBrowserSourceMaps: process.env.ENABLE_SOURCE_MAPS === 'true',
