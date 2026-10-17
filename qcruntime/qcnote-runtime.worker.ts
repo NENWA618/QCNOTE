@@ -624,10 +624,20 @@ export class QCRuntime {
     // Obtaining kekBytes at all already implies the caller passed real
     // server-side authentication (see lib/storage/deviceSession.ts's
     // fetchVaultKey).
-    const kek = await importKek(kekBytes);
-    const dek = await getOrCreateWrappedDek(name, kek);
-    await encryptPlaintextSecretFields(name, db, schemas, dek);
-    return new QCDb(db, schemas, dek);
+    let step = 'importKek';
+    try {
+      const kek = await importKek(kekBytes);
+      step = 'unwrapDek';
+      const dek = await getOrCreateWrappedDek(name, kek);
+      step = 'encryptPlaintextSecretFields';
+      await encryptPlaintextSecretFields(name, db, schemas, dek);
+      return new QCDb(db, schemas, dek);
+    } catch (e) {
+      // Don't leak the connection: it would block a later drop().
+      db.close();
+      const detail = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+      throw new Error(`QCRuntime.open ${step} failed (${detail})`, { cause: e });
+    }
   }
 
   static async drop(name: string): Promise<void> {

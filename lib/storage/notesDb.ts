@@ -29,6 +29,8 @@ export class NotesDbConnection {
    * because the server-held vault key couldn't be fetched (offline).
    */
   locked = false;
+  /** Why the last open failed, for display; null after a successful open. */
+  lastError: string | null = null;
 
   /**
    * @param onGuestDbOpened runs after the guest DB is opened; a failure is
@@ -104,6 +106,7 @@ export class NotesDbConnection {
       this.db = db;
       this.dbName = dbName;
       this.openFailed = false;
+      this.lastError = null;
       if (!userId) {
         try {
           await this.onGuestDbOpened(db);
@@ -115,6 +118,7 @@ export class NotesDbConnection {
     } catch (e) {
       console.warn('[NoteStorage] QCRuntime.open failed', e);
       this.openFailed = true;
+      this.lastError = e instanceof Error ? e.message : String(e);
       // A signed-in user has no fallback store, so any failure to open their
       // encrypted DB — offline, bad token, a KEK that no longer unwraps the
       // DEK — means their notes are unreachable, not that there are none.
@@ -140,6 +144,7 @@ export class NotesDbConnection {
     this.close();
     this.openFailed = false;
     this.locked = false;
+    this.lastError = null;
   }
 
   /**

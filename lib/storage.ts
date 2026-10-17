@@ -101,6 +101,11 @@ export class NoteStorage implements SemanticCacheStore {
     return this.notesDb.locked;
   }
 
+  /** Why the notes DB last failed to open (shown next to the locked notice). */
+  get notesDbError(): string | null {
+    return this.notesDb.lastError;
+  }
+
   /** Bumped by every setCurrentUser() call; see runIfSameUser. */
   get userGeneration(): number {
     return this.lock.generation;

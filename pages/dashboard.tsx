@@ -115,6 +115,7 @@ const Dashboard: React.FC = () => {
   const [isPreview, setIsPreview] = useState(false);
   // 存储层的异常状态：设备未解锁，或有笔记无法解密（已隐藏、不会被改动）
   const [storageLocked, setStorageLocked] = useState(false);
+  const [storageLockReason, setStorageLockReason] = useState<string | null>(null);
   const [undecryptableCount, setUndecryptableCount] = useState(0);
 
   const loadNotes = useCallback(async () => {
@@ -124,6 +125,7 @@ const Dashboard: React.FC = () => {
 
     setNotes(all);
     setStorageLocked(s.notesDbLocked);
+    setStorageLockReason(s.notesDbError);
     setUndecryptableCount(s.undecryptableCount);
     setCategories(await s.getCategoriesAsync());
     setStats(await s.getStatsAsync());
@@ -767,6 +769,11 @@ const Dashboard: React.FC = () => {
                 {storageLocked
                   ? '当前设备未解锁（无法获取加密密钥），暂时无法读取或保存笔记。恢复联网后会自动重试；如果一直无法解锁，请重新验证当前设备。'
                   : `有 ${undecryptableCount} 条笔记无法解密，已暂时隐藏。它们不会被修改、删除或同步，原始数据仍保留在本机。`}
+                {storageLocked && storageLockReason && (
+                  <span className="mt-1 block break-all text-xs opacity-80">
+                    原因：{storageLockReason}
+                  </span>
+                )}
               </div>
             )}
 

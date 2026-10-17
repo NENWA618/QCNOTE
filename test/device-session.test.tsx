@@ -198,6 +198,7 @@ describe('Device session token and runtime gating', () => {
     const db = await storage['ensureNotesDb']();
     expect(db).toBeNull();
     expect(storage.notesDbLocked).toBe(true);
+    expect(storage.notesDbError).toMatch(/Device session token/);
   });
 
   it('opens the encrypted notes DB with no secret, via the default server-issued vault key (real production call pattern)', async () => {
