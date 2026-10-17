@@ -7,9 +7,6 @@ import { getDeviceSessionToken, setDeviceSessionToken } from '../lib/storage/dev
 // sessionStorage / localStorage 里设备会话令牌的结构
 type StoredToken = { userId?: string; token?: string };
 const SESSION_TOKEN_KEY = 'qcnote:deviceSessionToken';
-const BROADCAST_KEY = 'qcnote:deviceSessionTokenBroadcast';
-const REQUEST_KEY = 'qcnote:deviceSessionTokenRequest';
-const RESPONSE_KEY = 'qcnote:deviceSessionTokenResponse';
 
 const userId = 'user1';
 const originalFetch = globalThis.fetch;
@@ -167,17 +164,17 @@ describe('Device session token and runtime gating', () => {
 
   it('rejects encrypted database open when session token is missing', async () => {
     await expect(
-      QCRuntime.open('QCNOTE_NOTES_DB_TESTUSER', schema, 1, 'secret-key'),
+      QCRuntime.open('QCNOTE_NOTES_DB_TESTUSER', schema, 1, undefined, new Uint8Array(32)),
     ).rejects.toThrow(/Device session token required/);
   });
 
-  it('opens encrypted database when session token is present', async () => {
+  it('opens encrypted database when session token and vault key are present', async () => {
     const db = await QCRuntime.open(
       'QCNOTE_NOTES_DB_TESTUSER',
       schema,
       1,
-      'secret-key',
       'session-token',
+      new Uint8Array(32).fill(3),
     );
     expect(db).toBeInstanceOf(QCDb);
     await db.close();
@@ -253,10 +250,21 @@ describe('Device session token and runtime gating', () => {
 });
 
 describe('Dashboard cross-tab device session consistency', () => {
-  let storageListener: ((event: StorageEvent) => void) | null = null;
-  let originalAddEventListener: typeof window.addEventListener;
-  let originalRemoveEventListener: typeof window.removeEventListener;
-  const activeStorageListeners = new Set<(event: StorageEvent) => void>();
+  class FakeBroadcastChannel {
+    static instances: FakeBroadcastChannel[] = [];
+    onmessage: ((event: { data: unknown }) => void) | null = null;
+    posted: unknown[] = [];
+    closed = false;
+    constructor(public name: string) {
+      FakeBroadcastChannel.instances.push(this);
+    }
+    postMessage(message: unknown) {
+      this.posted.push(message);
+    }
+    close() {
+      this.closed = true;
+    }
+  }
 
   beforeEach(() => {
     localStorage.clear();
@@ -267,34 +275,8 @@ describe('Dashboard cross-tab device session consistency', () => {
     if (typeof window !== 'undefined') {
       window.fetch = mockFetch as any;
     }
-    originalAddEventListener = window.addEventListener;
-    originalRemoveEventListener = window.removeEventListener;
-    storageListener = null;
-    activeStorageListeners.clear();
-
-    window.addEventListener = ((
-      type: string,
-      listener: EventListenerOrEventListenerObject,
-      options?: boolean | AddEventListenerOptions,
-    ) => {
-      if (type === 'storage') {
-        const listenerFn = listener as (event: StorageEvent) => void;
-        storageListener = listenerFn;
-        activeStorageListeners.add(listenerFn);
-      }
-      return originalAddEventListener.call(window, type, listener, options);
-    }) as typeof window.addEventListener;
-
-    window.removeEventListener = ((
-      type: string,
-      listener: EventListenerOrEventListenerObject,
-      options?: boolean | EventListenerOptions,
-    ) => {
-      if (type === 'storage') {
-        activeStorageListeners.delete(listener as (event: StorageEvent) => void);
-      }
-      return originalRemoveEventListener.call(window, type, listener, options);
-    }) as typeof window.removeEventListener;
+    FakeBroadcastChannel.instances = [];
+    vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel);
 
     if (!window.crypto.randomUUID) {
       (window.crypto as any).randomUUID = vi.fn(() => 'tab-uuid');
@@ -306,48 +288,42 @@ describe('Dashboard cross-tab device session consistency', () => {
     (global as any).fetch = originalFetch;
     window.fetch = originalFetch as any;
     vi.unstubAllGlobals();
-    window.addEventListener = originalAddEventListener;
-    window.removeEventListener = originalRemoveEventListener;
     vi.restoreAllMocks();
   });
+
+  const openChannel = () =>
+    FakeBroadcastChannel.instances.find((c) => !c.closed && c.onmessage !== null);
 
   const renderDashboard = async () => {
     const { default: Dashboard } = await import('../pages/dashboard');
     const result = render(<Dashboard />);
     await waitFor(() => expect(result.getByTestId('layout')).toBeInTheDocument());
-    await waitFor(() => expect(storageListener).not.toBeNull());
+    await waitFor(() => expect(openChannel()).toBeDefined());
     return result;
   };
 
-  const dispatchStorageEvent = async (key: string, newValue: string) => {
-    const listener = storageListener || activeStorageListeners.values().next().value;
-    if (!listener) {
-      throw new Error('Storage listener not attached');
+  const deliver = async (message: Record<string, unknown>) => {
+    const channel = openChannel();
+    if (!channel) {
+      throw new Error('BroadcastChannel not attached');
     }
     await act(async () => {
-      const event = {
-        key,
-        newValue,
-        oldValue: null,
-        storageArea: window.localStorage,
-      } as unknown as StorageEvent;
-      listener.call(window, event);
+      channel.onmessage?.({ data: message });
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
+    return channel;
   };
 
   it('accepts a session token broadcast from another tab and stores it in sessionStorage', async () => {
     await renderDashboard();
 
-    const payload = JSON.stringify({
+    await deliver({
+      type: 'token:set',
       sourceId: 'other-tab',
       userId,
-      action: 'set',
       token: 'token-broadcast',
       timestamp: Date.now(),
     });
-
-    await dispatchStorageEvent(BROADCAST_KEY, payload);
 
     const stored = JSON.parse(sessionStorage.getItem(SESSION_TOKEN_KEY) as string) as StoredToken;
     expect(stored.token).toBe('token-broadcast');
@@ -358,20 +334,20 @@ describe('Dashboard cross-tab device session consistency', () => {
     sessionStorage.setItem(SESSION_TOKEN_KEY, JSON.stringify({ userId, token: 'current-token' }));
     await renderDashboard();
 
-    const requestPayload = JSON.stringify({
+    const channel = await deliver({
+      type: 'token:request',
       sourceId: 'other-tab',
       requestId: 'request-1',
       userId,
       timestamp: Date.now(),
     });
 
-    await dispatchStorageEvent(REQUEST_KEY, requestPayload);
-
-    const response = localStorage.getItem(RESPONSE_KEY);
-    expect(response).not.toBeNull();
-    const parsed = JSON.parse(response as string) as StoredToken & { requestId?: string };
-    expect(parsed.requestId).toBe('request-1');
-    expect(parsed.userId).toBe(userId);
-    expect(parsed.token).toBe('current-token');
+    const response = channel.posted.find(
+      (m) => (m as { type?: string }).type === 'token:response',
+    ) as (StoredToken & { requestId?: string }) | undefined;
+    expect(response).toBeDefined();
+    expect(response?.requestId).toBe('request-1');
+    expect(response?.userId).toBe(userId);
+    expect(response?.token).toBe('current-token');
   });
 });

@@ -2,16 +2,9 @@
 // for notes/sync payloads, and the per-device vault key used to protect
 // WebDAV/OneDrive secrets at rest.
 
-// Legacy hardcoded passphrases previously used to "encrypt" WebDAV/OneDrive
-// secrets at rest. They provided no real confidentiality (anyone with the
-// source or the bundle has them), but are kept here so already-stored
-// configs can still be decrypted and migrated to the per-device vault key.
-export const LEGACY_WEBDAV_PASSPHRASE = 'qcnote-webdav-default';
-export const LEGACY_ONEDRIVE_PASSPHRASE = 'qcnote-onedrive-default';
-
 // localStorage keys holding a random, per-device key used to encrypt
-// WebDAV/OneDrive secrets at rest. Unlike the legacy passphrases above,
-// this key is generated locally and never checked into source control.
+// WebDAV/OneDrive secrets at rest. The key is generated locally and never
+// checked into source control.
 export const WEBDAV_VAULT_KEY_STORAGE_KEY = 'qcnote:webdav:device-vault-key';
 export const ONEDRIVE_VAULT_KEY_STORAGE_KEY = 'qcnote:onedrive:device-vault-key';
 
@@ -87,8 +80,8 @@ export async function decryptText(encryptedBase64: string, passphrase: string): 
 /**
  * Returns the random, device-local key material used to encrypt
  * WebDAV/OneDrive secrets at rest, generating and persisting one on
- * first use. This replaces the old hardcoded passphrases: the key never
- * leaves the device and isn't recoverable from the source or bundle.
+ * first use. The key never leaves the device and isn't recoverable from
+ * the source or bundle.
  *
  * It lives in the same origin's storage as the ciphertext, so it only
  * keeps the secrets out of plain sight (exports, casual inspection of
@@ -108,27 +101,13 @@ export function getOrCreateDeviceVaultKeyMaterial(storageKey: string): string {
   return material;
 }
 
-/**
- * Decrypts a value previously stored as `encrypted:<payload>`, preferring
- * the per-device vault key. Falls back to the legacy hardcoded passphrase
- * so configs saved before the migration still decrypt; callers should
- * re-save (via the matching setXConfigAsync) when `needsReencrypt` is
- * true so the value moves onto the device key going forward.
- */
+/** Decrypts a value stored as `encrypted:<payload>` with the per-device vault key. */
 export async function decryptConfigSecret(
   value: string,
   vaultKeyStorageKey: string,
-  legacyPassphrase: string,
-): Promise<{ value: string; needsReencrypt: boolean }> {
-  const encryptedPart = value.slice('encrypted:'.length);
+): Promise<string> {
   const deviceKeyMaterial = getOrCreateDeviceVaultKeyMaterial(vaultKeyStorageKey);
-  try {
-    const decrypted = await decryptText(encryptedPart, deviceKeyMaterial);
-    return { value: decrypted, needsReencrypt: false };
-  } catch {
-    const decrypted = await decryptText(encryptedPart, legacyPassphrase);
-    return { value: decrypted, needsReencrypt: true };
-  }
+  return decryptText(value.slice('encrypted:'.length), deviceKeyMaterial);
 }
 
 export async function encryptConfigSecret(

@@ -198,31 +198,20 @@ describe('encryption at rest for a signed-in user', () => {
     expect(old.versions?.[0].content).toBe('OLD-PLAIN-VERSION');
   });
 
-  it('re-saves plaintext conflicts and device-key sync credentials sealed', async () => {
+  it('ignores conflicts and sync credentials that are not sealed', async () => {
     await storage.enableIndexedDB();
-    const conflictsKey = storage['conflictsKey'] as string;
-    const webdavKey = storage['webdavConfigKey'] as string;
-    await IDB.setItem(conflictsKey, [
-      { id: 'c', local: { content: 'OLD-PLAIN-CONFLICT' }, remote: {}, resolved: false },
+    await IDB.setItem(storage['conflictsKey'] as string, [
+      { id: 'c', local: { content: 'PLAIN-CONFLICT' }, remote: {}, resolved: false },
     ]);
-    await IDB.setItem(webdavKey, {
+    await IDB.setItem(storage['webdavConfigKey'] as string, {
       url: 'https://dav.test/',
       username: 'u',
       remotePath: 'notes.json',
-      password: await encryptConfigSecret('OLD-DEVICE-KEY-PASSWORD', WEBDAV_VAULT_KEY_STORAGE_KEY),
-      encryptionKey: 'OLD-PLAIN-SYNC-KEY',
+      password: await encryptConfigSecret('DEVICE-KEY-PASSWORD', WEBDAV_VAULT_KEY_STORAGE_KEY),
     });
 
-    expect((await storage.getConflictsAsync())[0].local.content).toBe('OLD-PLAIN-CONFLICT');
-    const config = await storage.getWebDAVConfigAsync();
-    expect(config?.password).toBe('OLD-DEVICE-KEY-PASSWORD');
-    expect(config?.encryptionKey).toBe('OLD-PLAIN-SYNC-KEY');
-
-    // the device key sits next to its ciphertext, so it doesn't count either
-    for (const key of Object.keys(lsStore)) delete lsStore[key];
-    const dump = await dumpAllStorage();
-    expect(dump).not.toMatch(/OLD-PLAIN|"encrypted:/);
-    expect((await storage.getWebDAVConfigAsync())?.password).toBe('OLD-DEVICE-KEY-PASSWORD');
+    expect(await storage.getConflictsAsync()).toEqual([]);
+    expect(await storage.getWebDAVConfigAsync()).toBeNull();
   });
 
   describe('AI settings', () => {
@@ -241,20 +230,16 @@ describe('encryption at rest for a signed-in user', () => {
       expect(await getAISettings(userId, storage)).toMatchObject(settings);
     });
 
-    it('re-saves a device-key record from older versions sealed', async () => {
-      // what older versions wrote for every user: the key encrypted with the
-      // device key that sits right next to it in localStorage
+    it('ignores a record that is not sealed', async () => {
+      // a device-key record like a guest's, under the signed-in user's key
       const guestLike = new NoteStorage();
       expect(await saveAISettings(null, settings, guestLike)).toBe(true);
       await IDB.setItem(
         `qcnote:ai-settings:${userId}`,
         await IDB.getItem('qcnote:ai-settings:GUEST'),
       );
-      await IDB.deleteItem('qcnote:ai-settings:GUEST');
 
-      expect((await getAISettings(userId, storage))?.apiKey).toBe('SECRET-AI-API-KEY');
-      expect(await IDB.getItem(`qcnote:ai-settings:${userId}`)).toHaveProperty('__sealed');
-      expect(await getAISettings(userId, storage)).toMatchObject(settings);
+      expect(await getAISettings(userId, storage)).toBeNull();
     });
 
     it('can neither read nor save while the device is locked', async () => {

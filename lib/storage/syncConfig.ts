@@ -1,32 +1,27 @@
 import {
-  LEGACY_ONEDRIVE_PASSPHRASE,
-  LEGACY_WEBDAV_PASSPHRASE,
   ONEDRIVE_VAULT_KEY_STORAGE_KEY,
   WEBDAV_VAULT_KEY_STORAGE_KEY,
   decryptConfigSecret,
   encryptConfigSecret,
 } from './crypto';
 import type { KeyValueStore } from './keyValueStore';
-import { isSealedValue, type SealedValue } from './sealing';
+import type { SealedValue } from './sealing';
 import type { OneDriveConfig, WebDAVConfig } from './types';
 
-/** Which fields of a sync config are secret, and the keys a guest's are encrypted with. */
+/** Which fields of a sync config are secret, and the key a guest's are encrypted with. */
 export interface SyncConfigSpec<T> {
   secretFields: (keyof T & string)[];
   vaultKeyStorageKey: string;
-  legacyPassphrase: string;
 }
 
 export const WEBDAV_CONFIG_SPEC: SyncConfigSpec<WebDAVConfig> = {
   secretFields: ['password', 'encryptionKey'],
   vaultKeyStorageKey: WEBDAV_VAULT_KEY_STORAGE_KEY,
-  legacyPassphrase: LEGACY_WEBDAV_PASSPHRASE,
 };
 
 export const ONEDRIVE_CONFIG_SPEC: SyncConfigSpec<OneDriveConfig> = {
   secretFields: ['accessToken', 'encryptionKey'],
   vaultKeyStorageKey: ONEDRIVE_VAULT_KEY_STORAGE_KEY,
-  legacyPassphrase: LEGACY_ONEDRIVE_PASSPHRASE,
 };
 
 /** Where sync configs live, and how the current user's are sealed. */
@@ -39,43 +34,31 @@ export interface SyncConfigStore {
 
 /**
  * Reads a sync config. A signed-in user's config is sealed as a whole; a
- * guest's has its secret fields encrypted with the per-device key. Configs
- * in an older format (device-key or legacy-passphrase fields, plaintext
- * secrets, or not yet sealed for a signed-in user) are re-saved in the
- * current one through `write`. Throws, writing nothing, if a secret no
- * longer decrypts.
+ * guest's has its secret fields encrypted with the per-device key. Throws if
+ * a secret no longer decrypts (e.g. the device key is gone): never fall
+ * through with the ciphertext as the secret, or it would be sent as the
+ * password or used as the sync encryption key.
  */
 export async function readSyncConfig<T extends object>(
   store: SyncConfigStore,
   key: string,
   spec: SyncConfigSpec<T>,
-  write: (config: T) => Promise<boolean>,
 ): Promise<T | null> {
   const stored = await store.kv.readKeyValue(key);
   if (!stored) return null;
-  if (isSealedValue(stored)) return store.unseal<T>(stored);
+  if (store.signedIn) return store.unseal<T>(stored);
+  return decryptGuestSecrets(stored as Record<string, unknown>, spec);
+}
 
-  const config = { ...(stored as T) } as Record<string, unknown>;
-  let needsRewrite = store.signedIn;
+async function decryptGuestSecrets<T extends object>(
+  stored: Record<string, unknown>,
+  spec: SyncConfigSpec<T>,
+): Promise<T> {
+  const config = { ...stored };
   for (const field of spec.secretFields) {
     const value = config[field];
-    if (typeof value !== 'string' || !value) continue;
-    if (!value.startsWith('encrypted:')) {
-      needsRewrite = true; // a secret stored in plaintext
-      continue;
-    }
-    // Throws if the secret no longer decrypts (e.g. the device key is gone).
-    // Never fall through with the ciphertext as the secret: it would be sent
-    // as the password, used as the sync encryption key, and sealed by the
-    // rewrite below in place of the real value.
-    const result = await decryptConfigSecret(value, spec.vaultKeyStorageKey, spec.legacyPassphrase);
-    config[field] = result.value;
-    needsRewrite = needsRewrite || result.needsReencrypt;
-  }
-  if (needsRewrite) {
-    await write(config as T).catch((err) => {
-      console.warn('[NoteStorage] Failed to migrate config encryption', err);
-    });
+    if (typeof value !== 'string' || !value.startsWith('encrypted:')) continue;
+    config[field] = await decryptConfigSecret(value, spec.vaultKeyStorageKey);
   }
   return config as T;
 }
@@ -119,13 +102,5 @@ export async function readGuestSyncConfig<T extends object>(
 ): Promise<T | null> {
   const stored = await kv.readFromEitherStore<Record<string, unknown>>(key);
   if (!stored) return null;
-  const config = { ...stored };
-  for (const field of spec.secretFields) {
-    const value = config[field];
-    if (typeof value !== 'string' || !value.startsWith('encrypted:')) continue;
-    config[field] = (
-      await decryptConfigSecret(value, spec.vaultKeyStorageKey, spec.legacyPassphrase)
-    ).value;
-  }
-  return config as T;
+  return decryptGuestSecrets(stored, spec);
 }

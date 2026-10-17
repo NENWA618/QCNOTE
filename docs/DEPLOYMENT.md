@@ -132,11 +132,10 @@ cd server && npm install && npm start   # 后端，另行运行
 
 后端在启动或首次使用时会自动建表（`server/postgres-client.ts`）。`scripts/` 下的 SQL 只是等价脚本，供手动建表或排查时参考：
 
-| 文件                                      | 内容                     |
-| ----------------------------------------- | ------------------------ |
-| `001-create-push-subscriptions-table.sql` | 推送订阅表               |
-| `002-create-user-vault-keys-table.sql`    | 金库密钥表               |
-| `003-clear-default-dicebear-avatars.sql`  | 清理旧版本写入的默认头像 |
+| 文件                                      | 内容       |
+| ----------------------------------------- | ---------- |
+| `001-create-push-subscriptions-table.sql` | 推送订阅表 |
+| `002-create-user-vault-keys-table.sql`    | 金库密钥表 |
 
 ## 上线前检查
 

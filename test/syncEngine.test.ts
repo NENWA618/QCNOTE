@@ -6,7 +6,6 @@ import {
   threeWayMerge,
   type SyncBaseHashes,
 } from '../lib/storage/syncEngine';
-import { normalizeNote } from '../lib/storage/linkGraph';
 import IDB from '../lib/idb';
 
 const note = (id: string, over: Partial<NoteItem> = {}): NoteItem => ({
@@ -48,21 +47,9 @@ describe('noteSyncHash', () => {
 describe('noteSyncHash after removing favourites / archive', () => {
   const n = note('a', { title: '标题', content: 'body', tags: ['t'] });
 
-  it('matches the hash the old format gave an unflagged note', () => {
-    // computed by the version that still hashed isFavorite / isArchived
+  it('keeps a stable hash format', () => {
+    // changing the format would make every recorded sync base mismatch
     expect(noteSyncHash(n)).toBe('9c46ay4ac8');
-  });
-
-  it('ignores leftover flags from older data', () => {
-    const legacy = { ...n, isFavorite: true, isArchived: true } as NoteItem;
-    expect(noteSyncHash(legacy)).toBe(noteSyncHash(n));
-  });
-
-  it('strips the leftover flags when notes are loaded', () => {
-    const legacy = { ...n, isFavorite: true, isArchived: true } as NoteItem;
-    const loaded = normalizeNote(legacy) as unknown as Record<string, unknown>;
-    expect(loaded).not.toHaveProperty('isFavorite');
-    expect(loaded).not.toHaveProperty('isArchived');
   });
 });
 

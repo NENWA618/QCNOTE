@@ -12,14 +12,8 @@ export function parseWikiLinks(text: string): string[] {
 }
 
 export function normalizeNote(note: NoteItem): NoteItem {
-  // Drop the removed favourite / archived flags still present in older data.
-  const {
-    isFavorite: _isFavorite,
-    isArchived: _isArchived,
-    ...rest
-  } = note as NoteItem & { isFavorite?: unknown; isArchived?: unknown };
   return {
-    ...rest,
+    ...note,
     links: note.links || [],
     backlinks: note.backlinks || [],
     versions: note.versions || [],

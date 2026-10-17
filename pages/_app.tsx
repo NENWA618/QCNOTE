@@ -15,7 +15,7 @@ const PushNotificationPrompt = dynamic(() => import('../components/PushNotificat
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
-// 只有直接读写笔记存储的页面才需要等 IndexedDB 迁移完成；
+// 只有直接读写笔记存储的页面才需要等存储初始化完成；
 // 其它页面（首页、隐私政策等）立即渲染，避免整页 SSR 内容被加载动画替代而拖慢 FCP/LCP。
 const STORAGE_ROUTES = new Set(['/dashboard', '/models']);
 // 超过这个时间还没就绪，就告诉用户可能的原因并给出“重新加载”，而不是一直转圈
@@ -69,9 +69,7 @@ export default function App({ Component, pageProps }: AppProps) {
         const success = await storage?.enableIndexedDB();
         if (process.env.NODE_ENV !== 'production') {
           console.log(
-            success
-              ? '✓ IndexedDB 已启用，数据迁移成功'
-              : '⚠ IndexedDB 启用失败，继续使用 localStorage',
+            success ? '✓ IndexedDB 已启用' : '⚠ IndexedDB 启用失败，继续使用 localStorage',
           );
         }
       } catch (err) {

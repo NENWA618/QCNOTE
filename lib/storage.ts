@@ -127,9 +127,6 @@ export class NoteStorage implements SemanticCacheStore {
     this.init();
     // 自动检查 IndexedDB 是否可用
     this.detectIndexedDB();
-    if (typeof window !== 'undefined') {
-      Indexer.purgeLegacyPlaintextCaches().catch(() => {});
-    }
   }
 
   // 自动检测 IndexedDB 是否已初始化
@@ -180,13 +177,15 @@ export class NoteStorage implements SemanticCacheStore {
     return { [SEALED_FIELD]: await (await this.requireUserDb()).seal(value) };
   }
 
-  /** Inverse of sealForUser; unsealed (legacy plaintext) values pass through. */
+  /**
+   * Inverse of sealForUser. A guest's values pass through; for a signed-in
+   * user anything that isn't sealed is ignored (read as absent).
+   */
   private async unsealForUser<T>(stored: unknown): Promise<T | null> {
     if (stored === null || stored === undefined) return null;
-    if (isSealedValue(stored)) {
-      return (await this.requireUserDb()).unseal<T>(stored[SEALED_FIELD]);
-    }
-    return stored as T;
+    if (!this.currentUserId) return stored as T;
+    if (!isSealedValue(stored)) return null;
+    return (await this.requireUserDb()).unseal<T>(stored[SEALED_FIELD]);
   }
 
   /**
@@ -264,12 +263,7 @@ export class NoteStorage implements SemanticCacheStore {
 
   async getWebDAVConfigAsync(): Promise<WebDAVConfig | null> {
     try {
-      return await readSyncConfig(
-        this.syncConfigStore(),
-        this.webdavConfigKey,
-        WEBDAV_CONFIG_SPEC,
-        (config) => this.setWebDAVConfigAsync(config),
-      );
+      return await readSyncConfig(this.syncConfigStore(), this.webdavConfigKey, WEBDAV_CONFIG_SPEC);
     } catch (e) {
       console.error('[NoteStorage] getWebDAVConfigAsync failed', e);
       return null;
@@ -297,7 +291,6 @@ export class NoteStorage implements SemanticCacheStore {
         this.syncConfigStore(),
         this.oneDriveConfigKey,
         ONEDRIVE_CONFIG_SPEC,
-        (config) => this.setOneDriveConfigAsync(config),
       );
     } catch (e) {
       console.error('[NoteStorage] getOneDriveConfigAsync failed', e);
@@ -353,13 +346,7 @@ export class NoteStorage implements SemanticCacheStore {
    */
   private async readConflicts(): Promise<NoteConflict[]> {
     const stored = await this.kv.readKeyValue(this.conflictsKey);
-    const conflicts = (await this.unsealForUser<NoteConflict[]>(stored)) ?? [];
-    if (this.currentUserId && stored && !isSealedValue(stored)) {
-      // Conflicts hold full copies of both notes: never leave them in
-      // plaintext for a signed-in user.
-      await this.setConflictsAsync(conflicts);
-    }
-    return conflicts;
+    return (await this.unsealForUser<NoteConflict[]>(stored)) ?? [];
   }
 
   private async writeConflicts(conflicts: NoteConflict[]): Promise<void> {
@@ -559,47 +546,10 @@ export class NoteStorage implements SemanticCacheStore {
     if (typeof window === 'undefined') return false;
     if (this.useIndexedDB) return true; // 已启用，跳过
     try {
-      const existing = await IDB.getItem(this.storageKey);
-      if (existing !== undefined && existing !== null) {
-        this.useIndexedDB = true;
-        logger.info('✓ IndexedDB 已有数据，保留现有数据，启用索引存储');
-        return true;
-      }
-
-      // 否则从 localStorage 迁移（如果有）
-      const raw = localStorage.getItem(this.storageKey);
-      const settingsRaw = localStorage.getItem(this.settingsKey);
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          // init() seeds an empty list on every load; backing that up would
-          // leave a new empty backup key behind each time.
-          if (!(Array.isArray(parsed) && parsed.length === 0)) {
-            const backupKey = `${this.storageKey}_backup_${Date.now()}`;
-            await IDB.setItem(backupKey, parsed);
-            logger.info('✓ 本地数据已备份到 IndexedDB 键：', backupKey);
-          }
-          await IDB.setItem(this.storageKey, parsed);
-          if (settingsRaw) {
-            try {
-              const parsedSettings = JSON.parse(settingsRaw);
-              await IDB.setItem(this.settingsKey, parsedSettings);
-            } catch {
-              // ignore settings parse issues
-            }
-          }
-          this.useIndexedDB = true;
-          localStorage.removeItem(this.storageKey);
-          localStorage.removeItem(this.settingsKey);
-          logger.info('✓ IndexedDB 已启用，数据迁移成功');
-          return true;
-        } catch (err) {
-          logger.warn('[NoteStorage] 本地数据迁移到 IndexedDB 失败，继续启用 IndexedDB：', err);
-        }
-      }
-
+      // 探测 IndexedDB 是否可用；不可用时会抛错，存储继续用 localStorage
+      await IDB.getItem(this.storageKey);
       this.useIndexedDB = true;
-      logger.info('✓ IndexedDB 已启用（无需迁移）');
+      logger.info('✓ IndexedDB 已启用');
       return true;
     } catch (e: unknown) {
       console.error('启用IndexedDB失败:', e);

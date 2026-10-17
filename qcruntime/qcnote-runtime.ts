@@ -63,86 +63,12 @@ export function isEncryptedFieldValue(encoded: string): boolean {
   return ENCRYPTED_FIELD_RE.test(encoded);
 }
 
-export function getStoredSalt(dbName: string): string | null {
-  if (typeof localStorage === 'undefined') return null;
-  return localStorage.getItem(`qcnote:${dbName}:salt`);
-}
-
-const LEGACY_LOCAL_STORAGE_PATTERNS = [
-  /^QCNOTE_USER_SECRET_/,
-  /^QCNOTE_DEVICE_NAME_USER_/,
-  /^QCNOTE_DEVICE_ID_USER_/,
-  /^QCNOTE_DEVICE_NAME(?:_|$)/,
-  /^QCNOTE_DEVICE_ID(?:_|$)/,
-];
-
-function clearLegacyEncryptionStorage(dbName: string): void {
-  if (typeof localStorage === 'undefined') return;
-
-  const legacySaltKey = `qcnote:${dbName}:salt`;
-  const legacyKeys: string[] = [];
-
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-    if (LEGACY_LOCAL_STORAGE_PATTERNS.some((pattern) => pattern.test(key))) {
-      legacyKeys.push(key);
-    }
-  }
-
-  for (const key of [...legacyKeys, legacySaltKey]) {
-    localStorage.removeItem(key);
-  }
-}
-
 export interface QCEncryptionDiagnostics {
   dbName: string;
   isGuestDb: boolean;
   hasWorkerKey: boolean;
-  hasMetaSalt: boolean;
-  legacySaltInLocalStorage: boolean;
   suspiciousLocalStorageKeys: string[];
   encryptionChannel: 'encrypted' | 'plaintext' | 'unknown';
-  /** 1 = legacy locally-persisted key, 2 = vault (server KEK-wrapped DEK) scheme */
-  encryptionVersion: number;
-}
-
-function getLegacySaltEntries(): Array<[string, string]> {
-  if (typeof localStorage === 'undefined') return [];
-  const entries: Array<[string, string]> = [];
-  const saltKeyRegex = /^qcnote:(.+):salt$/;
-
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-    const match = saltKeyRegex.exec(key);
-    if (!match) continue;
-    const dbName = match[1];
-    const value = localStorage.getItem(key);
-    if (value !== null) {
-      entries.push([dbName, value]);
-    }
-  }
-
-  return entries;
-}
-
-async function migrateAllLegacySalts(): Promise<void> {
-  if (typeof localStorage === 'undefined') return;
-  const entries = getLegacySaltEntries();
-  if (entries.length === 0) return;
-  // Observability for a very old (pre-meta-db) migration path: this branch
-  // should be cold in production by now. Keeping a log here (rather than
-  // deleting the migration code outright) lets us confirm that before
-  // removing it — see qcruntime/README.md.
-  console.warn(
-    `[QCNOTE] Migrating ${entries.length} legacy localStorage salt(s) into meta DB`,
-    entries.map(([dbName]) => dbName),
-  );
-  await workerRpc('migrateLegacySalts', [entries]);
-  for (const [dbName] of entries) {
-    localStorage.removeItem(`qcnote:${dbName}:salt`);
-  }
 }
 
 function listSuspiciousLocalStorageKeys(): string[] {
@@ -161,13 +87,9 @@ function listSuspiciousLocalStorageKeys(): string[] {
 export async function inspectEncryptionState(name: string): Promise<QCEncryptionDiagnostics> {
   const response = (await workerRpc('status', [name])) as {
     hasCryptoKey: boolean;
-    hasSalt: boolean;
     isGuestDb: boolean;
-    encryptionVersion: number;
   };
 
-  const legacySaltInLocalStorage =
-    typeof localStorage !== 'undefined' && localStorage.getItem(`qcnote:${name}:salt`) !== null;
   const suspiciousLocalStorageKeys = listSuspiciousLocalStorageKeys();
   const encryptionChannel = response.isGuestDb
     ? 'plaintext'
@@ -179,11 +101,8 @@ export async function inspectEncryptionState(name: string): Promise<QCEncryption
     dbName: name,
     isGuestDb: response.isGuestDb,
     hasWorkerKey: response.hasCryptoKey,
-    hasMetaSalt: response.hasSalt,
-    legacySaltInLocalStorage,
     suspiciousLocalStorageKeys,
     encryptionChannel,
-    encryptionVersion: response.encryptionVersion,
   };
 }
 
@@ -194,7 +113,7 @@ type WorkerImplementation = Worker | InProcessWorker;
 interface InProcessWorker {
   postMessage(message: {
     id: number;
-    action: 'open' | 'drop' | 'dbMethod' | 'status' | 'migrateLegacySalts';
+    action: 'open' | 'drop' | 'dbMethod' | 'status';
     args: unknown[];
   }): void;
   onmessage?: (event: {
@@ -289,7 +208,7 @@ async function getWorker(): Promise<WorkerImplementation> {
 }
 
 async function workerRpc(
-  action: 'open' | 'drop' | 'dbMethod' | 'status' | 'migrateLegacySalts',
+  action: 'open' | 'drop' | 'dbMethod' | 'status',
   args: unknown[],
 ): Promise<unknown> {
   const w = await getWorker();
@@ -375,36 +294,21 @@ export class QCRuntime {
     name: string,
     schemas: QCStoreSchema[],
     version = 1,
-    secret?: string,
     sessionToken?: string,
     kekBytes?: Uint8Array,
   ): Promise<QCDb> {
-    const legacySalt = getStoredSalt(name);
-    await migrateAllLegacySalts();
-    clearLegacyEncryptionStorage(name);
     const response = (await workerRpc('open', [
       name,
       schemas,
       version,
-      secret,
-      legacySalt,
       sessionToken,
       kekBytes,
-    ])) as {
-      dbId: number;
-      migratedSalt: boolean;
-    };
-    if (legacySalt && response.migratedSalt && typeof localStorage !== 'undefined') {
-      localStorage.removeItem(`qcnote:${name}:salt`);
-    }
+    ])) as { dbId: number };
     return new QCDb(response.dbId);
   }
 
   static async drop(name: string): Promise<void> {
     await workerRpc('drop', [name]);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(`qcnote:${name}:salt`);
-    }
   }
 }
 
@@ -413,7 +317,6 @@ declare global {
     QCNOTE_RUNTIME_DEBUG?: {
       inspect: (name: string) => Promise<QCEncryptionDiagnostics>;
       listSuspiciousLocalStorageKeys: () => string[];
-      getStoredSalt: typeof getStoredSalt;
       isEncryptedFieldValue: typeof isEncryptedFieldValue;
     };
   }
@@ -423,7 +326,6 @@ if (typeof window !== 'undefined') {
   window.QCNOTE_RUNTIME_DEBUG = window.QCNOTE_RUNTIME_DEBUG ?? {
     inspect: inspectEncryptionState,
     listSuspiciousLocalStorageKeys,
-    getStoredSalt,
     isEncryptedFieldValue,
   };
 }

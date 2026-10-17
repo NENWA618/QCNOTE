@@ -25,9 +25,8 @@ export class NotesDbConnection {
   /** Earliest time (ms) a failed open of a signed-in user's notes DB is retried. */
   private retryAt = 0;
   /**
-   * True when the last ensure() attempt failed specifically because a
-   * server-held vault key couldn't be fetched (e.g. offline) and no
-   * already-migrated local key was available to fall back to.
+   * True when the last ensure() attempt failed for a signed-in user, e.g.
+   * because the server-held vault key couldn't be fetched (offline).
    */
   locked = false;
 
@@ -101,14 +100,7 @@ export class NotesDbConnection {
         kekBytes = (await fetchVaultKey(sessionToken, fingerprint)) ?? undefined;
       }
 
-      const db = await QCRuntime.open(
-        dbName,
-        [NOTE_STORE_SCHEMA],
-        1,
-        undefined,
-        sessionToken,
-        kekBytes,
-      );
+      const db = await QCRuntime.open(dbName, [NOTE_STORE_SCHEMA], 1, sessionToken, kekBytes);
       this.db = db;
       this.dbName = dbName;
       this.openFailed = false;

@@ -113,7 +113,7 @@ export async function validateDeviceSessionToken(token: string): Promise<boolean
  * vault key (KEK). The KEK is only ever used in-memory to unwrap/create the
  * browser-local DEK that actually encrypts note fields — it is never
  * persisted to localStorage/IndexedDB. Returns null on any failure (e.g.
- * offline) so callers can fall back to an already-migrated local key.
+ * offline).
  */
 export async function fetchVaultKey(
   token: string,

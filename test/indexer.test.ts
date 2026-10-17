@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import Indexer, {
-  buildIndex,
-  searchNotes,
-  invalidateIndex,
-  purgeLegacyPlaintextCaches,
-} from '../lib/indexer';
+import Indexer, { buildIndex, searchNotes, invalidateIndex } from '../lib/indexer';
 import IDB from '../lib/idb';
 import { NoteItem } from '../lib/storage';
 
@@ -154,20 +149,6 @@ describe('Indexer - Search & Caching', () => {
       const first = await buildIndex(mockNotes);
       const second = await buildIndex(mockNotes);
       expect(second).toBe(first);
-    });
-  });
-
-  describe('purgeLegacyPlaintextCaches', () => {
-    it('removes caches older versions left in plaintext', async () => {
-      await IDB.setItem('QCNOTE_LUNR_INDEX', { some: 'index' });
-      await IDB.setItem('QCNOTE_VECTORS', { note_1: {} });
-      await IDB.setItem('QCNOTE_SEMANTIC_EMBEDDINGS', { note_1: { vector: [1] } });
-
-      await purgeLegacyPlaintextCaches();
-
-      expect(await IDB.getItem('QCNOTE_LUNR_INDEX')).toBeUndefined();
-      expect(await IDB.getItem('QCNOTE_VECTORS')).toBeUndefined();
-      expect(await IDB.getItem('QCNOTE_SEMANTIC_EMBEDDINGS')).toBeUndefined();
     });
   });
 

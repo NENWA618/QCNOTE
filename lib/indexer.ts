@@ -1,27 +1,10 @@
 import lunr from 'lunr';
-import IDB from './idb';
 import { NoteItem } from './storage';
 import vector, { Vector } from './vector';
 import sentiment from './sentiment';
 import { embedTexts, cosineSimilarity } from './embeddings';
 
 const SEMANTIC_MATCH_THRESHOLD = 0.5;
-
-// Keys earlier versions wrote to the shared, unencrypted key/value store:
-// a full-text index, term vectors and embeddings derived from note content,
-// global rather than per user. Nothing writes them any more.
-const LEGACY_PLAINTEXT_CACHE_KEYS = [
-  'QCNOTE_LUNR_INDEX',
-  'QCNOTE_VECTORS',
-  'QCNOTE_SENTIMENTS',
-  'QCNOTE_HASH',
-  'QCNOTE_SEMANTIC_EMBEDDINGS',
-];
-
-/** Deletes caches older versions left in plaintext. Safe to call repeatedly. */
-export async function purgeLegacyPlaintextCaches(): Promise<void> {
-  await Promise.all(LEGACY_PLAINTEXT_CACHE_KEYS.map((key) => IDB.deleteItem(key)));
-}
 
 interface SemanticEmbeddingCacheEntry {
   updatedAt: number;
@@ -205,7 +188,6 @@ const Indexer = {
   searchNotes,
   invalidateIndex,
   getSemanticMatches,
-  purgeLegacyPlaintextCaches,
 };
 
 export default Indexer;

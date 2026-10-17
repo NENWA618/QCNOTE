@@ -2,14 +2,9 @@ import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 
 import type { NoteStorage } from '../storage';
 import { DEVICE_SESSION_TOKEN_KEY, getDeviceFingerprint } from '../storage/deviceSession';
 import {
-  BROADCAST_KEY,
   CHANNEL_NAME,
-  REQUEST_KEY,
-  RESPONSE_KEY,
   createRandomId,
-  parseDeviceSessionBroadcastMessage,
   type DeviceSessionBroadcastMessage,
-  type DeviceSessionBroadcastMessageInternal,
 } from './deviceSessionMessages';
 
 export type DeviceVerificationStatus = 'idle' | 'pending' | 'verified' | 'failed';
@@ -100,29 +95,11 @@ export function useDeviceVerification({
     timeoutId: number;
   } | null>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
-  const broadcastFallbackRef = useRef<boolean>(false);
   const loadNotesRef = useRef<(() => Promise<void>) | null>(null);
 
   const postDeviceSessionBroadcastMessage = useCallback(
-    (message: DeviceSessionBroadcastMessage, useLocalStorageFallback = false) => {
-      if (typeof window === 'undefined') return;
-      if (!useLocalStorageFallback && broadcastChannelRef.current) {
-        broadcastChannelRef.current.postMessage(message);
-        return;
-      }
-      if (typeof localStorage === 'undefined') return;
-
-      let key = '';
-      if (message.type === 'token:set' || message.type === 'token:remove') {
-        key = BROADCAST_KEY;
-      } else if (message.type === 'token:request') {
-        key = REQUEST_KEY;
-      } else {
-        key = RESPONSE_KEY;
-      }
-
-      localStorage.setItem(key, JSON.stringify(message));
-      window.setTimeout(() => localStorage.removeItem(key), 300);
+    (message: DeviceSessionBroadcastMessage) => {
+      broadcastChannelRef.current?.postMessage(message);
     },
     [],
   );
@@ -186,7 +163,7 @@ export function useDeviceVerification({
   }, [userId]);
 
   const handleDeviceSessionMessage = useCallback(
-    async (message: DeviceSessionBroadcastMessageInternal) => {
+    async (message: DeviceSessionBroadcastMessage) => {
       if (message.sourceId === tabIdRef.current) return;
 
       if (message.type === 'token:set' || message.type === 'token:remove') {
@@ -223,17 +200,14 @@ export function useDeviceVerification({
         if (!userId || message.userId !== userId) return;
         const token = getDeviceSessionToken();
         if (token) {
-          postDeviceSessionBroadcastMessage(
-            {
-              type: 'token:response',
-              sourceId: tabIdRef.current,
-              requestId: message.requestId,
-              userId,
-              token,
-              timestamp: Date.now(),
-            },
-            message.legacyKey === REQUEST_KEY,
-          );
+          postDeviceSessionBroadcastMessage({
+            type: 'token:response',
+            sourceId: tabIdRef.current,
+            requestId: message.requestId,
+            userId,
+            token,
+            timestamp: Date.now(),
+          });
         }
         return;
       }
@@ -302,45 +276,20 @@ export function useDeviceVerification({
     [getDeviceSessionToken, postDeviceSessionBroadcastMessage],
   );
 
-  const handleDeviceSessionStorageEvent = useCallback(
-    async (event: StorageEvent) => {
-      if (!event.key || !event.newValue) return;
-      const payload = parseDeviceSessionBroadcastMessage(event.newValue, event.key);
-      if (!payload) return;
-      await handleDeviceSessionMessage(payload);
-    },
-    [handleDeviceSessionMessage],
-  );
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    let channel: BroadcastChannel | null = null;
-    if ('BroadcastChannel' in window) {
-      try {
-        channel = new BroadcastChannel(CHANNEL_NAME);
-        broadcastChannelRef.current = channel;
-        broadcastFallbackRef.current = false;
-        channel.onmessage = (event) => {
-          handleDeviceSessionMessage(event.data as DeviceSessionBroadcastMessage);
-        };
-      } catch {
-        broadcastFallbackRef.current = true;
-      }
-    } else {
-      broadcastFallbackRef.current = true;
-    }
-
-    window.addEventListener('storage', handleDeviceSessionStorageEvent);
+    const channel = new BroadcastChannel(CHANNEL_NAME);
+    broadcastChannelRef.current = channel;
+    channel.onmessage = (event) => {
+      handleDeviceSessionMessage(event.data as DeviceSessionBroadcastMessage);
+    };
 
     return () => {
-      if (channel) {
-        channel.close();
-        broadcastChannelRef.current = null;
-      }
-      window.removeEventListener('storage', handleDeviceSessionStorageEvent);
+      channel.close();
+      broadcastChannelRef.current = null;
     };
-  }, [handleDeviceSessionMessage, handleDeviceSessionStorageEvent]);
+  }, [handleDeviceSessionMessage]);
 
   useEffect(() => {
     loadNotesRef.current = loadNotes;

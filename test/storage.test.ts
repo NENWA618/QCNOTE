@@ -223,46 +223,12 @@ describe('NoteStorage', () => {
       await expect(decryptText(encryptedPart, 'qcnote-webdav-default')).rejects.toThrow();
     });
 
-    it('should decrypt and migrate a config encrypted with the legacy hardcoded passphrase', async () => {
-      const legacyEncrypted = await encryptText(
-        'legacy-plaintext-password',
-        'qcnote-webdav-default',
-      );
-      const legacyConf = {
-        url: 'https://example.com/webdav',
-        username: 'user',
-        password: `encrypted:${legacyEncrypted}`,
-        remotePath: 'notes.json',
-      };
-      // setWebDAVConfigAsync leaves an already-`encrypted:`-prefixed value
-      // untouched, so this simulates a config saved before the migration.
-      await storage.setWebDAVConfigAsync(legacyConf);
-
-      const loaded = await storage.getWebDAVConfigAsync();
-      expect(loaded?.password).toBe('legacy-plaintext-password');
-
-      // allow the fire-and-forget migration re-save to complete
-      await new Promise((r) => setTimeout(r, 0));
-
-      const migrated = (await IDB.getItem(storage['webdavConfigKey'])) as {
-        password: string;
-      };
-      const migratedEncryptedPart = migrated.password.slice('encrypted:'.length);
-      // No longer decryptable with the legacy passphrase after migration.
-      await expect(decryptText(migratedEncryptedPart, 'qcnote-webdav-default')).rejects.toThrow();
-
-      // A subsequent read still returns the correct plaintext, now using the
-      // per-device vault key.
-      const reloaded = await storage.getWebDAVConfigAsync();
-      expect(reloaded?.password).toBe('legacy-plaintext-password');
-    });
-
     it('never returns or re-saves ciphertext as a secret that no longer decrypts', async () => {
       vi.spyOn(console, 'error').mockImplementation(() => {});
       const conf = {
         url: 'https://example.com/webdav',
         username: 'user',
-        // encrypted under neither this device's key nor the legacy passphrase
+        // not encrypted under this device's key
         password: `encrypted:${await encryptText('real-password', 'some-other-key')}`,
         remotePath: 'notes.json',
       };
@@ -296,11 +262,7 @@ describe('NoteStorage', () => {
       const encryptedA = storedA.password.slice('encrypted:'.length);
       // Device B's vault key must not be able to decrypt device A's secret.
       await expect(
-        decryptConfigSecret(
-          `encrypted:${encryptedA}`,
-          'qcnote:webdav:device-vault-key',
-          'qcnote-webdav-default',
-        ),
+        decryptConfigSecret(`encrypted:${encryptedA}`, 'qcnote:webdav:device-vault-key'),
       ).rejects.toThrow();
 
       await storageB.clearAllAsync().catch(() => {});
@@ -329,29 +291,6 @@ describe('NoteStorage', () => {
 
       await expect(
         decryptText(stored.accessToken.slice('encrypted:'.length), 'qcnote-onedrive-default'),
-      ).rejects.toThrow();
-    });
-
-    it('should decrypt and migrate a config encrypted with the legacy hardcoded passphrase', async () => {
-      const legacyToken = await encryptText('legacy-access-token', 'qcnote-onedrive-default');
-      const legacyConf = {
-        accessToken: `encrypted:${legacyToken}`,
-        folderPath: 'notes',
-      };
-      // setOneDriveConfigAsync leaves an already-`encrypted:`-prefixed value
-      // untouched, so this simulates a config saved before the migration.
-      await storage.setOneDriveConfigAsync(legacyConf);
-
-      const loaded = await storage.getOneDriveConfigAsync();
-      expect(loaded?.accessToken).toBe('legacy-access-token');
-
-      await new Promise((r) => setTimeout(r, 0));
-
-      const migrated = (await IDB.getItem(storage['oneDriveConfigKey'])) as {
-        accessToken: string;
-      };
-      await expect(
-        decryptText(migrated.accessToken.slice('encrypted:'.length), 'qcnote-onedrive-default'),
       ).rejects.toThrow();
     });
   });

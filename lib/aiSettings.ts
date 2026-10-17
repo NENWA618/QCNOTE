@@ -5,12 +5,9 @@
  * 和笔记一样，拿不到服务端下发的密钥就读不出 API Key；设备未解锁时既不能读也不能存。
  * 游客：API Key 用随机生成、保存在 localStorage 的设备密钥加密（游客的笔记本身就是明文，
  * 这里只防止 Key 以原文出现在存储里）。
- *
- * 旧版本对登录用户也只用设备密钥加密，而设备密钥就放在密文旁边，等于没有保护；
- * 读到这种旧记录时会自动改存为 seal 格式。
  */
 import idb from './idb';
-import { isSealedValue, type NoteStorage } from './storage';
+import type { NoteStorage } from './storage';
 
 export interface AISettings {
   apiEndpoint: string;
@@ -111,30 +108,23 @@ export async function getAISettings(
   assertStorageUser(storage, userId);
   const stored = await idb.getItem<unknown>(getRecordKey(userId));
   if (!stored) return null;
-  if (isSealedValue(stored)) {
+  if (userId) {
     return storage.unsealForCurrentUser<AISettings>(stored);
   }
 
-  const legacy = stored as StoredAISettings;
+  const guest = stored as StoredAISettings;
   let apiKey = '';
   try {
-    apiKey = legacy.apiKeyEncrypted ? await decryptApiKey(legacy.apiKeyEncrypted) : '';
+    apiKey = guest.apiKeyEncrypted ? await decryptApiKey(guest.apiKeyEncrypted) : '';
   } catch (e) {
     console.warn('[aiSettings] failed to decrypt API key', e);
   }
-  const settings: AISettings = {
-    apiEndpoint: legacy.apiEndpoint,
-    modelName: legacy.modelName,
+  return {
+    apiEndpoint: guest.apiEndpoint,
+    modelName: guest.modelName,
     apiKey,
-    updatedAt: legacy.updatedAt,
+    updatedAt: guest.updatedAt,
   };
-  if (userId) {
-    // device-key encryption isn't real protection for a signed-in user
-    await writeAISettings(userId, settings, storage).catch((e) => {
-      console.warn('[aiSettings] failed to migrate settings to sealed storage', e);
-    });
-  }
-  return settings;
 }
 
 async function writeAISettings(
