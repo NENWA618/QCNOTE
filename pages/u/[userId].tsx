@@ -196,7 +196,7 @@ export default function PublicProfilePage() {
           ) : profile ? (
             <div className="space-y-8">
               {/* 主页头部：渐变横幅 + 压在横幅上的头像。窄屏居中，宽屏左对齐 */}
-              <header className={`${panelClass} overflow-hidden`}>
+              <div className={`${panelClass} overflow-hidden`}>
                 <div
                   aria-hidden="true"
                   className="h-24 sm:h-32 bg-linear-to-r from-accent-pink/70 via-primary-dark/60 to-accent-purple/70"
@@ -243,7 +243,7 @@ export default function PublicProfilePage() {
                     </p>
                   )}
                 </div>
-              </header>
+              </div>
 
               <section aria-labelledby="public-notes-heading">
                 <h2
