@@ -56,17 +56,6 @@ function useActiveSection(ids: string[]) {
   return active;
 }
 
-function useScrolledPast(threshold: number) {
-  const [past, setPast] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setPast(window.scrollY > threshold);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [threshold]);
-  return past;
-}
-
 function scrollToSection(e: React.MouseEvent<HTMLAnchorElement>, id: string) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -85,7 +74,6 @@ export default function LegalPage({
 }: LegalPageProps) {
   const [ids] = useState(() => sections.map((s) => s.id));
   const active = useActiveSection(ids);
-  const showBackToTop = useScrolledPast(600);
 
   const toc = (onNavigate?: (link: HTMLAnchorElement) => void) => (
     <ol className="space-y-0.5 text-sm">
@@ -231,20 +219,6 @@ export default function LegalPage({
             </div>
           </div>
         </article>
-
-        {showBackToTop && (
-          <button
-            type="button"
-            onClick={() =>
-              window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
-            }
-            aria-label="回到顶部"
-            className="fixed right-4 bottom-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-primary-light/60 bg-white/90 text-ink shadow-md backdrop-blur sm:right-6 sm:bottom-6 dark:border-dark-border dark:bg-dark-surface/90 dark:text-dark-text"
-            style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
-          >
-            ↑
-          </button>
-        )}
       </Layout>
     </>
   );

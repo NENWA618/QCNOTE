@@ -1,6 +1,7 @@
 import React from 'react';
 import Header from './Header';
 import Footer from './Footer';
+import BackToTop from './BackToTop';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,6 +22,7 @@ const Layout: React.FC<LayoutProps> = ({
       <Header />
       <main className={`${fullBleed ? '' : 'page-container'} ${className}`.trim()}>{children}</main>
       <Footer layout={footerLayout} />
+      <BackToTop />
     </div>
   );
 };
