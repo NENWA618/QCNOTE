@@ -13,7 +13,7 @@ export async function initPostgresClient(): Promise<Pool> {
       console.warn('DATABASE_URL environment variable is not set, using mock PostgreSQL client');
       pgPool = {
         query: async () => ({ rows: [] }),
-        connect: async () => ({}),
+        connect: async () => ({ release: () => {} }),
         on: () => {},
       } as unknown as Pool;
       return pgPool!;
@@ -43,7 +43,8 @@ export async function initPostgresClient(): Promise<Pool> {
   });
 
   try {
-    await pgPool.connect();
+    // 用 query 验证连通性：pool.query 会自动借出并归还连接，避免 connect() 后忘记 release 而永久占用 1 个连接
+    await pgPool.query('SELECT 1');
     await initializeSchema(pgPool);
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
@@ -59,7 +60,7 @@ export async function initPostgresClient(): Promise<Pool> {
           }
           return { rows: [] };
         },
-        connect: async () => ({}),
+        connect: async () => ({ release: () => {} }),
         on: () => {},
       } as unknown as Pool;
       return pgPool!;
