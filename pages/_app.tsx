@@ -8,6 +8,7 @@ import { Inter } from 'next/font/google';
 import { setupGlobalErrorHandlers } from '../lib/errorHandler';
 import ErrorBoundary from '../components/ErrorBoundary';
 import AppLoader from '../components/AppLoader';
+import { requestPersistentStorage } from '../lib/persistStorage';
 // 推送订阅提示只在客户端需要，延迟加载以缩小首屏 JS。
 const PushNotificationPrompt = dynamic(() => import('../components/PushNotificationPrompt'), {
   ssr: false,
@@ -67,6 +68,8 @@ export default function App({ Component, pageProps }: AppProps) {
       try {
         const storage = storageModule.initWindowStorage();
         const success = await storage?.enableIndexedDB();
+        // 申请持久化存储，降低浏览器在空间紧张时清除笔记数据的风险（不阻塞页面渲染）
+        if (success) void requestPersistentStorage();
         if (process.env.NODE_ENV !== 'production') {
           console.log(
             success ? '✓ IndexedDB 已启用' : '⚠ IndexedDB 启用失败，继续使用 localStorage',
