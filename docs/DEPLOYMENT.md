@@ -101,7 +101,7 @@ Service Worker（安装为应用、离线、推送）只在生产构建中注册
 ### Vercel + Render（推荐）
 
 - **前端 → Vercel**：连接 GitHub 仓库，配置前端环境变量即可自动部署。
-- **后端 → Render**：使用仓库里的 [`render.yaml`](../render.yaml)，它会部署后端并创建 Redis 和 PostgreSQL（`rootDir: server`，`TRUST_PROXY_HOPS=2` 对应 Cloudflare + Render 负载均衡两层代理）。在 Render 上补齐标记为 `sync: false` 的环境变量；`NODE_VERSION`、`NODE_ENV`、`PORT` 和代理跳数已在配置中设置。PostgreSQL IP allow list 当前允许所有地址（`0.0.0.0/0`）；如果不需要公网访问，应在 Render 中收紧该列表。
+- **后端 → Render**：使用仓库里的 [`render.yaml`](../render.yaml)，它会部署后端并创建 Redis 和 PostgreSQL（`rootDir: server`，`TRUST_PROXY_HOPS=2` 对应 Cloudflare + Render 负载均衡两层代理）。在 Render 上补齐标记为 `sync: false` 的环境变量；`NODE_VERSION`、`NODE_ENV`、`PORT` 和代理跳数已在配置中设置。PostgreSQL 的 `ipAllowList` 为空，禁止公网入站连接；同一区域的 Render 后端通过内部网络继续访问数据库。如需从本地电脑等非 Render 网络连接数据库，应临时添加可信的客户端公网 IP（`/32`），操作完成后移除。
 
 ### Docker Compose
 

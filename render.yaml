@@ -85,8 +85,6 @@ projects:
             user: note_postgresql_user
             plan: basic-256mb
             region: singapore
-            ipAllowList:
-              - source: 0.0.0.0/0
-                description: everywhere
+            ipAllowList: []
             postgresMajorVersion: "18"
             diskSizeGB: 1
