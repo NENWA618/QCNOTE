@@ -1,5 +1,10 @@
 # Frontend Dockerfile
-FROM node:22-alpine AS frontend
+FROM node:24-alpine AS frontend
+
+# Fail the build if the base image is older than the 2026-10-21 Node.js security release
+# (CVE-2026-111497, CVE-2026-105482, CVE-2026-105483, CVE-2026-106069 ...).
+# Rebuild with `docker build --pull` to refresh the node:24-alpine tag.
+RUN node -e "const[a,b,c]=process.versions.node.split('.').map(Number);const ok=a>24||(a===24&&(b>22||(b===22&&c>=1)));if(!ok){console.error('Node '+process.version+' < 24.22.1: pull a newer base image (docker build --pull)');process.exit(1)}"
 
 WORKDIR /app
 
@@ -17,7 +22,12 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:22-alpine AS production
+FROM node:24-alpine AS production
+
+# Fail the build if the base image is older than the 2026-10-21 Node.js security release
+# (CVE-2026-111497, CVE-2026-105482, CVE-2026-105483, CVE-2026-106069 ...).
+# Rebuild with `docker build --pull` to refresh the node:24-alpine tag.
+RUN node -e "const[a,b,c]=process.versions.node.split('.').map(Number);const ok=a>24||(a===24&&(b>22||(b===22&&c>=1)));if(!ok){console.error('Node '+process.version+' < 24.22.1: pull a newer base image (docker build --pull)');process.exit(1)}"
 
 WORKDIR /app
 

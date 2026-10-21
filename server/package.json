@@ -3,6 +3,9 @@
   "version": "1.0.3",
   "description": "Backend server for QCNOTE application",
   "main": "index.js",
+  "engines": {
+    "node": ">=24.22.1 <25"
+  },
   "scripts": {
     "start": "tsx --tsconfig tsconfig.server.json index.ts",
     "dev": "tsx --watch --tsconfig tsconfig.server.json index.ts",

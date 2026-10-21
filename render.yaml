@@ -17,6 +17,9 @@ services:
         value: production
       - key: PORT
         value: 10000
+      # 固定 Node 版本：Render 默认版本可能落后于安全发布（2026-10-21 起需 >= 24.22.1）
+      - key: NODE_VERSION
+        value: 24.22.1
       # 请求经 Cloudflare 和 Render 负载均衡两层代理到达后端；按 IP 限流时
       # 只信任这两跳追加的 X-Forwarded-For 条目（说明见 server/index.ts）
       - key: TRUST_PROXY_HOPS

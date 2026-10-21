@@ -1,7 +1,12 @@
 # Fastify backend Dockerfile
 # Build context is the repository root (see docker-compose.yml): server/tsconfig.server.json
 # extends ../tsconfig.json, so the root tsconfig.json must be inside the image too.
-FROM node:22-alpine
+FROM node:24-alpine
+
+# Fail the build if the base image is older than the 2026-10-21 Node.js security release
+# (CVE-2026-111497, CVE-2026-105482, CVE-2026-105483, CVE-2026-106069 ...).
+# Rebuild with `docker build --pull` to refresh the node:24-alpine tag.
+RUN node -e "const[a,b,c]=process.versions.node.split('.').map(Number);const ok=a>24||(a===24&&(b>22||(b===22&&c>=1)));if(!ok){console.error('Node '+process.version+' < 24.22.1: pull a newer base image (docker build --pull)');process.exit(1)}"
 
 WORKDIR /app/server
 
