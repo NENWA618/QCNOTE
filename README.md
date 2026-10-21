@@ -116,4 +116,5 @@ QCNOTE/
 ## 联系
 
 - 邮箱：yours@girl.cat
+- PGP：`D7F3 DC46 0FB4 8157 A16E 0D37 786A 2F50 8A54 AFD1`（[公钥](https://keys.openpgp.org/vks/v1/by-fingerprint/D7F3DC460FB48157A16E0D37786A2F508A54AFD1)）
 - GitHub：[@NENWA618](https://github.com/NENWA618)

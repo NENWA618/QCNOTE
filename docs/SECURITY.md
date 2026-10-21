@@ -192,4 +192,15 @@ upgrade-insecure-requests
 
 请发邮件到 yours@girl.cat，不要在公开的 Issue 里披露细节。
 
+如需加密通信，请使用下面的 OpenPGP 公钥：
+
+- 持有者：NENWA618 <yours@girl.cat>
+- 指纹：`D7F3 DC46 0FB4 8157 A16E 0D37 786A 2F50 8A54 AFD1`
+- 密钥 ID：`0x786A2F508A54AFD1`
+- 有效期：2026-10-20 至 2029-10-19
+- 公钥文件：[`public/.well-known/pgp-key.asc`](../public/.well-known/pgp-key.asc)（站点：`https://www.qcnote.com/.well-known/pgp-key.asc`）
+- 获取：[keys.openpgp.org](https://keys.openpgp.org/vks/v1/by-fingerprint/D7F3DC460FB48157A16E0D37786A2F508A54AFD1)，也可通过 `gpg --keyserver keys.openpgp.org --recv-keys D7F3DC460FB48157A16E0D37786A2F508A54AFD1` 导入
+
+导入后请核对指纹与上面一致，再发送加密邮件。
+
 参考：[MDN: Strict-Transport-Security](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security)、[HSTS Preload](https://hstspreload.org/)、[OWASP CSP Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html)、[MDN: Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)。

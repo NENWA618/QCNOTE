@@ -1,0 +1,4 @@
+Contact: mailto:yours@girl.cat
+Expires: 2027-10-20T00:00:00.000Z
+Encryption: https://www.qcnote.com/.well-known/pgp-key.asc
+Preferred-Languages: zh, en
