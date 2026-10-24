@@ -19,7 +19,7 @@
   "dependencies": {
     "@huggingface/transformers": "^4.3.1",
     "axios": "^1.20.0",
-    "jose": "^6.2.12",
+    "jose": "^6.2.13",
     "katex": "^0.19.0",
     "lunr": "^2.3.9",
     "next": "^16.4.2",
