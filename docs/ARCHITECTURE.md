@@ -359,7 +359,7 @@ WebDAV 的自动同步设置（开关、间隔、冲突策略）在“保存配�
 - **E2E**（Playwright + axe-core，`e2e/`）：首页、控制台主要流程，以及首页和控制台没有 critical 级的无障碍问题。
 - **CI**（`.github/workflows/ci.yml`）：前后端 `npm audit`（高危）、lint、`tsc --noEmit`、单元测试、生产构建；E2E 是独立任务。
 - **Lighthouse CI**（`lighthouse.yml`）：性能低于 0.9 报错，无障碍低于 0.9 警告。
-- **公共依赖同步**（`sync-dependencies.yml`）：用 `scripts/sync-common-deps.mjs` 保持前后端共用依赖的版本一致。
+- **公共依赖版本一致**：CI 里运行 `syncpack lint`（配置在 `.syncpackrc.json`），前后端共用依赖版本不一致就失败；本地用 `npm run deps:fix` 自动修正。Dependabot 用 `group-by: dependency-name` 跨目录分组，把同名依赖在前后端的升级合并成一个 PR。
 - 提交前 husky 运行 lint-staged（ESLint + Prettier）。
 
 ## 12. 技术栈

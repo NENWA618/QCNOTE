@@ -74,6 +74,9 @@ jobs:
         working-directory: server
         run: npm audit --audit-level=high --omit=dev
 
+      - name: Check shared dependency versions (frontend vs backend)
+        run: npm run deps:check
+
       - name: Lint
         run: npm run lint
 
