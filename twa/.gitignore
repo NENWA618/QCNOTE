@@ -1,0 +1,12 @@
+# 签名密钥绝不能提交：丢了或泄露都意味着没法再用同一个上传身份更新 App
+*.keystore
+*.jks
+
+# Gradle / Bubblewrap 构建产物
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+*.aab
+*.idsig

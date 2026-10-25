@@ -1,0 +1,10 @@
+{
+  "source": ["package.json", "server/package.json"],
+  "versionGroups": [
+    {
+      "label": "前后端共用依赖必须版本一致",
+      "dependencies": ["**"],
+      "dependencyTypes": ["prod", "dev"]
+    }
+  ]
+}

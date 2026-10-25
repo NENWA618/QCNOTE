@@ -1,0 +1,51 @@
+{
+  "packageId": "com.qcnote.app",
+  "host": "www.qcnote.com",
+  "name": "QCNOTE - 个人笔记",
+  "launcherName": "QCNOTE",
+  "display": "standalone",
+  "themeColor": "#C8B8C8",
+  "themeColorDark": "#C8B8C8",
+  "navigationColor": "#C8B8C8",
+  "navigationColorDark": "#C8B8C8",
+  "navigationDividerColor": "#C8B8C8",
+  "navigationDividerColorDark": "#C8B8C8",
+  "backgroundColor": "#C8B8C8",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://www.qcnote.com/images/icons/note_icon_512.png",
+  "maskableIconUrl": "https://www.qcnote.com/images/icons/note_icon_maskable_512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "qcnote"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 3,
+  "shortcuts": [
+    {
+      "name": "我的笔记",
+      "shortName": "我的笔记",
+      "url": "https://www.qcnote.com/dashboard",
+      "chosenIconUrl": "https://www.qcnote.com/images/icons/note_icon_192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://www.qcnote.com/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://www.qcnote.com/",
+  "minSdkVersion": 24,
+  "orientation": "default",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}
