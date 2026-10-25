@@ -40,7 +40,6 @@ import { useSemanticSearch } from '../lib/hooks/useSemanticSearch';
 import { alertDialog, confirmDialog, promptDialog } from '../lib/dialog';
 import { showNotification } from '../lib/ui';
 
-const DEFAULT_NOTE_TITLE = '新笔记';
 const SEMANTIC_SEARCH_STORAGE_KEY = 'qcnote:semantic-search-enabled';
 
 const DEFAULT_WEBDAV_CONFIG = {
@@ -121,9 +120,6 @@ const Dashboard: React.FC = () => {
   } = usePublishedNotes(Boolean(currentUserId));
 
   const [paletteOpen, setPaletteOpen] = useState(false);
-  // 刚点“新建笔记”建出来的那篇：点“新建”会立刻在存储里建一篇空笔记，如果用户什么都没写就取消，
-  // 要把它清掉，否则列表里会留下一篇“新笔记”空壳
-  const freshNoteRef = useRef<NoteItem | null>(null);
 
   // Editor state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -352,52 +348,33 @@ const Dashboard: React.FC = () => {
     setPendingClip(null);
   };
 
-  const createNote = async (title: string) => {
-    const s = storageRef.current;
-    if (!s) return;
-    let newNote: NoteItem;
-    try {
-      newNote = await s.addNoteAsync({ title, content: '' });
-    } catch (err) {
-      reportSaveError('新建笔记', err);
-      return;
-    }
-    await loadNotes();
-    // 只自动清理默认标题的：用命令面板带着标题新建的，标题是用户明确给的，不算“空壳”
-    freshNoteRef.current = title === DEFAULT_NOTE_TITLE ? newNote : null;
-    setEditingNote(newNote);
+  /**
+   * 新建笔记：只在内存里打开一份草稿（id 为空），不写入存储。
+   * 取消就直接丢弃，不会留下空笔记；第一次保存时才真正创建（见 handleSaveNote）。
+   */
+  const startNewNote = (title = '') => {
+    const now = Date.now();
+    setEditingNote({
+      id: '',
+      title,
+      content: '',
+      category: '生活',
+      tags: [],
+      color: '#dc96b4',
+      createdAt: now,
+      updatedAt: now,
+      links: [],
+      backlinks: [],
+      versions: [],
+    });
     setEditorVisible(true);
     setIsPreview(false);
   };
 
-  /** 取消编辑时，如果这篇是刚新建且一个字段都没动过，就把它彻底删掉（不进回收站） */
-  const discardFreshNoteIfUntouched = async (current: NoteItem | null) => {
-    const fresh = freshNoteRef.current;
-    freshNoteRef.current = null;
-    const s = storageRef.current;
-    if (!fresh || !s || !current || current.id !== fresh.id) return;
-    const untouched =
-      current.title === fresh.title &&
-      current.content === fresh.content &&
-      current.category === fresh.category &&
-      current.color === fresh.color &&
-      current.tags.length === fresh.tags.length &&
-      !current.coloredRanges?.length;
-    if (!untouched) return;
-    try {
-      await s.permanentlyDeleteNoteAsync(fresh.id);
-    } catch (err) {
-      reportSaveError('清理空笔记', err);
-      return;
-    }
-    await loadNotes();
-  };
-
-  // 不直接把 createNote 交给 onClick：事件对象会被当成标题传进去
-  const handleNewNote = () => createNote(DEFAULT_NOTE_TITLE);
+  // 不直接把 startNewNote 交给 onClick：事件对象会被当成标题传进去
+  const handleNewNote = () => startNewNote();
 
   const handleEditNote = (note: NoteItem) => {
-    if (freshNoteRef.current?.id !== note.id) freshNoteRef.current = null;
     setEditingNote(note);
     setEditorVisible(true);
     setIsPreview(false);
@@ -407,9 +384,13 @@ const Dashboard: React.FC = () => {
   const handleSaveNote = async (options?: { keepOpen?: boolean }): Promise<boolean> => {
     const s = storageRef.current;
     if (!s || !editingNote) return false;
+    // id 为空 = 还没入库的草稿：这是它第一次保存，在这里才真正创建
+    const isDraft = !editingNote.id;
     let savedNote: NoteItem | null;
     try {
-      savedNote = await s.updateNoteAsync(editingNote.id, editingNote);
+      savedNote = isDraft
+        ? await s.addNoteAsync(editingNote)
+        : await s.updateNoteAsync(editingNote.id, editingNote);
     } catch (err) {
       // 保持编辑器打开，用户的修改还在，可以重试
       reportSaveError('保存笔记', err);
@@ -428,8 +409,6 @@ const Dashboard: React.FC = () => {
         console.warn('[Dashboard] 无法触发情感保存事件', error);
       }
     }
-    // 用户明确保存过，即使内容是空的也是有意为之，不再自动清理
-    if (freshNoteRef.current?.id === editingNote.id) freshNoteRef.current = null;
     await loadNotes();
     if (options?.keepOpen) {
       // 留在编辑器里：只同步存储层算出来的字段（版本、双链、时间）。
@@ -437,9 +416,12 @@ const Dashboard: React.FC = () => {
       if (savedNote) {
         const saved = savedNote;
         setEditingNote((prev) =>
-          prev && prev.id === saved.id
+          prev && (prev.id === saved.id || (isDraft && prev.id === ''))
             ? {
                 ...prev,
+                // 草稿第一次保存：拿到存储分配的 id，之后的保存就是更新这篇
+                id: saved.id,
+                createdAt: saved.createdAt,
                 versions: saved.versions,
                 links: saved.links,
                 backlinks: saved.backlinks,
@@ -490,7 +472,6 @@ const Dashboard: React.FC = () => {
     const s = storageRef.current;
     if (!s) return;
     if (!(await confirmUnpublishBeforeRemoval(id))) return;
-    if (freshNoteRef.current?.id === id) freshNoteRef.current = null;
     try {
       await s.deleteNoteAsync(id);
     } catch (err) {
@@ -1103,7 +1084,7 @@ const Dashboard: React.FC = () => {
         commands={paletteCommands}
         onClose={() => setPaletteOpen(false)}
         onOpenNote={handleEditNote}
-        onCreateNote={(title) => void createNote(title)}
+        onCreateNote={startNewNote}
       />
 
       {/* Note Editor Modal */}
@@ -1115,10 +1096,8 @@ const Dashboard: React.FC = () => {
         allNotes={notes}
         onSave={handleSaveNote}
         onCancel={() => {
-          const cancelled = editingNote;
           setEditorVisible(false);
           setEditingNote(null);
-          void discardFreshNoteIfUntouched(cancelled);
         }}
         onChange={(field, value) => {
           setEditingNote((prev) => (prev ? { ...prev, [field]: value } : prev));

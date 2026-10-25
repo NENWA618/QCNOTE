@@ -40,6 +40,8 @@ export function createNote(note: Partial<NoteItem>): NoteItem {
     category: note.category || '生活',
     tags: note.tags || [],
     color: note.color || '#dc96b4',
+    // 草稿第一次保存时可能已经给文字上过色
+    ...(note.coloredRanges?.length ? { coloredRanges: note.coloredRanges } : {}),
     createdAt: now,
     updatedAt: now,
     links: [],

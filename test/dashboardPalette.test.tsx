@@ -42,7 +42,7 @@ describe('Dashboard 命令面板', () => {
     const option = await screen.findByRole('option', { name: /^新建笔记$/ });
     fireEvent.click(option);
 
-    expect(await screen.findByRole('dialog', { name: '编辑笔记' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: '新建笔记' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: '快速跳转与命令' })).toBeNull();
   });
 
@@ -50,7 +50,7 @@ describe('Dashboard 命令面板', () => {
     render(<Dashboard />);
     await screen.findByRole('heading', { name: '笔记管理' });
     fireEvent.click(screen.getByRole('button', { name: '新建笔记' }));
-    await screen.findByRole('dialog', { name: '编辑笔记' });
+    await screen.findByRole('dialog', { name: '新建笔记' });
 
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
     expect(screen.queryByRole('dialog', { name: '快速跳转与命令' })).toBeNull();
@@ -70,7 +70,7 @@ describe('Dashboard 命令面板', () => {
     render(<Dashboard />);
     await screen.findByRole('heading', { name: '笔记管理' });
     fireEvent.click(screen.getByRole('button', { name: '新建笔记' }));
-    await screen.findByRole('dialog', { name: '编辑笔记' });
+    await screen.findByRole('dialog', { name: '新建笔记' });
 
     const area = screen.getByPlaceholderText(/开始记录您的想法/) as HTMLTextAreaElement;
     fireEvent.change(area, { target: { value: '第一段内容' } });
@@ -79,12 +79,14 @@ describe('Dashboard 命令面板', () => {
     fireEvent.keyDown(window, { key: 's', ctrlKey: true });
     await waitFor(() => expect(screen.queryByText('未保存')).toBeNull());
 
+    // 保存后它已经是一篇真正的笔记了：对话框标题变成“编辑笔记”
     expect(screen.getByRole('dialog', { name: '编辑笔记' })).toBeInTheDocument();
     expect(area.value).toBe('第一段内容');
   });
 
-  describe('取消新建的空笔记', () => {
+  describe('新建笔记是草稿：保存时才创建', () => {
     const countText = () => screen.getByText(/^\d+( \/ \d+)? 篇$/).textContent;
+    const count = () => Number(countText()!.match(/^\d+/)![0]);
     const openNew = async () => {
       render(<Dashboard />);
       await screen.findByRole('heading', { name: '笔记管理' });
@@ -92,38 +94,72 @@ describe('Dashboard 命令面板', () => {
       await act(async () => {
         await new Promise((r) => setTimeout(r, 150));
       });
-      const before = countText();
+      const before = count();
       fireEvent.click(screen.getByRole('button', { name: '新建笔记' }));
-      await screen.findByRole('dialog', { name: '编辑笔记' });
+      await screen.findByRole('dialog', { name: '新建笔记' });
       return before;
     };
+    const area = () => screen.getByPlaceholderText(/开始记录您的想法/) as HTMLTextAreaElement;
 
-    it('什么都没写就取消：空笔记被清掉，不进回收站', async () => {
+    it('点新建不会写入存储；什么都没写就取消，列表保持原样', async () => {
       const before = await openNew();
-      await waitFor(() => expect(countText()).not.toBe(before)); // 建出来了
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 100));
+      });
+      expect(count()).toBe(before); // 编辑器开着，但还没有这篇笔记
       fireEvent.click(screen.getByRole('button', { name: '取消' }));
-      await waitFor(() => expect(countText()).toBe(before));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 100));
+      });
+      expect(count()).toBe(before);
     });
 
-    it('写了内容再取消（确认放弃更改）：笔记保留，因为它已被改动过', async () => {
-      const before = await openNew();
-      const area = screen.getByPlaceholderText(/开始记录您的想法/);
-      fireEvent.change(area, { target: { value: '有内容' } });
-      fireEvent.keyDown(window, { key: 's', ctrlKey: true });
-      await waitFor(() => expect(screen.queryByText('未保存')).toBeNull());
-      fireEvent.click(screen.getByRole('button', { name: '取消' }));
-      await waitFor(() => expect(screen.queryByRole('dialog', { name: '编辑笔记' })).toBeNull());
-      expect(countText()).not.toBe(before);
+    it('新建时没有“删除”和“历史”这类只对已有笔记有意义的按钮', async () => {
+      await openNew();
+      expect(screen.queryByRole('button', { name: '删除' })).toBeNull();
     });
 
-    it('改了标题（还没写正文）再取消：不会被当成空壳删掉', async () => {
+    it('第一次保存才创建；继续编辑再保存是更新，不会重复创建', async () => {
       const before = await openNew();
-      fireEvent.change(screen.getByPlaceholderText('笔记标题'), { target: { value: '我的标题' } });
+      fireEvent.change(area(), { target: { value: '第一版' } });
+      fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+      await waitFor(() => expect(count()).toBe(before + 1));
+
+      fireEvent.change(area(), { target: { value: '第二版' } });
       fireEvent.keyDown(window, { key: 's', ctrlKey: true });
       await waitFor(() => expect(screen.queryByText('未保存')).toBeNull());
-      fireEvent.click(screen.getByRole('button', { name: '取消' }));
-      await waitFor(() => expect(screen.queryByRole('dialog', { name: '编辑笔记' })).toBeNull());
-      expect(countText()).not.toBe(before);
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 100));
+      });
+      expect(count()).toBe(before + 1);
+      expect(area().value).toBe('第二版');
+    });
+
+    it('“保存”按钮：创建并关闭编辑器', async () => {
+      const before = await openNew();
+      fireEvent.change(area(), { target: { value: '要保存的' } });
+      fireEvent.click(screen.getByRole('button', { name: '保存' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(count()).toBe(before + 1));
+    });
+
+    it('命令面板带标题新建：标题已填好，保存前同样不入库', async () => {
+      render(<Dashboard />);
+      await screen.findByRole('heading', { name: '笔记管理' });
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 150));
+      });
+      const before = count();
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      fireEvent.change(await screen.findByRole('combobox'), {
+        target: { value: '全新的想法ZZ' },
+      });
+      fireEvent.click(await screen.findByRole('option', { name: /新建笔记「全新的想法ZZ」/ }));
+
+      await screen.findByRole('dialog', { name: '新建笔记' });
+      expect(screen.getByPlaceholderText('笔记标题')).toHaveValue('全新的想法ZZ');
+      expect(count()).toBe(before);
     });
   });
 });
