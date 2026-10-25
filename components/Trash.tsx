@@ -1,5 +1,6 @@
 import React from 'react';
 import { NoteItem } from '../lib/storage';
+import { confirmDialog } from '../lib/dialog';
 
 interface TrashProps {
   trashNotes: NoteItem[];
@@ -63,10 +64,14 @@ export const Trash: React.FC<TrashProps> = ({ trashNotes, onRestore, onPermanent
                 ↩️ 还原
               </button>
               <button
-                onClick={() => {
-                  if (window.confirm('确定要永久删除此笔记吗？此操作无法撤销。')) {
-                    onPermanentlyDelete(note.id);
-                  }
+                onClick={async () => {
+                  const ok = await confirmDialog({
+                    title: '永久删除这篇笔记？',
+                    description: '此操作无法撤销。',
+                    confirmLabel: '永久删除',
+                    tone: 'danger',
+                  });
+                  if (ok) onPermanentlyDelete(note.id);
                 }}
                 className="px-3 py-1 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 transition"
                 title="永久删除"

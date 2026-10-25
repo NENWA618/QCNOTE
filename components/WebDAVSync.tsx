@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { WebDAVConfig } from '../lib/storage';
 import WebDAVSyncManager, { SyncStatus } from '../lib/webdavSyncManager';
+import { confirmDialog } from '../lib/dialog';
 
 interface WebDAVSyncProps {
   config: WebDAVConfig;
@@ -161,15 +162,16 @@ const WebDAVSync: React.FC<WebDAVSyncProps> = ({
         : { type: 'error', text: '下载失败，或远端数据无法解析' },
     );
 
-  const handlePush = () => {
+  const handlePush = async () => {
     // 与“立即同步”不同，这里直接用本机笔记覆盖远端，其他设备尚未同步的修改会丢失
-    if (
-      !window.confirm(
+    const ok = await confirmDialog({
+      title: '覆盖远端文件？',
+      description:
         '将用本机的笔记覆盖 WebDAV 上的文件，其他设备尚未同步的修改会丢失。\n\n一般情况下请使用“立即同步”。确定继续？',
-      )
-    ) {
-      return;
-    }
+      confirmLabel: '覆盖远端',
+      tone: 'danger',
+    });
+    if (!ok) return;
     void run('push', async () =>
       (await onPush(localConfig))
         ? { type: 'success', text: '已用本机笔记覆盖远端' }
@@ -177,10 +179,14 @@ const WebDAVSync: React.FC<WebDAVSyncProps> = ({
     );
   };
 
-  const handleClear = () => {
-    if (!window.confirm('清除本机保存的 WebDAV 配置（包括密码和加密密钥）？远端文件不受影响。')) {
-      return;
-    }
+  const handleClear = async () => {
+    const ok = await confirmDialog({
+      title: '清除 WebDAV 配置？',
+      description: '将清除本机保存的 WebDAV 配置，包括密码和加密密钥。远端文件不受影响。',
+      confirmLabel: '清除',
+      tone: 'danger',
+    });
+    if (!ok) return;
     void run('clear', async () => {
       const ok = await onClearConfig();
       if (ok) setLocalConfig(EMPTY_CONFIG);

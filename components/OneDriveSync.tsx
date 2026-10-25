@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { confirmDialog } from '../lib/dialog';
 
 interface OneDriveConfig {
   accessToken: string;
@@ -80,8 +81,14 @@ const OneDriveSync: React.FC<OneDriveSyncProps> = ({
         : { type: 'error', text: '保存失败' },
     );
 
-  const handleClear = () => {
-    if (!window.confirm('清除本机保存的 OneDrive 配置（包括访问令牌）？远端文件不受影响。')) return;
+  const handleClear = async () => {
+    const ok = await confirmDialog({
+      title: '清除 OneDrive 配置？',
+      description: '将清除本机保存的 OneDrive 配置，包括访问令牌。远端文件不受影响。',
+      confirmLabel: '清除',
+      tone: 'danger',
+    });
+    if (!ok) return;
     void run('clear', async () =>
       (await onClearConfig())
         ? { type: 'success', text: '已清除配置' }

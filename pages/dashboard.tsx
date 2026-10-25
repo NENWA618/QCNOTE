@@ -34,6 +34,8 @@ import { useDeviceVerification } from '../lib/hooks/useDeviceVerification';
 import { useLocalStorageFlag } from '../lib/hooks/useLocalStorageFlag';
 import { useMediaQuery } from '../lib/hooks/useMediaQuery';
 import { useSemanticSearch } from '../lib/hooks/useSemanticSearch';
+import { alertDialog, confirmDialog, promptDialog } from '../lib/dialog';
+import { showNotification } from '../lib/ui';
 
 const SEMANTIC_SEARCH_STORAGE_KEY = 'qcnote:semantic-search-enabled';
 
@@ -51,7 +53,11 @@ const DEFAULT_WEBDAV_CONFIG = {
 // 存储层保存失败时会抛错（而不是假装成功），这里统一提示用户
 const reportSaveError = (action: string, err: unknown) => {
   console.error(`[Dashboard] ${action}失败`, err);
-  alert(`${action}失败：${err instanceof Error ? err.message : String(err)}`);
+  showNotification(
+    `${action}失败：${err instanceof Error ? err.message : String(err)}`,
+    5000,
+    'error',
+  );
 };
 
 const Dashboard: React.FC = () => {
@@ -316,7 +322,7 @@ const Dashboard: React.FC = () => {
     const valid = parseClipFromHash(window.location.hash) !== null;
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
     if (!valid) {
-      alert('剪藏数据无效或过大，已忽略。');
+      showNotification('剪藏数据无效或过大，已忽略。', 4000, 'error');
     }
   }, []);
 
@@ -393,13 +399,22 @@ const Dashboard: React.FC = () => {
   // 主页被管理员关闭时用户无法取消发布，也就没有可问的：直接放行本地删除，服务器上的副本保留。
   const confirmUnpublishBeforeRemoval = async (id: string): Promise<boolean> => {
     if (!publishedNotes[id] || publicSuspension) return true;
-    const alsoUnpublish = window.confirm(
-      '这篇笔记已公开在你的个人主页。\n\n点“确定”：同时取消发布（删除服务器上的公开副本）\n点“取消”：保留公开副本，仅删除本地笔记',
-    );
+    // danger：默认焦点落在“保留公开副本”（不会删除任何东西的那一项）
+    const alsoUnpublish = await confirmDialog({
+      title: '这篇笔记已公开',
+      description:
+        '它公开在你的个人主页上。\n\n“同时取消发布”会删除服务器上的公开副本；“保留公开副本”只删除本地笔记。',
+      confirmLabel: '同时取消发布',
+      cancelLabel: '保留公开副本',
+      tone: 'danger',
+    });
     if (!alsoUnpublish) return true;
     const result = await unpublishNote(id);
     if (!result.ok) {
-      window.alert(`取消发布失败，笔记未删除：${result.error}`);
+      await alertDialog({
+        title: '取消发布失败',
+        description: `笔记未删除：${result.error}`,
+      });
       return false;
     }
     return true;
@@ -433,27 +448,41 @@ const Dashboard: React.FC = () => {
     try {
       const count = await s.importFromJSON(file);
       await loadNotes();
-      alert(`成功导入 ${count} 条笔记`);
+      showNotification(`成功导入 ${count} 条笔记`, 3000, 'success');
     } catch (err) {
-      alert(String(err) || '导入失败');
+      await alertDialog({ title: '导入失败', description: String(err) || '导入失败' });
     }
   };
 
   const handleClearAll = async () => {
     const s = storageRef.current;
     if (!s) return;
-    const typed = prompt('此操作将删除所有笔记且无法撤销。请输入“清空”以确认：');
+    const typed = await promptDialog({
+      title: '清空所有笔记？',
+      description: '此操作将删除所有笔记且无法撤销。请输入“清空”以确认：',
+      placeholder: '清空',
+      confirmLabel: '清空全部',
+      tone: 'danger',
+    });
     if (typed?.trim() === '清空') {
       const publishedCount = publicSuspension ? 0 : Object.keys(publishedNotes).length;
       if (
         publishedCount > 0 &&
-        window.confirm(
-          `你有 ${publishedCount} 篇笔记公开在个人主页。\n\n点“确定”：同时取消发布全部公开笔记\n点“取消”：保留公开副本，仅清空本地笔记`,
-        )
+        (await confirmDialog({
+          title: `你有 ${publishedCount} 篇公开笔记`,
+          description:
+            '它们公开在你的个人主页上。\n\n“同时取消发布”会删除服务器上的全部公开副本；“保留公开副本”只清空本地笔记。',
+          confirmLabel: '同时取消发布',
+          cancelLabel: '保留公开副本',
+          tone: 'danger',
+        }))
       ) {
         const result = await unpublishAllNotes();
         if (!result.ok) {
-          window.alert(`取消发布失败，笔记未清空：${result.error}`);
+          await alertDialog({
+            title: '取消发布失败',
+            description: `笔记未清空：${result.error}`,
+          });
           return;
         }
       }
@@ -688,7 +717,7 @@ const Dashboard: React.FC = () => {
       return;
     }
     await loadNotes();
-    alert('✅ 成功恢复到版本！');
+    showNotification('已恢复到所选版本', 3000, 'success');
   };
 
   return (

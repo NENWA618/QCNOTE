@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { NoteItem } from '../lib/storage';
+import { confirmDialog } from '../lib/dialog';
+import { isImeComposing } from '../lib/ime';
 
 interface TagManagerProps {
   notes: NoteItem[];
@@ -76,8 +78,14 @@ const TagManager: React.FC<TagManagerProps> = ({
     setNewTagName('');
   };
 
-  const handleDeleteTag = (tag: string) => {
-    if (confirm(`确定要删除标签"${tag}"吗？这将从所有笔记中移除此标签。`)) {
+  const handleDeleteTag = async (tag: string) => {
+    const ok = await confirmDialog({
+      title: `删除标签 #${tag}？`,
+      description: '这将从所有笔记中移除此标签。',
+      confirmLabel: '删除标签',
+      tone: 'danger',
+    });
+    if (ok) {
       onTagDelete(tag);
       setSelectedTags((prev) => prev.filter((t) => t !== tag));
     }
@@ -241,6 +249,8 @@ const TagManager: React.FC<TagManagerProps> = ({
                     onChange={(e) => setNewTagName(e.target.value)}
                     onBlur={() => finishRename(tag)}
                     onKeyDown={(e) => {
+                      // 输入法选词时的 Enter/Esc 是在操作候选，不能当成“完成/取消重命名”
+                      if (isImeComposing(e.nativeEvent)) return;
                       if (e.key === 'Enter') finishRename(tag);
                       if (e.key === 'Escape') {
                         setRenamingTag(null);

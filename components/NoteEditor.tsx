@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import SentimentUtil from '../lib/sentiment';
+import { confirmDialog } from '../lib/dialog';
+import { isImeComposing } from '../lib/ime';
 import { NoteItem, NoteVersion } from '../lib/storage';
 import TextColorUtils from '../lib/textColorUtils';
 import { VersionHistory } from './VersionHistory';
@@ -133,8 +135,17 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
   const isOpen = isVisible && !!localNote;
   const dirty = !!localNote && noteFingerprint(localNote) !== snapshot;
 
-  const requestClose = useCallback(() => {
-    if (dirty && !window.confirm('有未保存的更改，确定要放弃吗？')) return;
+  const requestClose = useCallback(async () => {
+    if (dirty) {
+      const discard = await confirmDialog({
+        title: '放弃未保存的更改？',
+        description: '有未保存的更改，确定要放弃吗？',
+        confirmLabel: '放弃更改',
+        cancelLabel: '继续编辑',
+        tone: 'danger',
+      });
+      if (!discard) return;
+    }
     onCancel();
   }, [dirty, onCancel]);
 
@@ -152,7 +163,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !showVersionHistory && !e.defaultPrevented) {
+      // 输入法选词时 Esc 是取消候选，不能当成“关闭编辑器”
+      if (e.key === 'Escape' && !isImeComposing(e) && !showVersionHistory && !e.defaultPrevented) {
         e.preventDefault();
         requestClose();
         return;
@@ -200,7 +212,12 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
     const message = publishInfo
       ? '将用当前内容更新已公开的版本。\n更新后，任何人都能在你的个人主页看到新内容。是否继续？'
       : '发布后，这篇笔记的标题和正文会以明文保存在服务器上，并显示在你的个人主页，任何人（包括未登录的访客）都能看到。\n\n发布的是此刻内容的一份副本，之后修改本地笔记不会自动同步；你可以随时取消发布并删除这份副本。\n\n确定要发布吗？';
-    if (!window.confirm(message)) return;
+    const ok = await confirmDialog({
+      title: publishInfo ? '更新已公开的版本' : '发布到个人主页',
+      description: message,
+      confirmLabel: publishInfo ? '更新发布' : '发布',
+    });
+    if (!ok) return;
 
     setPublishBusy(true);
     setPublishError(null);
@@ -211,9 +228,14 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 
   const handleUnpublish = async () => {
     if (!onUnpublish || publishSuspension) return;
-    if (!window.confirm('取消发布后，服务器上的公开副本会被删除，别人将无法再访问。是否继续？')) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: '取消发布？',
+      description: '取消发布后，服务器上的公开副本会被删除，别人将无法再访问。是否继续？',
+      confirmLabel: '取消发布',
+      cancelLabel: '保留',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setPublishBusy(true);
     setPublishError(null);
     const result = await onUnpublish(localNote.id);
@@ -414,10 +436,14 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
             )}
             {localNote?.id && (
               <button
-                onClick={() => {
-                  if (window.confirm('确定要删除此笔记吗？它将被移到回收站。')) {
-                    onDelete(localNote.id);
-                  }
+                onClick={async () => {
+                  const ok = await confirmDialog({
+                    title: '删除这篇笔记？',
+                    description: '它将被移到回收站，之后仍可以在回收站里还原。',
+                    confirmLabel: '移到回收站',
+                    tone: 'danger',
+                  });
+                  if (ok) onDelete(localNote.id);
                 }}
                 className="btn-danger btn-sm"
               >

@@ -4,6 +4,8 @@ import { useSession } from 'next-auth/react';
 import { getAISettings, saveAISettings, clearAISettings } from '../lib/aiSettings';
 import { callChatCompletion } from '../lib/aiClient';
 import NoteStorage, { NoteStorageError, initWindowStorage } from '../lib/storage';
+import { confirmDialog } from '../lib/dialog';
+import { isImeComposing } from '../lib/ime';
 
 const LOCKED_HINT =
   '当前设备未解锁，无法读取或保存 API Key。请先打开「笔记」页完成设备验证后再回来。';
@@ -175,7 +177,13 @@ const AIModelSettings: React.FC = () => {
   };
 
   const handleClear = async () => {
-    if (!window.confirm('清除本设备上保存的 AI 接口配置（包括 API Key）？')) return;
+    const ok = await confirmDialog({
+      title: '清除 AI 接口配置？',
+      description: '将清除本设备上保存的 AI 接口配置，包括 API Key。',
+      confirmLabel: '清除',
+      tone: 'danger',
+    });
+    if (!ok) return;
     await clearAISettings(sessionUserId);
     setFields(EMPTY_FIELDS);
     setSaved(EMPTY_FIELDS);
@@ -219,7 +227,7 @@ const AIModelSettings: React.FC = () => {
 
   // Ctrl/⌘ + Enter 发送
   const handlePromptKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !isImeComposing(e.nativeEvent)) {
       e.preventDefault();
       void handleGenerate();
     }

@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react';
 import axios from 'axios';
 import { withApiBaseUrl } from '../lib/api-client';
 import PushNotificationManager from './PushNotificationManager';
+import { confirmDialog } from '../lib/dialog';
 
 type Role = 'user' | 'admin';
 // “主页已关闭”不是角色，但管理员同样需要按它筛选
@@ -177,12 +178,14 @@ export default function AdminPanel() {
       setSelectedUser(null);
       return;
     }
-    if (
-      isSelf(selectedUser) &&
-      newRole !== 'admin' &&
-      !window.confirm('你正在修改自己的角色，降级后将失去管理员权限。确定继续吗？')
-    ) {
-      return;
+    if (isSelf(selectedUser) && newRole !== 'admin') {
+      const ok = await confirmDialog({
+        title: '降低自己的权限？',
+        description: '你正在修改自己的角色，降级后将失去管理员权限。确定继续吗？',
+        confirmLabel: '确定降级',
+        tone: 'danger',
+      });
+      if (!ok) return;
     }
 
     setSaving(true);
@@ -206,11 +209,14 @@ export default function AdminPanel() {
   const updatePublicSuspension = async (suspended: boolean) => {
     if (!selectedUser || suspendBusy || saving) return;
     const target = `${selectedUser.name}（${selectedUser.email}）`;
-    const confirmed = window.confirm(
-      suspended
+    const confirmed = await confirmDialog({
+      title: suspended ? '关闭个人主页？' : '恢复个人主页？',
+      description: suspended
         ? `确定关闭 ${target} 的个人主页和公开笔记吗？\n\n公开笔记不会被删除，会作为证据保留在服务器上。关闭后别人无法再访问，该用户也无法发布、更新发布或取消发布公开笔记。`
         : `确定恢复 ${target} 的个人主页和公开笔记吗？\n\n恢复后别人可以重新访问，该用户也可以重新管理公开笔记。`,
-    );
+      confirmLabel: suspended ? '关闭' : '恢复',
+      tone: suspended ? 'danger' : 'default',
+    });
     if (!confirmed) return;
 
     setSuspendBusy(true);

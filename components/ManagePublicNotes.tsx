@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { suspensionMessage, usePublishedNotes } from '../lib/publicNotes';
+import { confirmDialog } from '../lib/dialog';
 
 interface ManagePublicNotesProps {
   userId: string;
@@ -19,9 +20,14 @@ const ManagePublicNotes: React.FC<ManagePublicNotesProps> = ({ userId }) => {
 
   const handleUnpublish = async (localNoteId: string, title: string) => {
     if (suspension) return;
-    if (!window.confirm(`取消发布《${title}》？服务器上的公开副本会被删除，别人将无法再访问。`)) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: `取消发布《${title}》？`,
+      description: '服务器上的公开副本会被删除，别人将无法再访问。',
+      confirmLabel: '取消发布',
+      cancelLabel: '保留',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setBusy(true);
     setError(null);
     const result = await unpublish(localNoteId);
@@ -31,13 +37,14 @@ const ManagePublicNotes: React.FC<ManagePublicNotesProps> = ({ userId }) => {
 
   const handleUnpublishAll = async () => {
     if (suspension) return;
-    if (
-      !window.confirm(
-        `取消发布全部 ${items.length} 篇公开笔记？服务器上的公开副本会被删除，本地笔记不受影响。`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: `取消发布全部 ${items.length} 篇公开笔记？`,
+      description: '服务器上的公开副本会被删除，本地笔记不受影响。',
+      confirmLabel: '全部取消发布',
+      cancelLabel: '保留',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setBusy(true);
     setError(null);
     const result = await unpublishAll();

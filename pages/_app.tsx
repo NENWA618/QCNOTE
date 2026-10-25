@@ -8,6 +8,7 @@ import { Inter } from 'next/font/google';
 import { setupGlobalErrorHandlers } from '../lib/errorHandler';
 import ErrorBoundary from '../components/ErrorBoundary';
 import AppLoader from '../components/AppLoader';
+import DialogHost from '../components/DialogHost';
 import { requestPersistentStorage } from '../lib/persistStorage';
 // 推送订阅提示只在客户端需要，延迟加载以缩小首屏 JS。
 const PushNotificationPrompt = dynamic(() => import('../components/PushNotificationPrompt'), {
@@ -131,6 +132,8 @@ export default function App({ Component, pageProps }: AppProps) {
           </SessionProvider>
         </ErrorBoundary>
       )}
+      {/* 主题化对话框的宿主：替代 window.confirm / alert / prompt（见 lib/dialog.ts） */}
+      <DialogHost />
     </>
   );
 }

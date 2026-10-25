@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { isImeComposing } from '../lib/ime';
 
 export type DashboardView =
   'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts' | 'tags' | 'cloud';
@@ -49,7 +50,7 @@ const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
       if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false);
+      if (e.key === 'Escape' && !isImeComposing(e)) setMenuOpen(false);
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
