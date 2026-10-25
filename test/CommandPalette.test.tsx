@@ -31,6 +31,7 @@ const NOTES = [
 
 function setup(over: Partial<React.ComponentProps<typeof CommandPalette>> = {}) {
   const run = vi.fn();
+  const onClose = vi.fn();
   const commands: PaletteCommand[] = [
     { id: 'new', label: '新建笔记', icon: '➕', shortcut: 'N', run },
     { id: 'cal', label: '切换到日历视图', keywords: 'calendar 月历', run: vi.fn() },
@@ -39,13 +40,13 @@ function setup(over: Partial<React.ComponentProps<typeof CommandPalette>> = {}) 
     isOpen: true,
     notes: NOTES,
     commands,
-    onClose: vi.fn(),
+    onClose,
     onOpenNote: vi.fn(),
     onCreateNote: vi.fn(),
     ...over,
   };
   render(<CommandPalette {...props} />);
-  return { props, run, commands };
+  return { props, run, commands, onClose };
 }
 
 const input = () => screen.getByRole('combobox');
@@ -149,9 +150,9 @@ describe('CommandPalette', () => {
 
   it('选中命令并回车：先关闭，再执行命令', async () => {
     const user = userEvent.setup();
-    const { props, run } = setup();
+    const { run, onClose } = setup();
     const order: string[] = [];
-    props.onClose.mockImplementation(() => order.push('close'));
+    onClose.mockImplementation(() => order.push('close'));
     run.mockImplementation(() => order.push('run'));
     await user.type(input(), '新建笔记');
     // 图标是 aria-hidden 的，所以命令项的可访问名称是“标签 + 快捷键”；
