@@ -50,6 +50,8 @@ const Sidebar: React.FC<Props> = ({
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      // 有模态面板（编辑器、对话框）打开时，不去聚焦被它盖住的搜索框
+      if (document.querySelector('[aria-modal="true"]')) return;
       const target = e.target;
       if (
         target instanceof Element &&

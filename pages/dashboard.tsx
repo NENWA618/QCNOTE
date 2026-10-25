@@ -392,6 +392,8 @@ const Dashboard: React.FC = () => {
     await loadNotes();
     setEditorVisible(false);
     setEditingNote(null);
+    // 保存会关闭编辑器，没有任何提示的话用户不确定有没有存上
+    showNotification('已保存', 1800, 'success');
   };
 
   // 删除本地笔记不会自动取消公开副本，所以在删除前问一句。

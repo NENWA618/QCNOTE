@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import SentimentUtil from '../lib/sentiment';
 import { confirmDialog } from '../lib/dialog';
 import { isImeComposing } from '../lib/ime';
+import { useFocusTrap } from '../lib/hooks/useFocusTrap';
 import { NoteItem, NoteVersion } from '../lib/storage';
 import TextColorUtils from '../lib/textColorUtils';
 import { VersionHistory } from './VersionHistory';
@@ -73,6 +74,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
   // 标签输入框保留原始文本：原来每次输入都 split + join，刚打出的逗号会被立刻吃掉，没法输入第二个标签
   const [tagsText, setTagsText] = useState(() => note?.tags.join(', ') ?? '');
   // 打开时的内容快照，用来判断关闭前有没有未保存的更改
@@ -134,6 +137,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 
   const isOpen = isVisible && !!localNote;
   const dirty = !!localNote && noteFingerprint(localNote) !== snapshot;
+
+  // 打开：新笔记直接聚焦标题，已有笔记聚焦面板本身（不在手机上弹出键盘）；
+  // Tab 锁在编辑器内；关闭后焦点回到触发它的卡片
+  const isNewNote = !localNote?.id;
+  useFocusTrap(panelRef, isVisible && !!localNote, () =>
+    isNewNote ? titleInputRef.current : null,
+  );
 
   const requestClose = useCallback(async () => {
     if (dirty) {
@@ -347,12 +357,22 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-stretch sm:items-center justify-center z-50 sm:p-4">
-      <div className="bg-white dark:bg-dark-surface sm:rounded-lg shadow-xl w-full sm:max-w-4xl h-dvh sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:border border-gray-200 dark:border-dark-border">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="note-editor-title"
+        tabIndex={-1}
+        className="bg-white dark:bg-dark-surface sm:rounded-lg shadow-xl w-full sm:max-w-4xl h-dvh sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden sm:border border-gray-200 dark:border-dark-border"
+      >
         {/* Header */}
         <div className="shrink-0 border-b border-gray-200 dark:border-dark-border px-4 py-3 sm:p-6 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-6">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="flex items-center gap-2 text-lg sm:text-2xl font-bold text-ink dark:text-dark-text">
+              <h2
+                id="note-editor-title"
+                className="flex items-center gap-2 text-lg sm:text-2xl font-bold text-ink dark:text-dark-text"
+              >
                 {localNote.id ? '编辑笔记' : '新建笔记'}
                 {dirty && (
                   <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
@@ -464,6 +484,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                   标题
                 </label>
                 <input
+                  ref={titleInputRef}
                   type="text"
                   value={localNote.title}
                   onChange={(e) => handleFieldChange('title', e.target.value)}
