@@ -887,6 +887,52 @@
       transform: translateY(8px) scale(0.96);
     }
   }
+
+  /* ---- 命令面板 / 快速跳转（见 components/CommandPalette.tsx）---- */
+  .palette-root {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: min(14vh, 6rem) 1rem 1rem;
+  }
+
+  .palette-panel {
+    @apply relative flex w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white dark:bg-dark-surface;
+    max-height: min(34rem, calc(100dvh - 2rem));
+    border: var(--hairline) solid var(--glass-border);
+    box-shadow: var(--shadow-4);
+    animation: dialogPop 220ms var(--ease-overshoot) both;
+  }
+
+  .palette-option {
+    @apply relative flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-ink dark:text-dark-text;
+
+    &[aria-selected='true'] {
+      @apply bg-primary-light dark:bg-dark-surface-light;
+    }
+
+    /* 选中项左侧的强调色竖条：颜色之外的第二个“选中”信号 */
+    &[aria-selected='true']::before {
+      content: '';
+      @apply absolute inset-y-2 left-0 w-0.5 rounded-full bg-accent-pink;
+    }
+  }
+
+  /* ---- 编辑器工具栏按钮（见 components/NoteEditor.tsx）---- */
+  .tool-btn {
+    @apply inline-flex h-9 min-w-9 shrink-0 items-center justify-center rounded-md px-2 text-sm text-ink transition-colors hover:bg-primary-light dark:text-dark-text dark:hover:bg-dark-surface-light;
+
+    &[aria-pressed='true'] {
+      @apply bg-primary-light dark:bg-dark-surface-light;
+    }
+
+    @media (pointer: coarse) {
+      @apply h-10 min-w-10;
+    }
+  }
 }
 
 /* ============================================================

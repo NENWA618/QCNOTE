@@ -1,6 +1,7 @@
 import React from 'react';
 import { NoteItem } from '../lib/storage';
 import { hasUnpublishedChanges } from '../lib/publicNotes';
+import { toPlainPreview } from '../lib/notePreview';
 import type { PublishedNoteInfo } from '../types/ugc-types';
 
 interface NoteListProps {
@@ -97,7 +98,7 @@ const NoteList: React.FC<NoteListProps> = ({
     <ul className="grid items-stretch gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
       {notes.map((note, index) => {
         const sentiment = note.sentimentCategory ? SENTIMENT[note.sentimentCategory] : null;
-        const preview = note.content.replace(/[#*`>]/g, '').trim();
+        const preview = toPlainPreview(note.content);
         const linkCount = note.links?.length || 0;
         const backlinkCount = note.backlinks?.length || 0;
         return (

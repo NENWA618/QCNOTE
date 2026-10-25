@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { isImeComposing } from '../lib/ime';
+import { useModKeyLabel } from '../lib/hooks/useModKeyLabel';
 
 export type DashboardView =
   'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts' | 'tags' | 'cloud';
@@ -12,6 +13,8 @@ interface DashboardToolbarProps {
   onSelectView: (view: DashboardView) => void;
   onToggleTrash: () => void;
   onNewNote: () => void;
+  /** 打开命令面板 / 快速跳转 */
+  onOpenPalette?: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
   onClearAll: () => void;
@@ -36,10 +39,12 @@ const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
   onSelectView,
   onToggleTrash,
   onNewNote,
+  onOpenPalette,
   onExport,
   onImport,
   onClearAll,
 }) => {
+  const mod = useModKeyLabel();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -104,6 +109,23 @@ const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
             </button>
           ))}
         </div>
+      )}
+
+      {onOpenPalette && (
+        <button
+          type="button"
+          onClick={onOpenPalette}
+          aria-label="快速跳转"
+          aria-keyshortcuts="Control+K Meta+K"
+          title={`快速跳转与命令 (${mod}+K)`}
+          className="btn-secondary btn-sm flex items-center gap-1 whitespace-nowrap"
+        >
+          <span aria-hidden="true">🔎</span>
+          <span className="hidden lg:inline">跳转</span>
+          <kbd className="hidden rounded border border-primary-dark/30 px-1 text-[10px] text-text-light lg:inline dark:border-dark-border">
+            {mod} K
+          </kbd>
+        </button>
       )}
 
       <div className="relative" ref={menuRef}>

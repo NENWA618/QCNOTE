@@ -29,6 +29,9 @@ import {
 } from '../lib/storage';
 import { Utils } from '../lib/utils';
 import ClipImportDialog from '../components/ClipImportDialog';
+import CommandPalette, { type PaletteCommand } from '../components/CommandPalette';
+import { toggleTheme } from '../components/DarkModeToggle';
+import { isImeComposing } from '../lib/ime';
 import { CLIP_HASH_KEY, clipToNote, parseClipFromHash, type ClipPayload } from '../lib/clipImport';
 import { useDeviceVerification } from '../lib/hooks/useDeviceVerification';
 import { useLocalStorageFlag } from '../lib/hooks/useLocalStorageFlag';
@@ -37,6 +40,7 @@ import { useSemanticSearch } from '../lib/hooks/useSemanticSearch';
 import { alertDialog, confirmDialog, promptDialog } from '../lib/dialog';
 import { showNotification } from '../lib/ui';
 
+const DEFAULT_NOTE_TITLE = '新笔记';
 const SEMANTIC_SEARCH_STORAGE_KEY = 'qcnote:semantic-search-enabled';
 
 const DEFAULT_WEBDAV_CONFIG = {
@@ -115,6 +119,11 @@ const Dashboard: React.FC = () => {
     unpublish: unpublishNote,
     unpublishAll: unpublishAllNotes,
   } = usePublishedNotes(Boolean(currentUserId));
+
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  // 刚点“新建笔记”建出来的那篇：点“新建”会立刻在存储里建一篇空笔记，如果用户什么都没写就取消，
+  // 要把它清掉，否则列表里会留下一篇“新笔记”空壳
+  const freshNoteRef = useRef<NoteItem | null>(null);
 
   // Editor state
   const [editorVisible, setEditorVisible] = useState(false);
@@ -343,38 +352,68 @@ const Dashboard: React.FC = () => {
     setPendingClip(null);
   };
 
-  const handleNewNote = async () => {
+  const createNote = async (title: string) => {
     const s = storageRef.current;
     if (!s) return;
     let newNote: NoteItem;
     try {
-      newNote = await s.addNoteAsync({ title: '新笔记', content: '' });
+      newNote = await s.addNoteAsync({ title, content: '' });
     } catch (err) {
       reportSaveError('新建笔记', err);
       return;
     }
     await loadNotes();
+    // 只自动清理默认标题的：用命令面板带着标题新建的，标题是用户明确给的，不算“空壳”
+    freshNoteRef.current = title === DEFAULT_NOTE_TITLE ? newNote : null;
     setEditingNote(newNote);
     setEditorVisible(true);
     setIsPreview(false);
   };
 
+  /** 取消编辑时，如果这篇是刚新建且一个字段都没动过，就把它彻底删掉（不进回收站） */
+  const discardFreshNoteIfUntouched = async (current: NoteItem | null) => {
+    const fresh = freshNoteRef.current;
+    freshNoteRef.current = null;
+    const s = storageRef.current;
+    if (!fresh || !s || !current || current.id !== fresh.id) return;
+    const untouched =
+      current.title === fresh.title &&
+      current.content === fresh.content &&
+      current.category === fresh.category &&
+      current.color === fresh.color &&
+      current.tags.length === fresh.tags.length &&
+      !current.coloredRanges?.length;
+    if (!untouched) return;
+    try {
+      await s.permanentlyDeleteNoteAsync(fresh.id);
+    } catch (err) {
+      reportSaveError('清理空笔记', err);
+      return;
+    }
+    await loadNotes();
+  };
+
+  // 不直接把 createNote 交给 onClick：事件对象会被当成标题传进去
+  const handleNewNote = () => createNote(DEFAULT_NOTE_TITLE);
+
   const handleEditNote = (note: NoteItem) => {
+    if (freshNoteRef.current?.id !== note.id) freshNoteRef.current = null;
     setEditingNote(note);
     setEditorVisible(true);
     setIsPreview(false);
   };
 
-  const handleSaveNote = async () => {
+  /** 返回 false 表示保存失败（编辑器据此继续显示“未保存”） */
+  const handleSaveNote = async (options?: { keepOpen?: boolean }): Promise<boolean> => {
     const s = storageRef.current;
-    if (!s || !editingNote) return;
+    if (!s || !editingNote) return false;
     let savedNote: NoteItem | null;
     try {
       savedNote = await s.updateNoteAsync(editingNote.id, editingNote);
     } catch (err) {
       // 保持编辑器打开，用户的修改还在，可以重试
       reportSaveError('保存笔记', err);
-      return;
+      return false;
     }
     if (savedNote) {
       try {
@@ -389,11 +428,36 @@ const Dashboard: React.FC = () => {
         console.warn('[Dashboard] 无法触发情感保存事件', error);
       }
     }
+    // 用户明确保存过，即使内容是空的也是有意为之，不再自动清理
+    if (freshNoteRef.current?.id === editingNote.id) freshNoteRef.current = null;
     await loadNotes();
-    setEditorVisible(false);
-    setEditingNote(null);
-    // 保存会关闭编辑器，没有任何提示的话用户不确定有没有存上
+    if (options?.keepOpen) {
+      // 留在编辑器里：只同步存储层算出来的字段（版本、双链、时间）。
+      // 不能整篇换成 savedNote——保存的这一小会儿用户可能又输入了新内容，整篇替换会把它丢掉
+      if (savedNote) {
+        const saved = savedNote;
+        setEditingNote((prev) =>
+          prev && prev.id === saved.id
+            ? {
+                ...prev,
+                versions: saved.versions,
+                links: saved.links,
+                backlinks: saved.backlinks,
+                updatedAt: saved.updatedAt,
+                sentimentScore: saved.sentimentScore,
+                sentimentComparative: saved.sentimentComparative,
+                sentimentCategory: saved.sentimentCategory,
+              }
+            : prev,
+        );
+      }
+    } else {
+      setEditorVisible(false);
+      setEditingNote(null);
+    }
+    // 没有任何提示的话用户不确定有没有存上
     showNotification('已保存', 1800, 'success');
+    return true;
   };
 
   // 删除本地笔记不会自动取消公开副本，所以在删除前问一句。
@@ -426,6 +490,7 @@ const Dashboard: React.FC = () => {
     const s = storageRef.current;
     if (!s) return;
     if (!(await confirmUnpublishBeforeRemoval(id))) return;
+    if (freshNoteRef.current?.id === id) freshNoteRef.current = null;
     try {
       await s.deleteNoteAsync(id);
     } catch (err) {
@@ -670,6 +735,104 @@ const Dashboard: React.FC = () => {
     await loadNotes();
   };
 
+  // 命令面板：Ctrl/⌘+K。编辑器或对话框打开时不响应（它们是模态的，面板叠上去会抢焦点）
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'k')
+        return;
+      if (isImeComposing(e)) return;
+      const modal = document.querySelector('[aria-modal="true"]');
+      // 面板自己打开时再按一次就是关闭
+      if (modal && !paletteOpen) return;
+      e.preventDefault();
+      setPaletteOpen((open) => !open);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [paletteOpen]);
+
+  const paletteCommands = useMemo<PaletteCommand[]>(() => {
+    const go = (view: typeof viewMode) => () => {
+      setViewingTrash(false);
+      setViewMode(view);
+    };
+    return [
+      {
+        id: 'new',
+        label: '新建笔记',
+        icon: '➕',
+        keywords: 'new create 创建 写',
+        run: handleNewNote,
+      },
+      {
+        id: 'list',
+        label: '切换到列表视图',
+        icon: '📝',
+        keywords: 'list 笔记 首页',
+        run: go('list'),
+      },
+      {
+        id: 'calendar',
+        label: '切换到日历视图',
+        icon: '📅',
+        keywords: 'calendar 月历',
+        run: go('calendar'),
+      },
+      {
+        id: 'timeline',
+        label: '切换到时间线视图',
+        icon: '📊',
+        keywords: 'timeline',
+        run: go('timeline'),
+      },
+      {
+        id: 'graph',
+        label: '切换到知识图谱',
+        icon: '🧠',
+        keywords: 'graph 双链 关系',
+        run: go('graph'),
+      },
+      { id: 'tags', label: '标签管理', icon: '🏷️', keywords: 'tags 重命名', run: go('tags') },
+      {
+        id: 'cloud',
+        label: '云端同步',
+        icon: '☁️',
+        keywords: 'sync webdav onedrive 同步',
+        run: go('cloud'),
+      },
+      {
+        id: 'conflicts',
+        label: '同步冲突',
+        icon: '⚠️',
+        keywords: 'conflict',
+        run: go('conflicts'),
+      },
+      {
+        id: 'trash',
+        label: '回收站',
+        icon: '🗑️',
+        keywords: 'trash 删除 恢复',
+        run: () => setViewingTrash(true),
+      },
+      {
+        id: 'theme',
+        label: '切换深色 / 浅色模式',
+        icon: '🌓',
+        keywords: 'dark light theme 主题 夜间',
+        run: toggleTheme,
+      },
+      {
+        id: 'export',
+        label: '导出数据',
+        icon: '📤',
+        keywords: 'export backup 备份',
+        run: handleExport,
+      },
+    ];
+    // 这些处理函数每次渲染都会重建，但只在面板打开时才会被调用；依赖放进来会让命令列表每次渲染都重算
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const hasFilters = !!search || category !== 'all' || selectedTags.length > 0;
   const clearFilters = () => {
     setSearch('');
@@ -837,6 +1000,7 @@ const Dashboard: React.FC = () => {
                 }}
                 onToggleTrash={() => setViewingTrash(!viewingTrash)}
                 onNewNote={handleNewNote}
+                onOpenPalette={() => setPaletteOpen(true)}
                 onExport={handleExport}
                 onImport={handleImport}
                 onClearAll={handleClearAll}
@@ -933,16 +1097,28 @@ const Dashboard: React.FC = () => {
         onDiscard={() => setPendingClip(null)}
       />
 
+      <CommandPalette
+        isOpen={paletteOpen}
+        notes={notes.filter((n) => !n.isDeleted)}
+        commands={paletteCommands}
+        onClose={() => setPaletteOpen(false)}
+        onOpenNote={handleEditNote}
+        onCreateNote={(title) => void createNote(title)}
+      />
+
       {/* Note Editor Modal */}
       <NoteEditor
         note={editingNote}
         isVisible={editorVisible}
         isPreview={isPreview}
         relatedNotes={relatedNotes}
+        allNotes={notes}
         onSave={handleSaveNote}
         onCancel={() => {
+          const cancelled = editingNote;
           setEditorVisible(false);
           setEditingNote(null);
+          void discardFreshNoteIfUntouched(cancelled);
         }}
         onChange={(field, value) => {
           setEditingNote((prev) => (prev ? { ...prev, [field]: value } : prev));

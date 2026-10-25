@@ -21,6 +21,12 @@ function getIsDark() {
   return savedTheme === 'dark' || (!savedTheme && window.matchMedia(DARK_QUERY).matches);
 }
 
+/** 切换并保存主题偏好（命令面板也用它）；<html> 的 class 由 DarkModeToggle 里的 effect 同步 */
+export function toggleTheme() {
+  localStorage.setItem('theme', getIsDark() ? 'light' : 'dark');
+  window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+}
+
 const subscribeNothing = () => () => {};
 
 /**
@@ -49,8 +55,7 @@ export default function DarkModeToggle() {
   // 处理模式切换
   const toggleDarkMode = () => {
     // 保存用户偏好到localStorage，并通知订阅者（class 由上面的 effect 更新）
-    localStorage.setItem('theme', isDark ? 'light' : 'dark');
-    window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+    toggleTheme();
   };
 
   // 防止服务端渲染的不匹配
