@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
+import { useModKeyLabel } from '../lib/hooks/useModKeyLabel';
 import type { Stats } from '../lib/storage';
 
 interface Props {
@@ -45,6 +46,7 @@ const Sidebar: React.FC<Props> = ({
   semanticProgress = 0,
 }) => {
   const searchRef = useRef<HTMLInputElement>(null);
+  const mod = useModKeyLabel();
 
   // 按 / 聚焦搜索框（正在输入时不拦截）
   useEffect(() => {
@@ -96,7 +98,7 @@ const Sidebar: React.FC<Props> = ({
                   onSearchChange('');
                 }
               }}
-              placeholder="搜索笔记..."
+              placeholder={`搜索笔记... ${mod}+K 跳转`}
               aria-label="搜索笔记"
               aria-keyshortcuts="/"
               className="h-10 w-full rounded-xl border border-gray-200 bg-white pr-9 pl-9 text-base text-gray-900 placeholder-gray-400 focus:border-accent-pink focus:ring-2 focus:ring-accent-pink/30 focus:outline-hidden sm:text-sm dark:border-dark-border dark:bg-dark-surface-light dark:text-dark-text [&::-webkit-search-cancel-button]:hidden"

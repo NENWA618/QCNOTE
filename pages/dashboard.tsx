@@ -981,7 +981,6 @@ const Dashboard: React.FC = () => {
                 }}
                 onToggleTrash={() => setViewingTrash(!viewingTrash)}
                 onNewNote={handleNewNote}
-                onOpenPalette={() => setPaletteOpen(true)}
                 onExport={handleExport}
                 onImport={handleImport}
                 onClearAll={handleClearAll}

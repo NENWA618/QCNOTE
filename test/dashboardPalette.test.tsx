@@ -19,7 +19,7 @@ import Dashboard from '../pages/dashboard';
 afterEach(() => cleanup());
 
 describe('Dashboard 命令面板', () => {
-  it('Ctrl+K 打开、再按一次关闭；🔎 按钮也能打开', async () => {
+  it('Ctrl+K 打开、再按一次关闭；顶栏不再有跳转按钮', async () => {
     render(<Dashboard />);
     await screen.findByRole('heading', { name: '笔记管理' });
 
@@ -31,8 +31,8 @@ describe('Dashboard 命令面板', () => {
       expect(screen.queryByRole('dialog', { name: '快速跳转与命令' })).toBeNull(),
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '快速跳转' }));
-    expect(await screen.findByRole('dialog', { name: '快速跳转与命令' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '快速跳转' })).toBeNull();
+    expect(screen.getByPlaceholderText(/Ctrl\+K/)).toBeInTheDocument();
   });
 
   it('选择“新建笔记”命令：关闭面板并打开编辑器', async () => {
