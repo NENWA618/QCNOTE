@@ -92,7 +92,7 @@ const SPLIT_PREF_KEY = 'qcnote:editor-split';
 function applyEditToTextarea(ta: HTMLTextAreaElement, edit: TextEdit) {
   ta.focus();
   ta.setSelectionRange(edit.from, edit.to);
-  let done = false;
+  let done: boolean;
   try {
     done =
       edit.insert === ''

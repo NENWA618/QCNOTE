@@ -52,7 +52,7 @@ try {
 } catch (error) {
   if (error instanceof z.ZodError) {
     console.error('❌ Invalid environment variables:', error.issues);
-    throw new Error('Invalid environment configuration');
+    throw new Error('Invalid environment configuration', { cause: error });
   }
   throw error;
 }

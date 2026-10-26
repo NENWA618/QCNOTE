@@ -40,6 +40,7 @@ export async function callChatCompletion({
       `请求发送失败，请检查 API 地址是否正确、目标服务是否允许跨域访问（CORS）：${
         e instanceof Error ? e.message : String(e)
       }`,
+      { cause: e },
     );
   }
 

@@ -62,7 +62,7 @@ export async function initPostgresClient(): Promise<Pool> {
       } as unknown as Pool;
       return pgPool!;
     }
-    throw new Error(`PostgreSQL connection failed: ${error}`);
+    throw new Error(`PostgreSQL connection failed: ${error}`, { cause: error });
   }
 
   return pgPool!;

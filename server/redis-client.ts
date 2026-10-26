@@ -72,7 +72,7 @@ export async function initRedisClient(): Promise<RedisClientType> {
       } as unknown as RedisClientType;
       return redisClient!;
     }
-    throw new Error(`Redis connection failed: ${error}`);
+    throw new Error(`Redis connection failed: ${error}`, { cause: error });
   }
 
   return redisClient!;
