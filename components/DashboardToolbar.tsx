@@ -2,15 +2,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import { isImeComposing } from '../lib/ime';
 
 export type DashboardView =
-  'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts' | 'tags' | 'cloud';
+  'list' | 'calendar' | 'timeline' | 'graph' | 'trash' | 'conflicts' | 'tags' | 'cloud';
+
+/** 二级页面：进入后工具栏左侧变为「← 返回」，返回列表视图 */
+export const SUB_VIEWS: DashboardView[] = ['trash', 'conflicts', 'tags', 'cloud'];
 
 interface DashboardToolbarProps {
   viewMode: DashboardView;
-  viewingTrash: boolean;
   trashCount: number;
   conflictCount: number;
   onSelectView: (view: DashboardView) => void;
-  onToggleTrash: () => void;
   onNewNote: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
@@ -30,11 +31,9 @@ const menuItemClass =
 
 const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
   viewMode,
-  viewingTrash,
   trashCount,
   conflictCount,
   onSelectView,
-  onToggleTrash,
   onNewNote,
   onExport,
   onImport,
@@ -73,12 +72,17 @@ const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
     }
   };
 
-  const isActive = (key: DashboardView) => !viewingTrash && viewMode === key;
+  const isActive = (key: DashboardView) => viewMode === key;
+
+  const inSubPage = SUB_VIEWS.includes(viewMode);
 
   return (
     <div className="flex items-center gap-2 w-full md:w-auto">
-      {viewingTrash ? (
-        <button onClick={onToggleTrash} className="btn-secondary btn-sm flex items-center gap-1">
+      {inSubPage ? (
+        <button
+          onClick={() => onSelectView('list')}
+          className="btn-secondary btn-sm flex items-center gap-1"
+        >
           ← 返回
         </button>
       ) : (
@@ -127,7 +131,11 @@ const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
             role="menu"
             className="absolute left-0 md:left-auto md:right-0 z-30 mt-2 w-56 p-2 rounded-2xl bg-white border border-primary-dark/10 shadow-xl dark:bg-dark-surface dark:border-dark-border"
           >
-            <button role="menuitem" className={menuItemClass} onClick={run(onToggleTrash)}>
+            <button
+              role="menuitem"
+              className={menuItemClass}
+              onClick={run(() => onSelectView('trash'))}
+            >
               <span>🗑️ 回收站</span>
               {trashCount > 0 && <span className="text-xs opacity-70">{trashCount}</span>}
             </button>

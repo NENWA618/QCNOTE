@@ -6,7 +6,7 @@ import Sidebar from '../components/Sidebar';
 import NoteList from '../components/NoteList';
 import NoteEditor from '../components/NoteEditor';
 import { usePublishedNotes } from '../lib/publicNotes';
-import DashboardToolbar from '../components/DashboardToolbar';
+import DashboardToolbar, { type DashboardView } from '../components/DashboardToolbar';
 import { Trash } from '../components/Trash';
 import { Calendar } from '../components/Calendar';
 import { Timeline } from '../components/Timeline';
@@ -90,12 +90,10 @@ const Dashboard: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [sidebarToggled, setSidebarToggled] = useState<boolean | null>(null);
   const sidebarOpen = sidebarToggled ?? !isMobile;
-  const [viewingTrash, setViewingTrash] = useState(false);
   const [trashNotes, setTrashNotes] = useState<NoteItem[]>([]);
   const [conflicts, setConflicts] = useState<NoteConflict[]>([]);
-  const [viewMode, setViewMode] = useState<
-    'list' | 'calendar' | 'timeline' | 'graph' | 'conflicts' | 'tags' | 'cloud'
-  >('list');
+  const [viewMode, setViewMode] = useState<DashboardView>('list');
+  const viewingTrash = viewMode === 'trash';
   const [webdavConfig, setWebdavConfig] = useState(DEFAULT_WEBDAV_CONFIG);
   const [onedriveConfig, setOnedriveConfig] = useState<OneDriveConfig>({
     accessToken: '',
@@ -734,7 +732,6 @@ const Dashboard: React.FC = () => {
 
   const paletteCommands = useMemo<PaletteCommand[]>(() => {
     const go = (view: typeof viewMode) => () => {
-      setViewingTrash(false);
       setViewMode(view);
     };
     return [
@@ -793,7 +790,7 @@ const Dashboard: React.FC = () => {
         label: '回收站',
         icon: '🗑️',
         keywords: 'trash 删除 恢复',
-        run: () => setViewingTrash(true),
+        run: go('trash'),
       },
       {
         id: 'theme',
@@ -962,7 +959,7 @@ const Dashboard: React.FC = () => {
                 >
                   笔记管理
                 </h1>
-                {!viewingTrash && viewMode === 'list' && (
+                {viewMode === 'list' && (
                   <span className="text-sm tabular-nums text-text-light">
                     {hasFilters
                       ? `${filteredNotes.length} / ${stats.totalNotes} 篇`
@@ -972,14 +969,9 @@ const Dashboard: React.FC = () => {
               </div>
               <DashboardToolbar
                 viewMode={viewMode}
-                viewingTrash={viewingTrash}
                 trashCount={trashNotes.length}
                 conflictCount={conflicts.length}
-                onSelectView={(view) => {
-                  setViewingTrash(false);
-                  setViewMode(view);
-                }}
-                onToggleTrash={() => setViewingTrash(!viewingTrash)}
+                onSelectView={setViewMode}
                 onNewNote={handleNewNote}
                 onExport={handleExport}
                 onImport={handleImport}
@@ -988,7 +980,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* 当前的标签筛选 */}
-            {!viewingTrash && viewMode === 'list' && selectedTags.length > 0 && (
+            {viewMode === 'list' && selectedTags.length > 0 && (
               <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
                 <span className="text-text-light">标签筛选：</span>
                 {selectedTags.map((tag) => (
