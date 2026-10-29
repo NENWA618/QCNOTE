@@ -26,7 +26,8 @@ export function applyEdit(value: string, edit: TextEdit): string {
   return value.slice(0, edit.from) + edit.insert + value.slice(edit.to);
 }
 
-const lineStartOf = (value: string, pos: number) => value.lastIndexOf('\n', pos - 1) + 1;
+const lineStartOf = (value: string, pos: number) =>
+  pos === 0 ? 0 : value.lastIndexOf('\n', pos - 1) + 1;
 
 const lineEndOf = (value: string, pos: number) => {
   const i = value.indexOf('\n', pos);
