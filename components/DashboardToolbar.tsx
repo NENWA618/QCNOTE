@@ -4,7 +4,7 @@ import { isImeComposing } from '../lib/ime';
 export type DashboardView =
   'list' | 'calendar' | 'timeline' | 'graph' | 'trash' | 'conflicts' | 'tags' | 'cloud';
 
-/** 二级页面：进入后工具栏左侧变为「← 返回」，返回列表视图 */
+/** 二级页面：进入后工具栏左侧变为「← 返回」，返回进入前的视图 */
 export const SUB_VIEWS: DashboardView[] = ['trash', 'conflicts', 'tags', 'cloud'];
 
 interface DashboardToolbarProps {
@@ -12,6 +12,7 @@ interface DashboardToolbarProps {
   trashCount: number;
   conflictCount: number;
   onSelectView: (view: DashboardView) => void;
+  onBack: () => void;
   onNewNote: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
@@ -34,6 +35,7 @@ const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
   trashCount,
   conflictCount,
   onSelectView,
+  onBack,
   onNewNote,
   onExport,
   onImport,
@@ -79,10 +81,7 @@ const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
   return (
     <div className="flex items-center gap-2 w-full md:w-auto">
       {inSubPage ? (
-        <button
-          onClick={() => onSelectView('list')}
-          className="btn-secondary btn-sm flex items-center gap-1"
-        >
+        <button onClick={onBack} className="btn-secondary btn-sm flex items-center gap-1">
           ← 返回
         </button>
       ) : (

@@ -6,7 +6,7 @@ import Sidebar from '../components/Sidebar';
 import NoteList from '../components/NoteList';
 import NoteEditor from '../components/NoteEditor';
 import { usePublishedNotes } from '../lib/publicNotes';
-import DashboardToolbar, { type DashboardView } from '../components/DashboardToolbar';
+import DashboardToolbar, { SUB_VIEWS, type DashboardView } from '../components/DashboardToolbar';
 import { Trash } from '../components/Trash';
 import { Calendar } from '../components/Calendar';
 import { Timeline } from '../components/Timeline';
@@ -94,6 +94,20 @@ const Dashboard: React.FC = () => {
   const [conflicts, setConflicts] = useState<NoteConflict[]>([]);
   const [viewMode, setViewMode] = useState<DashboardView>('list');
   const viewingTrash = viewMode === 'trash';
+  // 从任意视图进入二级页面（回收站/冲突/标签管理/云端同步）后，返回时回到进入前的视图
+  const [returnView, setReturnView] = useState<DashboardView>('list');
+  // 用 ref 读当前视图，使 selectView 引用稳定（命令面板的命令列表依赖为空）
+  const viewModeRef = useRef(viewMode);
+  useEffect(() => {
+    viewModeRef.current = viewMode;
+  }, [viewMode]);
+  const selectView = useCallback((view: DashboardView) => {
+    const current = viewModeRef.current;
+    if (SUB_VIEWS.includes(view) && !SUB_VIEWS.includes(current)) setReturnView(current);
+    viewModeRef.current = view;
+    setViewMode(view);
+  }, []);
+  const goBack = useCallback(() => setViewMode(returnView), [returnView]);
   const [webdavConfig, setWebdavConfig] = useState(DEFAULT_WEBDAV_CONFIG);
   const [onedriveConfig, setOnedriveConfig] = useState<OneDriveConfig>({
     accessToken: '',
@@ -731,9 +745,7 @@ const Dashboard: React.FC = () => {
   }, [paletteOpen]);
 
   const paletteCommands = useMemo<PaletteCommand[]>(() => {
-    const go = (view: typeof viewMode) => () => {
-      setViewMode(view);
-    };
+    const go = (view: DashboardView) => () => selectView(view);
     return [
       {
         id: 'new',
@@ -971,7 +983,8 @@ const Dashboard: React.FC = () => {
                 viewMode={viewMode}
                 trashCount={trashNotes.length}
                 conflictCount={conflicts.length}
-                onSelectView={setViewMode}
+                onSelectView={selectView}
+                onBack={goBack}
                 onNewNote={handleNewNote}
                 onExport={handleExport}
                 onImport={handleImport}
