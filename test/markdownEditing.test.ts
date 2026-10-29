@@ -290,3 +290,39 @@ describe('isInsideCodeFence', () => {
     expect(isInsideCodeFence('plain', 3)).toBe(false);
   });
 });
+
+describe('文本以换行开头、光标在 0（行首边界）', () => {
+  // 回归：lineStartOf 在 pos=0 时曾把下标 0 的换行当成“上一行的结尾”，返回 1，
+  // 前缀被插到错误的位置（"\nabc" → "\n## \nabc"）
+  it('cycleHeading 作用在第一行（空行）上', () => {
+    expect(applyEdit('\nabc', cycleHeading('\nabc', 0))).toBe('## \nabc');
+  });
+
+  it('toggleLinePrefix 作用在第一行（空行）上', () => {
+    expect(applyEdit('\nabc', toggleLinePrefix('\nabc', 0, 0, 'bullet'))).toBe('- \nabc');
+  });
+
+  it('findWikiLinkTrigger 在文本开头仍然可用', () => {
+    expect(findWikiLinkTrigger('[[ab', 4)).toEqual({ start: 0, query: 'ab' });
+    expect(findWikiLinkTrigger('\n[[ab', 5)).toEqual({ start: 1, query: 'ab' });
+  });
+});
+
+describe('isInsideCodeFence（更多情形）', () => {
+  it('只数光标所在行之前的围栏', () => {
+    const v = '```\na\n```\nb\n```\nc';
+    expect(isInsideCodeFence(v, v.indexOf('a'))).toBe(true);
+    expect(isInsideCodeFence(v, v.indexOf('b'))).toBe(false);
+    expect(isInsideCodeFence(v, v.indexOf('c'))).toBe(true);
+  });
+
+  it('围栏行本身不算“在代码块里”，缩进的围栏和 ~~~ 也算围栏', () => {
+    expect(isInsideCodeFence('```\nx', 1)).toBe(false);
+    expect(isInsideCodeFence('  ~~~\nx', 7)).toBe(true);
+  });
+
+  it('光标在最开头不会误判', () => {
+    expect(isInsideCodeFence('```\nx', 0)).toBe(false);
+    expect(isInsideCodeFence('', 0)).toBe(false);
+  });
+});
