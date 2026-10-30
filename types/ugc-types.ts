@@ -53,10 +53,14 @@ export interface LeaderboardEntry {
   score: number;
   rank: number;
   badge?: string;
-  // For game/maze leaderboards: number of steps and completion time in ms.
+  // For game/maze leaderboards: steps, time spent moving (ms), the penalties
+  // (trees hit, lantern pulses) and the final score = time + penalties (ms, lower wins).
   // These are optional because other leaderboard types may not include them.
   steps?: number;
   timeMs?: number;
+  bumps?: number;
+  pulses?: number;
+  scoreMs?: number;
 }
 
 // 学习热力图数据

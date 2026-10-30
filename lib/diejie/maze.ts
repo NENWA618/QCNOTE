@@ -50,7 +50,7 @@ export function generateMaze(rows: number, cols: number, random: () => number = 
   return cells;
 }
 
-const MOVE_DELTAS: Record<MazeWall, [number, number]> = {
+export const MOVE_DELTAS: Record<MazeWall, [number, number]> = {
   N: [-1, 0],
   S: [1, 0],
   E: [0, 1],
@@ -80,6 +80,29 @@ export function replayMazeMoves(cells: MazeCell[][], moves: string): number | nu
     c = nc;
   }
   return r === rows - 1 && c === cols - 1 ? moves.length : null;
+}
+
+/** Length of the shortest route from the entrance to the exit (BFS over open walls). */
+export function shortestPathLength(cells: MazeCell[][]): number {
+  const rows = cells.length;
+  const cols = cells[0]?.length ?? 0;
+  const dist = Array.from({ length: rows }, () => new Array<number>(cols).fill(-1));
+  dist[0][0] = 0;
+  const queue: Array<[number, number]> = [[0, 0]];
+  for (let i = 0; i < queue.length; i++) {
+    const [r, c] = queue[i];
+    if (r === rows - 1 && c === cols - 1) return dist[r][c];
+    for (const dir of ['N', 'E', 'S', 'W'] as MazeWall[]) {
+      const [dr, dc] = MOVE_DELTAS[dir];
+      const nr = r + dr;
+      const nc = c + dc;
+      if (cells[r][c][dir] || nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      if (dist[nr][nc] !== -1) continue;
+      dist[nr][nc] = dist[r][c] + 1;
+      queue.push([nr, nc]);
+    }
+  }
+  return -1;
 }
 
 export function wallMidAt(cell: number, r: number, c: number, dir: MazeWall) {

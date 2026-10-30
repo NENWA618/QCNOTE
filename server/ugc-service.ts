@@ -13,13 +13,17 @@ import {
   PublishedNoteInfo,
 } from '../types/ugc-types';
 import logger from '../lib/logger';
+import { scoreMs as computeScoreMs } from '../lib/diejie/rules';
 import { MAX_PUBLIC_NOTES_PER_USER, makePreview, type PublishPayload } from './public-notes';
 
-// A day's best run is kept whole: fewer steps wins, then less time (the
-// leaderboard's order). Taking the minimum of each column separately would
-// pair one run's steps with another run's time.
+// A day's best run is kept whole: the lower score wins (time plus penalties), then
+// fewer steps (the leaderboard's order). Taking the minimum of each column
+// separately would pair one run's steps with another run's time.
 const BETTER_RUN =
-  '(EXCLUDED.steps, EXCLUDED.time_ms) < (maze_submissions.steps, maze_submissions.time_ms)';
+  '(EXCLUDED.score_ms, EXCLUDED.steps) < (maze_submissions.score_ms, maze_submissions.steps)';
+
+// Redis sorted sets rank higher scores first, so a lower run score maps to a higher value.
+const REDIS_SCORE_BASE = 1e10;
 
 // 排行榜里缓存在 Redis 的用户展示信息
 type LeaderboardUserInfo = { username?: string; avatar?: string };
@@ -163,16 +167,26 @@ export class UGCService {
   }
 
   // ==================== 迷宫排行榜：由服务端出题、计时 ====================
-  // 开局时签发一个带随机种子和开局时间的令牌；提交时服务端用种子重建迷宫、回放
-  // 走法，步数和用时都由服务端得出，而不是相信客户端上报的数字。
+  // 每天一张固定迷宫：种子由日期和服务端密钥派生，所有人当天走的是同一张，成绩才可比。
+  // 开局时签发一个带种子、日期和开局时间的令牌；提交时服务端用种子重建迷宫、回放
+  // 走法，步数、撞树和用时都由服务端得出，而不是相信客户端上报的数字。
+
+  dailyMazeSeed(day: string): number {
+    return crypto
+      .createHmac('sha256', this.getDeviceSessionSecret())
+      .update(`maze-daily:${day}`)
+      .digest()
+      .readUInt32BE(0);
+  }
 
   async createMazeRunToken(
     userId: string,
+    day: string,
     expiresMs: number = 1000 * 60 * 60 * 2,
   ): Promise<{ token: string; seed: number }> {
-    const seed = crypto.randomInt(0, 2 ** 32);
+    const seed = this.dailyMazeSeed(day);
     const startedAt = Date.now();
-    const token = await new SignJWT({ scope: 'maze_run', seed, startedAt })
+    const token = await new SignJWT({ scope: 'maze_run', seed, day, startedAt })
       .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
       .setSubject(userId)
       .setIssuedAt()
@@ -184,16 +198,21 @@ export class UGCService {
   async verifyMazeRunToken(
     userId: string,
     token: string,
-  ): Promise<{ seed: number; startedAt: number } | null> {
+  ): Promise<{ seed: number; day: string; startedAt: number } | null> {
     try {
       const { payload } = await jwtVerify(token, this.getDeviceSessionSecret(), {
         subject: userId,
       });
-      const { scope, seed, startedAt } = payload as Record<string, unknown>;
-      if (scope !== 'maze_run' || typeof seed !== 'number' || typeof startedAt !== 'number') {
+      const { scope, seed, day, startedAt } = payload as Record<string, unknown>;
+      if (
+        scope !== 'maze_run' ||
+        typeof seed !== 'number' ||
+        typeof day !== 'string' ||
+        typeof startedAt !== 'number'
+      ) {
         return null;
       }
-      return { seed, startedAt };
+      return { seed, day, startedAt };
     } catch {
       return null;
     }
@@ -452,7 +471,19 @@ export class UGCService {
     return match ? match[1] : null;
   }
 
-  private async ensureMazeSubmissionTable(): Promise<void> {
+  private mazeTableReady: Promise<void> | null = null;
+
+  private ensureMazeSubmissionTable(): Promise<void> {
+    if (!this.mazeTableReady) {
+      this.mazeTableReady = this.createMazeSubmissionTable().catch((error) => {
+        this.mazeTableReady = null; // try again on the next call
+        throw error;
+      });
+    }
+    return this.mazeTableReady;
+  }
+
+  private async createMazeSubmissionTable(): Promise<void> {
     await this.db.query(`
       CREATE TABLE IF NOT EXISTS maze_submissions (
         id SERIAL PRIMARY KEY,
@@ -466,6 +497,14 @@ export class UGCService {
         UNIQUE (user_id, day)
       )
     `);
+    // 计分改为「用时 + 罚时」：time_ms 仍是纯用时，罚时与总成绩另存
+    await this.db.query(`
+      ALTER TABLE maze_submissions
+        ADD COLUMN IF NOT EXISTS bumps INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS pulses INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS score_ms INTEGER
+    `);
+    await this.db.query(`UPDATE maze_submissions SET score_ms = time_ms WHERE score_ms IS NULL`);
   }
 
   async cleanupMazeLeaderboardEntries(currentDay: string): Promise<number> {
@@ -492,29 +531,47 @@ export class UGCService {
     timeMs: number,
     username: string,
     avatar: string,
+    bumps: number = 0,
+    pulses: number = 0,
   ): Promise<void> {
     const day = this.extractDayFromLeaderboardKey(leaderboardKey);
     const normalizedSteps = Math.round(steps);
     const normalizedTimeMs = Math.round(timeMs);
+    const scoreMs = computeScoreMs(normalizedTimeMs, bumps, pulses);
     if (day) {
       await this.ensureMazeSubmissionTable();
       await this.db.query(
-        `INSERT INTO maze_submissions (user_id, day, steps, time_ms, username, avatar, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO maze_submissions
+           (user_id, day, steps, time_ms, bumps, pulses, score_ms, username, avatar, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (user_id, day) DO UPDATE
          SET steps = CASE WHEN ${BETTER_RUN} THEN EXCLUDED.steps ELSE maze_submissions.steps END,
          time_ms = CASE WHEN ${BETTER_RUN} THEN EXCLUDED.time_ms ELSE maze_submissions.time_ms END,
+         bumps = CASE WHEN ${BETTER_RUN} THEN EXCLUDED.bumps ELSE maze_submissions.bumps END,
+         pulses = CASE WHEN ${BETTER_RUN} THEN EXCLUDED.pulses ELSE maze_submissions.pulses END,
+         score_ms = CASE WHEN ${BETTER_RUN} THEN EXCLUDED.score_ms ELSE maze_submissions.score_ms END,
          created_at = CASE
            WHEN ${BETTER_RUN} THEN EXCLUDED.created_at
            ELSE maze_submissions.created_at
          END,
          username = EXCLUDED.username,
          avatar = EXCLUDED.avatar`,
-        [userId, day, normalizedSteps, normalizedTimeMs, username, avatar, Date.now()],
+        [
+          userId,
+          day,
+          normalizedSteps,
+          normalizedTimeMs,
+          bumps,
+          pulses,
+          scoreMs,
+          username,
+          avatar,
+          Date.now(),
+        ],
       );
     }
 
-    const score = 1000000 - (normalizedSteps * 1000 + Math.floor(normalizedTimeMs / 1000));
+    const score = REDIS_SCORE_BASE - scoreMs;
     // GT: only a better score replaces the stored one; CH: report whether it did
     const improved = await this.redis.zAdd(
       leaderboardKey,
@@ -528,9 +585,64 @@ export class UGCService {
     if (improved > 0) {
       await this.redis.set(
         `${leaderboardKey}:user:${userId}`,
-        JSON.stringify({ steps, timeMs, submittedAt: Date.now() }),
+        JSON.stringify({
+          steps,
+          timeMs,
+          bumps,
+          pulses,
+          scoreMs,
+          submittedAt: Date.now(),
+        }),
       );
     }
+  }
+
+  /** A player's stored best for the day and where it ranks, or null if they have none. */
+  async getMazeStanding(
+    day: string,
+    userId: string,
+  ): Promise<{
+    rank: number;
+    total: number;
+    scoreMs: number;
+    timeMs: number;
+    steps: number;
+    bumps: number;
+    pulses: number;
+  } | null> {
+    await this.ensureMazeSubmissionTable();
+    const result = await this.db.query(
+      `SELECT mine.score_ms, mine.time_ms, mine.steps, mine.bumps, mine.pulses,
+              (SELECT COUNT(*) FROM maze_submissions o
+                WHERE o.day = $1
+                  AND (o.score_ms, o.steps, o.created_at)
+                    < (mine.score_ms, mine.steps, mine.created_at)) + 1 AS rank,
+              (SELECT COUNT(*) FROM maze_submissions o WHERE o.day = $1) AS total
+         FROM maze_submissions mine
+        WHERE mine.day = $1 AND mine.user_id = $2`,
+      [day, userId],
+    );
+    const row = result.rows?.[0] as
+      | {
+          score_ms: number;
+          time_ms: number;
+          steps: number;
+          bumps: number;
+          pulses: number;
+          rank: string | number;
+          total: string | number;
+        }
+      | undefined;
+    if (!row) return null;
+    return {
+      rank: Number(row.rank),
+      total: Number(row.total),
+      scoreMs: Number(row.score_ms),
+      timeMs: Number(row.time_ms),
+      steps: Number(row.steps),
+      bumps: Number(row.bumps),
+      pulses: Number(row.pulses),
+    };
   }
 
   async getGameLeaderboard(
@@ -543,6 +655,9 @@ export class UGCService {
       avatar: string;
       steps: number;
       timeMs: number;
+      bumps: number;
+      pulses: number;
+      scoreMs: number;
       rank: number;
       badge?: string;
     }>
@@ -551,10 +666,10 @@ export class UGCService {
     if (day) {
       await this.ensureMazeSubmissionTable();
       const result = await this.db.query(
-        `SELECT user_id, username, avatar, steps, time_ms
+        `SELECT user_id, username, avatar, steps, time_ms, bumps, pulses, score_ms
          FROM maze_submissions
          WHERE day = $1
-         ORDER BY steps ASC, time_ms ASC, created_at ASC
+         ORDER BY score_ms ASC, steps ASC, created_at ASC
          LIMIT $2`,
         [day, limit],
       );
@@ -566,16 +681,22 @@ export class UGCService {
           avatar: string;
           steps: number;
           time_ms: number;
+          bumps: number;
+          pulses: number;
+          score_ms: number;
         }>;
         return rows.map((row, index) => {
-          const score = 1000000 - (row.steps * 1000 + Math.floor(row.time_ms / 1000));
+          const scoreMs = Number(row.score_ms);
           return {
             userId: row.user_id,
             username: row.username || 'Unknown',
             avatar: row.avatar || '',
-            score,
+            score: REDIS_SCORE_BASE - scoreMs,
             steps: Number(row.steps),
             timeMs: Number(row.time_ms),
+            bumps: Number(row.bumps),
+            pulses: Number(row.pulses),
+            scoreMs,
             rank: index + 1,
             badge: this.getBadgeByRank(index + 1),
           };
@@ -605,6 +726,9 @@ export class UGCService {
       const parsedSubmission = (submission ? JSON.parse(submission) : {}) as {
         steps?: number;
         timeMs?: number;
+        bumps?: number;
+        pulses?: number;
+        scoreMs?: number;
       };
 
       return {
@@ -612,8 +736,11 @@ export class UGCService {
         username: parsedInfo.username || 'Unknown',
         avatar: parsedInfo.avatar || '',
         score: entry.score,
-        steps: parsedSubmission.steps ?? Math.max(0, 1000 - entry.score),
+        steps: parsedSubmission.steps ?? 0,
         timeMs: parsedSubmission.timeMs ?? 0,
+        bumps: parsedSubmission.bumps ?? 0,
+        pulses: parsedSubmission.pulses ?? 0,
+        scoreMs: parsedSubmission.scoreMs ?? Math.max(0, REDIS_SCORE_BASE - entry.score),
         rank: index + 1,
         badge: this.getBadgeByRank(index + 1),
       };

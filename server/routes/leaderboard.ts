@@ -5,18 +5,9 @@ import { clampLimit, getUtc8DayString } from '../utils';
 import { initPostgresClient } from '../postgres-client';
 import { getUgcService } from '../context';
 import logger from '../../lib/logger';
-import {
-  MAZE_COLS,
-  MAZE_ROWS,
-  generateMaze,
-  mulberry32,
-  replayMazeMoves,
-} from '../../lib/diejie/maze';
-
-// One letter per step; far more than any real run of a 7×11 maze needs.
-const MOVES_PATTERN = /^[NESW]{1,5000}$/;
-// Movement is locked for the first 7 s of a run (the light preview).
-const MIN_RUN_MS = 7000;
+import { MAZE_COLS, MAZE_ROWS, generateMaze, mulberry32 } from '../../lib/diejie/maze';
+import { RUN_PATTERN, replayRun } from '../../lib/diejie/run';
+import { PREVIEW_MS, penaltyMs, scoreMs } from '../../lib/diejie/rules';
 
 export function registerLeaderboardRoutes(app: ExtendedFastifyInstance) {
   // ==================== UGC 排行榜路由 ====================
@@ -61,7 +52,28 @@ export function registerLeaderboardRoutes(app: ExtendedFastifyInstance) {
     }
   });
 
-  // 开局：发放迷宫种子和签名的开局令牌，服务端从这一刻开始计时
+  // 今日迷宫：公开，任何人（包括没登录的）都能拿到当天的种子来玩；成绩只有带令牌的才计入排行榜
+  app.get(
+    '/api/ugc/maze/daily',
+    { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },
+    async (_request: BackendRequest, reply: FastifyReply) => {
+      try {
+        const day = getUtc8DayString();
+        reply.send({
+          success: true,
+          day,
+          seed: getUgcService().dailyMazeSeed(day),
+          rows: MAZE_ROWS,
+          cols: MAZE_COLS,
+        });
+      } catch (error) {
+        logger.error('[Maze Daily] failed', error);
+        reply.status(400).send({ success: false, error: 'Failed to load daily maze' });
+      }
+    },
+  );
+
+  // 开局：发放签名的开局令牌，服务端从这一刻开始计时。令牌绑定当天的迷宫
   app.post(
     '/api/ugc/maze/start',
     { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
@@ -71,8 +83,9 @@ export function registerLeaderboardRoutes(app: ExtendedFastifyInstance) {
         if (!userId) {
           return reply.status(401).send({ success: false, error: 'Unauthorized' });
         }
-        const { token, seed } = await getUgcService().createMazeRunToken(userId);
-        reply.send({ success: true, token, seed, rows: MAZE_ROWS, cols: MAZE_COLS });
+        const day = getUtc8DayString();
+        const { token, seed } = await getUgcService().createMazeRunToken(userId, day);
+        reply.send({ success: true, token, seed, day, rows: MAZE_ROWS, cols: MAZE_COLS });
       } catch (error) {
         logger.error('[Maze Start] failed', error);
         reply.status(400).send({ success: false, error: 'Failed to start run' });
@@ -80,7 +93,7 @@ export function registerLeaderboardRoutes(app: ExtendedFastifyInstance) {
     },
   );
 
-  // 提交：用令牌里的种子重建迷宫并回放走法，步数和用时都由服务端得出
+  // 提交：用令牌里的种子重建迷宫并回放走法，步数、撞树、回光和用时都由服务端得出
   app.post(
     '/api/ugc/maze/submit',
     { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
@@ -93,7 +106,7 @@ export function registerLeaderboardRoutes(app: ExtendedFastifyInstance) {
         }
 
         const { token, moves } = (request.body ?? {}) as { token?: unknown; moves?: unknown };
-        if (typeof token !== 'string' || typeof moves !== 'string' || !MOVES_PATTERN.test(moves)) {
+        if (typeof token !== 'string' || typeof moves !== 'string' || !RUN_PATTERN.test(moves)) {
           return reply.status(400).send({ success: false, error: 'Invalid parameters' });
         }
 
@@ -101,19 +114,19 @@ export function registerLeaderboardRoutes(app: ExtendedFastifyInstance) {
         if (!run) {
           return reply.status(400).send({ success: false, error: 'Invalid or expired run' });
         }
-        const steps = replayMazeMoves(
-          generateMaze(MAZE_ROWS, MAZE_COLS, mulberry32(run.seed)),
-          moves,
-        );
-        if (steps === null) {
+        const tally = replayRun(generateMaze(MAZE_ROWS, MAZE_COLS, mulberry32(run.seed)), moves);
+        if (tally === null) {
           return reply.status(400).send({ success: false, error: 'Moves do not solve the maze' });
         }
-        const timeMs = Date.now() - run.startedAt;
-        if (timeMs < MIN_RUN_MS) {
+        // Movement is locked for the preview, so a run cannot be over before it ends.
+        const sinceStart = Date.now() - run.startedAt;
+        if (sinceStart < PREVIEW_MS) {
           return reply.status(400).send({ success: false, error: 'Run finished too quickly' });
         }
+        const timeMs = sinceStart - PREVIEW_MS;
+        const { steps, bumps, pulses } = tally;
 
-        const day = getUtc8DayString();
+        const day = run.day;
         const leaderboardKey = `leaderboard:maze:${day}`;
 
         const pool = await initPostgresClient();
@@ -125,8 +138,15 @@ export function registerLeaderboardRoutes(app: ExtendedFastifyInstance) {
           return reply.status(404).send({ success: false, error: 'User not found' });
         }
 
-        logger.info('[Maze Submit] writing submission', { leaderboardKey, userId, steps, timeMs });
-        // addGameSubmission keeps the best steps and time of the day
+        logger.info('[Maze Submit] writing submission', {
+          leaderboardKey,
+          userId,
+          steps,
+          bumps,
+          pulses,
+          timeMs,
+        });
+        // addGameSubmission keeps the day's best run (lowest time + penalties)
         await getUgcService().addGameSubmission(
           leaderboardKey,
           userId,
@@ -134,9 +154,27 @@ export function registerLeaderboardRoutes(app: ExtendedFastifyInstance) {
           timeMs,
           user.username,
           user.image,
+          bumps,
+          pulses,
         );
         logger.info('[Maze Submit] write complete', { leaderboardKey, userId });
-        reply.send({ success: true, submitted: true, day });
+        const standing = await getUgcService().getMazeStanding(day, userId);
+        reply.send({
+          success: true,
+          submitted: true,
+          day,
+          // this run, as the server measured it
+          run: {
+            steps,
+            bumps,
+            pulses,
+            timeMs,
+            penaltyMs: penaltyMs(bumps, pulses),
+            scoreMs: scoreMs(timeMs, bumps, pulses),
+          },
+          // the player's best of the day and where it ranks
+          best: standing,
+        });
       } catch (error) {
         logger.error('[Maze Submit] failed', error);
         reply.status(400).send({ success: false, error: 'Failed to submit result' });

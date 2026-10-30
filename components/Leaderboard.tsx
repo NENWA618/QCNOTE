@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useSession } from 'next-auth/react';
 import type { LeaderboardEntry } from '../types/ugc-types';
 import UserAvatar from './UserAvatar';
+import { BUMP_PENALTY_MS, PULSE_PENALTY_MS, fmtScore } from '../lib/diejie/rules';
 
 type SessionUserWithId = { id?: string };
 
@@ -40,6 +41,15 @@ const formatTime = (timeMs: number) => {
   const remaining = seconds % 60;
   return `${minutes.toString().padStart(2, '0')}:${remaining.toString().padStart(2, '0')}`;
 };
+
+// 成绩 = 用时 + 罚时，精确到 0.1 秒：m:ss.t
+const formatScore = (ms: number) => fmtScore(ms);
+
+/** 罚时的来源，如「撞树 2 · 回光 1」；没有罚时返回空串 */
+const penaltySummary = (entry: LeaderboardEntry) =>
+  [entry.bumps ? `撞树 ${entry.bumps}` : '', entry.pulses ? `回光 ${entry.pulses}` : '']
+    .filter(Boolean)
+    .join(' · ');
 
 /** 服务端返回 2026-10-12，显示成 10 月 12 日 */
 const formatDay = (day: string) => {
@@ -82,10 +92,12 @@ function Stats({
   return (
     <div className={`shrink-0 tabular-nums ${align === 'center' ? 'text-center' : 'text-right'}`}>
       <p className="text-lg font-bold text-ink sm:text-xl dark:text-dark-text">
-        {entry.steps ?? '-'}
-        <span className="ml-0.5 text-xs font-normal text-text-light">步</span>
+        {entry.scoreMs !== undefined ? formatScore(entry.scoreMs) : '-'}
       </p>
-      <p className="text-xs text-text-light">⏱ {formatTime(entry.timeMs ?? 0)}</p>
+      <p className="text-xs text-text-light">
+        {entry.steps ?? '-'} 步 · ⏱ {formatTime(entry.timeMs ?? 0)}
+      </p>
+      {penaltySummary(entry) && <p className="text-xs text-text-light">{penaltySummary(entry)}</p>}
     </div>
   );
 }
@@ -178,7 +190,10 @@ const Leaderboard: React.FC = () => {
           {day ? `${formatDay(day)} · ` : ''}展示当天最佳通关记录
         </p>
         <p className="mt-1 text-xs text-text-light">
-          <span className="block sm:inline">步数少者优先，步数相同比用时</span>
+          <span className="block sm:inline">
+            成绩 = 用时 + 罚时（撞树 +{BUMP_PENALTY_MS / 1000} 秒，回光 +{PULSE_PENALTY_MS / 1000}{' '}
+            秒），越低越好
+          </span>
           <span aria-hidden="true" className="hidden sm:inline">
             {' · '}
           </span>
