@@ -1,9 +1,8 @@
 import { useCallback, useId, useMemo, useRef, useState, type RefObject } from 'react';
-import { getCaretCoordinates } from '../../lib/caret';
 import { rankByFuzzy } from '../../lib/fuzzy';
 import { completeWikiLink, findWikiLinkTrigger, isLinkableTitle } from '../../lib/markdownEditing';
 import type { NoteItem } from '../../lib/storage';
-import { applyEditToTextarea } from './utils';
+import type { MarkdownEditorHandle } from './MarkdownCodeEditor';
 
 const WIKI_SUGGESTION_LIMIT = 8;
 /** 菜单宽 16rem（256px）加 8px 余量；贴着右边缘时往左收，别被裁掉 */
@@ -18,8 +17,14 @@ interface WikiState {
   index: number;
 }
 
+/** 补全菜单只需要键盘事件的这两个成员，原生和 React 的键盘事件都满足 */
+interface KeyLike {
+  key: string;
+  preventDefault(): void;
+}
+
 interface Options {
-  textareaRef: RefObject<HTMLTextAreaElement | null>;
+  editorRef: RefObject<MarkdownEditorHandle | null>;
   /** 全部笔记；不传则不提供补全 */
   allNotes?: NoteItem[];
   /** 正在编辑的笔记 id（补全里排除自己） */
@@ -27,7 +32,7 @@ interface Options {
 }
 
 /** 输入 `[[` 时的笔记标题补全：状态、候选项、定位和键盘处理 */
-export function useWikiLinkCompletion({ textareaRef, allNotes, editingId }: Options) {
+export function useWikiLinkCompletion({ editorRef, allNotes, editingId }: Options) {
   const [wiki, setWiki] = useState<WikiState | null>(null);
   // Esc 关闭补全后，在用户继续输入之前不要因为 keyup/选区变化又弹出来
   const dismissedRef = useRef<string | null>(null);
@@ -58,12 +63,17 @@ export function useWikiLinkCompletion({ textareaRef, allNotes, editingId }: Opti
 
   /** 光标是否在一个未闭合的 `[[…` 里：是则（重新）定位并打开补全菜单，否则关闭 */
   const update = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta || !allNotes || ta.selectionStart !== ta.selectionEnd) {
+    const editor = editorRef.current;
+    if (!editor || !allNotes) {
       setWiki(null);
       return;
     }
-    const trigger = findWikiLinkTrigger(ta.value, ta.selectionStart);
+    const { from, to } = editor.getSelection();
+    if (from !== to) {
+      setWiki(null);
+      return;
+    }
+    const trigger = findWikiLinkTrigger(editor.getValue(), from);
     if (!trigger) {
       dismissedRef.current = null;
       setWiki(null);
@@ -74,10 +84,15 @@ export function useWikiLinkCompletion({ textareaRef, allNotes, editingId }: Opti
       return;
     }
     dismissedRef.current = null;
-    const caret = getCaretCoordinates(ta, ta.selectionStart);
-    const left = Math.max(0, Math.min(caret.left, ta.offsetWidth - MENU_WIDTH));
-    // 光标在输入框下半部分时菜单向上展开，免得被面板底部遮住
-    const flip = caret.top > ta.clientHeight / 2;
+    const caret = editor.caretRect(from);
+    if (!caret) {
+      setWiki(null);
+      return;
+    }
+    const size = editor.size();
+    const left = Math.max(0, Math.min(caret.left, size.width - MENU_WIDTH));
+    // 光标在编辑区下半部分时菜单向上展开，免得被面板底部遮住
+    const flip = caret.top > size.height / 2;
     const top = flip ? caret.top - 4 : caret.top + caret.height + 4;
     setWiki((prev) => {
       const same = prev && prev.start === trigger.start && prev.query === trigger.query;
@@ -91,7 +106,7 @@ export function useWikiLinkCompletion({ textareaRef, allNotes, editingId }: Opti
         index: same ? prev.index : 0,
       };
     });
-  }, [textareaRef, allNotes]);
+  }, [editorRef, allNotes]);
 
   const close = useCallback(() => setWiki(null), []);
 
@@ -103,19 +118,21 @@ export function useWikiLinkCompletion({ textareaRef, allNotes, editingId }: Opti
 
   const accept = useCallback(
     (title: string) => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      const trigger = findWikiLinkTrigger(ta.value, ta.selectionStart);
+      const editor = editorRef.current;
+      if (!editor) return;
+      const value = editor.getValue();
+      const caret = editor.getSelection().from;
+      const trigger = findWikiLinkTrigger(value, caret);
       if (!trigger) return;
-      applyEditToTextarea(ta, completeWikiLink(ta.value, trigger, ta.selectionStart, title));
+      editor.applyEdit(completeWikiLink(value, trigger, caret, title));
       dismissedRef.current = null;
       setWiki(null);
     },
-    [textareaRef],
+    [editorRef],
   );
 
   /** 菜单打开时它优先接管 ↑ ↓ Enter Tab Esc；返回 true 表示这个键已处理 */
-  const handleKeyDown = (e: React.KeyboardEvent): boolean => {
+  const handleKeyDown = (e: KeyLike): boolean => {
     if (!isOpen || !wiki) return false;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();

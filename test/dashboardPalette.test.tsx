@@ -15,6 +15,7 @@ vi.mock('../components/Layout', () => ({
 }));
 
 import Dashboard from '../pages/dashboard';
+import { editorText, setContent } from './editorHarness';
 
 afterEach(() => cleanup());
 
@@ -72,8 +73,7 @@ describe('Dashboard 命令面板', () => {
     fireEvent.click(screen.getByRole('button', { name: '新建笔记' }));
     await screen.findByRole('dialog', { name: '新建笔记' });
 
-    const area = screen.getByPlaceholderText(/开始记录您的想法/) as HTMLTextAreaElement;
-    fireEvent.change(area, { target: { value: '第一段内容' } });
+    setContent('第一段内容');
     expect(await screen.findByText('未保存')).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 's', ctrlKey: true });
@@ -81,7 +81,7 @@ describe('Dashboard 命令面板', () => {
 
     // 保存后它已经是一篇真正的笔记了：对话框标题变成“编辑笔记”
     expect(screen.getByRole('dialog', { name: '编辑笔记' })).toBeInTheDocument();
-    expect(area.value).toBe('第一段内容');
+    expect(editorText()).toBe('第一段内容');
   });
 
   describe('新建笔记是草稿：保存时才创建', () => {
@@ -99,7 +99,6 @@ describe('Dashboard 命令面板', () => {
       await screen.findByRole('dialog', { name: '新建笔记' });
       return before;
     };
-    const area = () => screen.getByPlaceholderText(/开始记录您的想法/) as HTMLTextAreaElement;
 
     it('点新建不会写入存储；什么都没写就取消，列表保持原样', async () => {
       const before = await openNew();
@@ -122,23 +121,23 @@ describe('Dashboard 命令面板', () => {
 
     it('第一次保存才创建；继续编辑再保存是更新，不会重复创建', async () => {
       const before = await openNew();
-      fireEvent.change(area(), { target: { value: '第一版' } });
+      setContent('第一版');
       fireEvent.keyDown(window, { key: 's', ctrlKey: true });
       await waitFor(() => expect(count()).toBe(before + 1));
 
-      fireEvent.change(area(), { target: { value: '第二版' } });
+      setContent('第二版');
       fireEvent.keyDown(window, { key: 's', ctrlKey: true });
       await waitFor(() => expect(screen.queryByText('未保存')).toBeNull());
       await act(async () => {
         await new Promise((r) => setTimeout(r, 100));
       });
       expect(count()).toBe(before + 1);
-      expect(area().value).toBe('第二版');
+      expect(editorText()).toBe('第二版');
     });
 
     it('“保存”按钮：创建并关闭编辑器', async () => {
       const before = await openNew();
-      fireEvent.change(area(), { target: { value: '要保存的' } });
+      setContent('要保存的');
       fireEvent.click(screen.getByRole('button', { name: '保存' }));
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
       await waitFor(() => expect(count()).toBe(before + 1));

@@ -10,6 +10,7 @@ import rehypeRaw from 'rehype-raw';
 import { ColoredRange } from '../lib/storage';
 import { rehypeRestrictUserStyles } from '../lib/markdownSafety';
 import { rehypeColorRanges } from '../lib/rehypeColorRanges';
+import MermaidDiagram from './MermaidDiagram';
 
 interface ColoredMarkdownProps {
   content: string;
@@ -172,6 +173,36 @@ const NoteImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = ({ src, a
   );
 };
 
+// 代码块里的 <code> 也会走 markdownComponents.code 渲染器；它是行内元素，px-2 只会加在
+// 第一行开头，导致首行右偏。这里把行内代码的内边距、背景和圆角去掉。
+const CodePre: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
+  <pre className="bg-gray-100 dark:bg-dark-surface-light p-4 rounded overflow-x-auto mb-4 text-gray-800 dark:text-dark-text [&>code]:p-0 [&>code]:bg-transparent [&>code]:rounded-none">
+    {children}
+  </pre>
+);
+
+/** 把 React 子树里的文字拼起来（着色可能把代码块文字拆进嵌套的 span） */
+function flattenText(node: React.ReactNode): string {
+  if (node === null || node === undefined || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(flattenText).join('');
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
+    return flattenText(node.props.children);
+  }
+  return '';
+}
+
+/** `pre` 里是 ```mermaid 代码块则返回源码，否则返回 null */
+function extractMermaidSource(children: React.ReactNode): string | null {
+  const only = React.Children.toArray(children)[0];
+  if (!React.isValidElement<{ className?: string; children?: React.ReactNode }>(only)) return null;
+  const className = only.props.className;
+  if (typeof className !== 'string' || !/(?:^|\s)language-mermaid(?:\s|$)/.test(className)) {
+    return null;
+  }
+  return flattenText(only.props.children);
+}
+
 // Module-level so the components keep their identity across renders: new
 // functions each render would remount them on every keystroke in the editor.
 const markdownComponents: Components = {
@@ -187,13 +218,11 @@ const markdownComponents: Components = {
       {children}
     </code>
   ),
-  // 代码块里的 <code> 也会走上面的 code 渲染器；它是行内元素，px-2 只会加在
-  // 第一行开头，导致首行右偏。这里把行内代码的内边距、背景和圆角去掉。
-  pre: ({ children }) => (
-    <pre className="bg-gray-100 dark:bg-dark-surface-light p-4 rounded overflow-x-auto mb-4 text-gray-800 dark:text-dark-text [&>code]:p-0 [&>code]:bg-transparent [&>code]:rounded-none">
-      {children}
-    </pre>
-  ),
+  pre: ({ children }) => {
+    const mermaidSource = extractMermaidSource(children);
+    if (mermaidSource !== null) return <MermaidDiagram source={mermaidSource} />;
+    return <CodePre>{children}</CodePre>;
+  },
   blockquote: ({ children }) => (
     <blockquote className="border-l-4 border-primary pl-4 italic text-gray-600 dark:text-dark-text-secondary mb-4">
       {children}

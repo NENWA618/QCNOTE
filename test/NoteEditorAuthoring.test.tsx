@@ -5,6 +5,15 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import NoteEditor from '../components/NoteEditor';
 import type { NoteItem } from '../lib/storage';
+import {
+  editorContent,
+  editorSelection,
+  editorText,
+  editorView,
+  pressKey,
+  setContent,
+  typeText,
+} from './editorHarness';
 
 afterEach(() => cleanup());
 
@@ -48,14 +57,6 @@ function setup(over: Partial<React.ComponentProps<typeof NoteEditor>> = {}) {
   return props;
 }
 
-const area = () => screen.getByPlaceholderText(/开始记录您的想法/) as HTMLTextAreaElement;
-
-/** 设置内容与选区（受控 textarea：先 change 再设选区） */
-function setContent(value: string, start = value.length, end = start) {
-  fireEvent.change(area(), { target: { value } });
-  area().setSelectionRange(start, end);
-}
-
 describe('格式工具栏与快捷键', () => {
   it('有带名称的工具栏，Tab 顺序里只有一个按钮（roving tabindex）', () => {
     setup();
@@ -82,70 +83,95 @@ describe('格式工具栏与快捷键', () => {
     const { onChange } = setup();
     setContent('你好世界', 0, 2);
     fireEvent.click(screen.getByRole('button', { name: '粗体' }));
-    expect(area().value).toBe('**你好**世界');
+    expect(editorText()).toBe('**你好**世界');
     expect(onChange).toHaveBeenLastCalledWith('content', '**你好**世界');
   });
 
-  it('Ctrl+B / Ctrl+I / Ctrl+K', () => {
+  it('Ctrl+B / Ctrl+I / Ctrl+K', async () => {
     setup();
     setContent('abc', 0, 3);
-    fireEvent.keyDown(area(), { key: 'b', ctrlKey: true });
-    expect(area().value).toBe('**abc**');
+    expect(await pressKey('b', { ctrlKey: true })).toBe(false); // 编辑器接管了
+    expect(editorText()).toBe('**abc**');
 
     setContent('abc', 0, 3);
-    fireEvent.keyDown(area(), { key: 'i', metaKey: true });
-    expect(area().value).toBe('*abc*');
+    await pressKey('i', { ctrlKey: true });
+    expect(editorText()).toBe('*abc*');
 
     setContent('abc', 0, 3);
-    fireEvent.keyDown(area(), { key: 'k', ctrlKey: true });
-    expect(area().value).toBe('[abc](url)');
+    await pressKey('k', { ctrlKey: true });
+    expect(editorText()).toBe('[abc](url)');
   });
 
-  it('在列表项末尾按 Enter：续写下一项；空项再按一次：结束列表', () => {
+  it('在列表项末尾按 Enter：续写下一项；空项再按一次：结束列表', async () => {
     setup();
     setContent('- 买菜');
-    const first = fireEvent.keyDown(area(), { key: 'Enter' });
-    expect(first).toBe(false); // preventDefault 了
-    expect(area().value).toBe('- 买菜\n- ');
+    expect(await pressKey('Enter')).toBe(false);
+    expect(editorText()).toBe('- 买菜\n- ');
 
-    const second = fireEvent.keyDown(area(), { key: 'Enter' });
-    expect(second).toBe(false);
-    expect(area().value).toBe('- 买菜\n');
+    expect(await pressKey('Enter')).toBe(false);
+    expect(editorText()).toBe('- 买菜\n');
   });
 
-  it('普通文字上按 Enter 保持默认换行；Shift+Enter 也不接管', () => {
+  it('普通文字上按 Enter 只换行（不自动缩进）；Shift+Enter 不续写列表', async () => {
     setup();
-    setContent('普通文字');
-    expect(fireEvent.keyDown(area(), { key: 'Enter' })).toBe(true);
+    setContent('  普通文字');
+    await pressKey('Enter');
+    expect(editorText()).toBe('  普通文字\n');
+
     setContent('- 列表');
-    expect(fireEvent.keyDown(area(), { key: 'Enter', shiftKey: true })).toBe(true);
+    await pressKey('Enter', { shiftKey: true });
+    expect(editorText()).toBe('- 列表\n');
   });
 
-  it('输入法选词中按 Enter 不会续写列表', () => {
+  it('输入法选词中按 Enter 不会续写列表', async () => {
     setup();
     setContent('- 买菜');
-    expect(fireEvent.keyDown(area(), { key: 'Enter', isComposing: true })).toBe(true);
-    expect(area().value).toBe('- 买菜');
+    await pressKey('Enter', { isComposing: true });
+    expect(editorText()).toBe('- 买菜');
+    // Safari 在 compositionend 之后的同一个 keydown 里 isComposing 已是 false，但 keyCode 仍是 229
+    await pressKey('Enter', { keyCode: 229 });
+    expect(editorText()).toBe('- 买菜');
+    // 普通的 Enter 仍然续写
+    await pressKey('Enter');
+    expect(editorText()).toBe('- 买菜\n- ');
   });
 
-  it('列表项上 Tab 缩进；普通文字上 Tab 不拦截（键盘用户能离开编辑区）', () => {
+  it('列表项上 Tab 缩进；普通文字上 Tab 不拦截（键盘用户能离开编辑区）', async () => {
     setup();
     setContent('- a');
-    expect(fireEvent.keyDown(area(), { key: 'Tab' })).toBe(false);
-    expect(area().value).toBe('  - a');
+    expect(await pressKey('Tab')).toBe(false);
+    expect(editorText()).toBe('  - a');
 
     setContent('普通文字');
-    expect(fireEvent.keyDown(area(), { key: 'Tab' })).toBe(true);
+    expect(await pressKey('Tab')).toBe(true);
+    expect(editorText()).toBe('普通文字');
+  });
+
+  it('Ctrl+Z 能撤销一次格式化（编辑走 CodeMirror 的历史记录）', async () => {
+    setup();
+    setContent('abc', 0, 3);
+    await pressKey('b', { ctrlKey: true });
+    expect(editorText()).toBe('**abc**');
+    await pressKey('z', { ctrlKey: true });
+    expect(editorText()).toBe('abc');
+  });
+
+  it('Esc 不被编辑器吞掉：能传到外层关闭编辑器', async () => {
+    const props = setup();
+    await pressKey('Escape');
+    expect(props.onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('可编辑区有名称，并带 textbox 语义', () => {
+    setup();
+    expect(editorContent()).toHaveAttribute('aria-multiline', 'true');
   });
 });
 
 describe('[[ 双链补全', () => {
   const typeInto = async (text: string) => {
-    const user = userEvent.setup();
-    await user.click(area());
-    // user-event 里 `[` 是按键描述符的起始符，输入字面量 `[` 要写成 `[[`
-    await user.type(area(), text.replace(/\[/g, '[['));
-    return user;
+    editorView().focus();
+    await typeText(text);
   };
 
   it('输入 [[ 后列出其他笔记：不含自己、回收站里的、标题含 ] 的', async () => {
@@ -154,41 +180,42 @@ describe('[[ 双链补全', () => {
     const list = await screen.findByRole('listbox', { name: '链接到笔记' });
     const names = Array.from(list.querySelectorAll('[role=option]')).map((o) => o.textContent);
     expect(names).toEqual(['项目计划', '读书笔记']); // 按最近编辑排序
-    expect(area()).toHaveAttribute(
+    expect(editorContent()).toHaveAttribute(
       'aria-activedescendant',
       list.querySelector('[role=option]')!.id,
     );
+    expect(editorContent()).toHaveAttribute('aria-controls', list.id);
   });
 
   it('继续输入会过滤；Enter 补全为 [[标题]] 并关闭菜单', async () => {
-    const user = await (async () => {
-      setup();
-      return typeInto('见 [[读书');
-    })();
+    setup();
+    await typeInto('见 [[读书');
     const list = await screen.findByRole('listbox', { name: '链接到笔记' });
     // 限定在菜单内：分类下拉框里的 <option> 也是 option 角色
     expect(within(list).getAllByRole('option')).toHaveLength(1);
-    await user.keyboard('{Enter}');
-    expect(area().value).toBe('见 [[读书笔记]]');
+    expect(await pressKey('Enter')).toBe(false); // 菜单接管了 Enter
+    expect(editorText()).toBe('见 [[读书笔记]]');
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 
   it('方向键选择，Tab 确认', async () => {
     setup();
-    const user = await typeInto('[[');
-    await user.keyboard('{ArrowDown}{Tab}');
-    expect(area().value).toBe('[[读书笔记]]');
+    await typeInto('[[');
+    await screen.findByRole('listbox');
+    await pressKey('ArrowDown');
+    await pressKey('Tab');
+    expect(editorText()).toBe('[[读书笔记]]');
   });
 
   it('Esc 只关闭菜单，不关闭编辑器；继续输入前不会再弹出', async () => {
     const props = setup();
-    const user = await typeInto('[[');
+    await typeInto('[[');
     await screen.findByRole('listbox');
-    await user.keyboard('{Escape}');
+    expect(await pressKey('Escape')).toBe(false); // 菜单吃掉了这个 Esc
     expect(screen.queryByRole('listbox')).toBeNull();
     expect(props.onCancel).not.toHaveBeenCalled();
     // 再输入字符 → 视为新一轮，重新出现
-    await user.keyboard('项');
+    await typeText('项');
     expect(await screen.findByRole('listbox')).toBeInTheDocument();
   });
 
@@ -196,26 +223,30 @@ describe('[[ 双链补全', () => {
     setup();
     await typeInto('[[zzzz');
     expect(screen.queryByRole('listbox')).toBeNull();
+    await pressKey('Enter');
+    expect(editorText()).toBe('[[zzzz\n');
   });
 
   it('不传 allNotes 时没有补全', async () => {
     setup({ allNotes: undefined });
     await typeInto('[[');
     expect(screen.queryByRole('listbox')).toBeNull();
+    expect(editorContent()).not.toHaveAttribute('aria-autocomplete');
   });
 
   it('点击选项补全', async () => {
     setup();
     await typeInto('[[');
     fireEvent.click(await screen.findByRole('option', { name: '项目计划' }));
-    expect(area().value).toBe('[[项目计划]]');
+    expect(editorText()).toBe('[[项目计划]]');
   });
 
   it('工具栏的 [[ ]] 按钮：光标落在中间并弹出补全', async () => {
     setup();
-    await userEvent.setup().click(area());
+    editorView().focus();
     fireEvent.click(screen.getByRole('button', { name: '链接到其他笔记' }));
-    expect(area().value).toBe('[[]]');
+    expect(editorText()).toBe('[[]]');
+    expect(editorSelection()).toEqual({ from: 2, to: 2 });
     expect(await screen.findByRole('listbox')).toBeInTheDocument();
   });
 });

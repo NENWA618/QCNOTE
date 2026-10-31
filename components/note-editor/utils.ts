@@ -1,5 +1,4 @@
 import type { NoteItem } from '../../lib/storage';
-import type { TextEdit } from '../../lib/markdownEditing';
 
 export const NOTE_CATEGORIES = ['生活', '工作', '学习', '灵感', '其他'];
 
@@ -30,28 +29,4 @@ export const sameTags = (a: string[], b: string[]) =>
 export function noteFingerprint(n: NoteItem | null) {
   if (!n) return '';
   return JSON.stringify([n.title, n.content, n.category, n.tags, n.color, n.coloredRanges ?? []]);
-}
-
-/**
- * 把一次编辑应用到 textarea。优先用 `execCommand('insertText')`：它走浏览器自己的编辑通道，
- * Ctrl+Z 能一步步撤销；直接改 value 会清空撤销栈。execCommand 不可用时（个别环境）退回 setRangeText。
- */
-export function applyEditToTextarea(ta: HTMLTextAreaElement, edit: TextEdit) {
-  ta.focus();
-  ta.setSelectionRange(edit.from, edit.to);
-  let done: boolean;
-  try {
-    done =
-      edit.insert === ''
-        ? document.execCommand('delete')
-        : document.execCommand('insertText', false, edit.insert);
-  } catch {
-    done = false;
-  }
-  if (!done) {
-    ta.setRangeText(edit.insert, edit.from, edit.to, 'end');
-    // React 的 onChange 监听 input 事件
-    ta.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-  ta.setSelectionRange(edit.selectionStart, edit.selectionEnd);
 }

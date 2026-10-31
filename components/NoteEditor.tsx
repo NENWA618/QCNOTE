@@ -5,13 +5,7 @@ import { useFocusTrap } from '../lib/hooks/useFocusTrap';
 import { useLocalStorageFlag } from '../lib/hooks/useLocalStorageFlag';
 import { useMediaQuery } from '../lib/hooks/useMediaQuery';
 import { useModKeyLabel } from '../lib/hooks/useModKeyLabel';
-import {
-  continueList,
-  indentSelection,
-  insertLink,
-  toggleWrap,
-  type TextEdit,
-} from '../lib/markdownEditing';
+import type { TextEdit } from '../lib/markdownEditing';
 import { computeTextStats } from '../lib/textStats';
 import { NoteItem, NoteVersion } from '../lib/storage';
 import TextColorUtils from '../lib/textColorUtils';
@@ -26,6 +20,7 @@ import { ColorSelectionBar } from './note-editor/ColorSelectionBar';
 import { EditorHeader } from './note-editor/EditorHeader';
 import { createFormatActions, type FormatAction } from './note-editor/formatActions';
 import { FormatToolbar } from './note-editor/FormatToolbar';
+import { MarkdownCodeEditor, type MarkdownEditorHandle } from './note-editor/MarkdownCodeEditor';
 import { MetadataFields } from './note-editor/MetadataFields';
 import { PreviewPanel } from './note-editor/PreviewPanel';
 import { SplitPreview } from './note-editor/SplitPreview';
@@ -34,7 +29,7 @@ import { useNoteSentiment } from './note-editor/useNoteSentiment';
 import { usePublishActions } from './note-editor/usePublishActions';
 import { useWikiLinkCompletion } from './note-editor/useWikiLinkCompletion';
 import { WikiSuggestionList } from './note-editor/WikiSuggestionList';
-import { applyEditToTextarea, noteFingerprint, parseTags, sameTags } from './note-editor/utils';
+import { noteFingerprint, parseTags, sameTags } from './note-editor/utils';
 
 interface NoteEditorProps {
   note: NoteItem | null;
@@ -87,7 +82,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
-  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<MarkdownEditorHandle>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   // 标签输入框保留原始文本：原来每次输入都 split + join，刚打出的逗号会被立刻吃掉，没法输入第二个标签
@@ -192,7 +187,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 
   // ---- `[[` 双链补全 ----
   const wiki = useWikiLinkCompletion({
-    textareaRef: contentTextareaRef,
+    editorRef,
     allNotes,
     editingId: localNote?.id,
   });
@@ -279,14 +274,11 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
 
   const unpublishedChanges = hasUnpublishedChanges(localNote, publishInfo);
 
-  // Handle text selection in the content textarea
-  const handleTextSelection = () => {
-    const ta = contentTextareaRef.current;
-    if (!ta) return;
-
-    if (ta.selectionStart !== ta.selectionEnd) {
-      setSelectionStart(ta.selectionStart);
-      setSelectionEnd(ta.selectionEnd);
+  // 编辑器的文本或选区变了：记录选中范围（给着色用），并刷新 `[[` 补全
+  const handleSelectionChange = (from: number, to: number) => {
+    if (from !== to) {
+      setSelectionStart(from);
+      setSelectionEnd(to);
     } else {
       setSelectionStart(null);
       setSelectionEnd(null);
@@ -294,13 +286,14 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
     wiki.update();
   };
 
-  /** 对 textarea 的当前选区执行一次编辑；返回是否真的改了东西 */
+  /** 对编辑器的当前选区执行一次编辑；返回是否真的改了东西 */
   const runEdit = (build: (value: string, start: number, end: number) => TextEdit | null) => {
-    const ta = contentTextareaRef.current;
-    if (!ta) return false;
-    const edit = build(ta.value, ta.selectionStart, ta.selectionEnd);
+    const editor = editorRef.current;
+    if (!editor) return false;
+    const { from, to } = editor.getSelection();
+    const edit = build(editor.getValue(), from, to);
     if (!edit) return false;
-    applyEditToTextarea(ta, edit);
+    editor.applyEdit(edit);
     return true;
   };
 
@@ -308,49 +301,27 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
     if (runEdit(action.build) && action.key === 'wikilink') wiki.update();
   };
 
-  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // 输入法选词时的 Enter / Tab / 方向键 / Esc 是给输入法的
-    if (isImeComposing(e.nativeEvent)) return;
-
-    // 补全菜单打开时，它优先接管 ↑ ↓ Enter Tab Esc
-    if (wiki.handleKeyDown(e)) return;
-
-    const mod = e.ctrlKey || e.metaKey;
-    if (mod && !e.altKey && !e.shiftKey) {
-      const key = e.key.toLowerCase();
-      if (key === 'b') {
-        e.preventDefault();
-        runEdit((v, s, en) => toggleWrap(v, s, en, '**', '粗体'));
-      } else if (key === 'i') {
-        e.preventDefault();
-        runEdit((v, s, en) => toggleWrap(v, s, en, '*', '斜体'));
-      } else if (key === 'k') {
-        e.preventDefault();
-        runEdit(insertLink);
-      }
-      return;
-    }
-    if (mod || e.altKey) return;
-
-    if (e.key === 'Enter' && !e.shiftKey) {
-      // 不在列表里 → 返回 false，保持浏览器默认的换行
-      if (runEdit(continueList)) e.preventDefault();
-    } else if (e.key === 'Tab') {
-      // 只在列表项/多行选区里接管；其他情况 Tab 照常移动焦点，键盘用户不会被困在编辑区
-      if (runEdit((v, s, en) => indentSelection(v, s, en, e.shiftKey))) e.preventDefault();
-    }
-  };
+  // 粗体 / 斜体 / 链接 / 列表续写 / Tab 缩进的快捷键在编辑器组件里；这里只让补全菜单先处理按键
+  const handleEditorKeyDown = (e: KeyboardEvent) => wiki.handleKeyDown(e);
 
   // 分屏时让预览跟着编辑区滚动（按比例）
-  const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+  const handleEditorScroll = ({ top, max }: { top: number; max: number }) => {
     wiki.close();
     const preview = previewPaneRef.current;
-    if (!showSplit || !preview) return;
-    const ta = e.currentTarget;
-    const max = ta.scrollHeight - ta.clientHeight;
-    if (max <= 0) return;
-    preview.scrollTop = (ta.scrollTop / max) * (preview.scrollHeight - preview.clientHeight);
+    if (!showSplit || !preview || max <= 0) return;
+    preview.scrollTop = (top / max) * (preview.scrollHeight - preview.clientHeight);
   };
+
+  const editorAria = wiki.isOpen
+    ? {
+        'aria-autocomplete': 'list',
+        'aria-haspopup': 'listbox',
+        'aria-controls': wiki.listId,
+        'aria-activedescendant': `${wiki.listId}-${wiki.activeIndex}`,
+      }
+    : allNotes
+      ? { 'aria-autocomplete': 'list' }
+      : undefined;
 
   // 着色：选区在选中时记录，应用 / 清除后复位
   const hasSelection =
@@ -448,28 +419,18 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                 )}
                 <FormatToolbar actions={formatActions} onRun={runFormat} />
                 <div className="relative">
-                  <textarea
-                    ref={contentTextareaRef}
+                  <MarkdownCodeEditor
+                    ref={editorRef}
                     value={localNote.content}
-                    onChange={(e) => {
-                      handleContentChange(e.target.value);
-                      wiki.update();
-                    }}
-                    onKeyDown={handleTextareaKeyDown}
-                    onSelect={handleTextSelection}
-                    onMouseUp={handleTextSelection}
-                    onKeyUp={handleTextSelection}
-                    onTouchEnd={handleTextSelection}
-                    onScroll={handleTextareaScroll}
+                    onChange={handleContentChange}
+                    onSelectionChange={handleSelectionChange}
+                    onKeyDown={handleEditorKeyDown}
+                    onScroll={handleEditorScroll}
                     onBlur={wiki.close}
-                    aria-autocomplete={allNotes ? 'list' : undefined}
-                    aria-haspopup={wiki.isOpen ? 'listbox' : undefined}
-                    aria-controls={wiki.isOpen ? wiki.listId : undefined}
-                    aria-activedescendant={
-                      wiki.isOpen ? `${wiki.listId}-${wiki.activeIndex}` : undefined
-                    }
+                    ariaLabel="笔记内容"
                     placeholder="开始记录您的想法... (支持 Markdown 和 LaTeX 公式语法)"
-                    className={`w-full ${showSplit ? 'h-[55vh] sm:max-h-none' : 'h-[45dvh] sm:h-[45vh] sm:max-h-[32rem]'} min-h-48 resize-y border rounded-lg p-3 outline-hidden focus:border-accent-pink focus:ring-2 focus:ring-accent-pink/20 bg-white dark:bg-dark-surface-light font-mono text-base sm:text-sm leading-relaxed border-gray-300 dark:border-dark-border text-gray-800 dark:text-dark-text`}
+                    aria={editorAria}
+                    className={`w-full ${showSplit ? 'h-[55vh] sm:max-h-none' : 'h-[45dvh] sm:h-[45vh] sm:max-h-[32rem]'} min-h-48 resize-y overflow-hidden border rounded-lg focus-within:border-accent-pink focus-within:ring-2 focus-within:ring-accent-pink/20 bg-white dark:bg-dark-surface-light font-mono text-base sm:text-sm border-gray-300 dark:border-dark-border text-gray-800 dark:text-dark-text`}
                   />
                   {wiki.isOpen && wiki.wiki && (
                     <WikiSuggestionList

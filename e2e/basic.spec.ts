@@ -42,7 +42,7 @@ test.describe('Dashboard', () => {
     await page.getByRole('button', { name: /新建笔记/ }).click();
 
     await expect(page.getByPlaceholder('笔记标题')).toBeVisible();
-    await expect(page.getByPlaceholder(/开始记录您的想法/)).toBeVisible();
+    await expect(page.getByRole('textbox', { name: '笔记内容' })).toBeVisible();
     await expect(page.getByPlaceholder(/标签1/)).toBeVisible();
   });
 
@@ -51,7 +51,7 @@ test.describe('Dashboard', () => {
     await page.getByRole('button', { name: /新建笔记/ }).click();
 
     const title = page.getByPlaceholder('笔记标题');
-    const content = page.getByPlaceholder(/开始记录您的想法/);
+    const content = page.getByRole('textbox', { name: '笔记内容' });
     const tags = page.getByPlaceholder(/标签1/);
 
     await title.fill('Test Note');
@@ -59,7 +59,7 @@ test.describe('Dashboard', () => {
     await tags.fill('test, important');
 
     await expect(title).toHaveValue('Test Note');
-    await expect(content).toHaveValue('This is a test note content.');
+    await expect(content).toHaveText('This is a test note content.');
     await expect(tags).toHaveValue('test, important');
   });
 

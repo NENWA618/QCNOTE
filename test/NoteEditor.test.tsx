@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import NoteEditor from '../components/NoteEditor';
 import SentimentUtil from '../lib/sentiment';
 import { NoteItem, NoteVersion } from '../lib/storage';
+import { editorText, setContent } from './editorHarness';
 
 describe('NoteEditor Component', () => {
   const mockNote: NoteItem = {
@@ -68,19 +69,12 @@ describe('NoteEditor Component', () => {
     expect(mockProps.onChange).toHaveBeenCalled();
   });
 
-  it('should call onChange when content is edited', async () => {
-    const user = userEvent.setup();
+  it('should call onChange when content is edited', () => {
     render(React.createElement(NoteEditor, mockProps));
 
-    // Find content textarea
-    const textareas = screen.getAllByRole('textbox');
-    const contentTextarea = textareas[1]; // Assuming second textarea is content
+    setContent('Updated content');
 
-    if (contentTextarea) {
-      await user.clear(contentTextarea);
-      await user.type(contentTextarea, 'Updated content');
-      expect(mockProps.onChange).toHaveBeenCalled();
-    }
+    expect(mockProps.onChange).toHaveBeenCalledWith('content', 'Updated content');
   });
 
   it('should call onSave when save button is clicked', async () => {
@@ -243,7 +237,7 @@ describe('NoteEditor Component', () => {
 
     expect(mockProps.onRevertVersion).toHaveBeenCalledWith(version);
     expect(screen.getByDisplayValue('Old Title')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('old content')).toBeInTheDocument();
+    expect(editorText()).toBe('old content');
     expect(screen.getByDisplayValue('old')).toBeInTheDocument();
     expect(latest).toMatchObject({
       title: 'Old Title',
@@ -276,7 +270,7 @@ describe('NoteEditor Component', () => {
     await user.click(screen.getByRole('button', { name: /恢复此版本/ }));
 
     expect(screen.getByDisplayValue('Old Title')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('old content')).toBeInTheDocument();
+    expect(editorText()).toBe('old content');
     expect(screen.getByDisplayValue('old')).toBeInTheDocument();
   });
 
@@ -291,9 +285,8 @@ describe('NoteEditor Component', () => {
       expect(analyze).toHaveBeenCalledTimes(1);
       expect(screen.getByText('当前情绪：平静')).toBeInTheDocument();
 
-      const content = screen.getByDisplayValue(/This is a test note/);
       for (const text of ['I', 'I love', 'I love it', 'I love it, wonderful']) {
-        fireEvent.change(content, { target: { value: text } });
+        setContent(text);
       }
       expect(analyze).toHaveBeenCalledTimes(1);
 

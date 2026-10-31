@@ -59,6 +59,6 @@ test.describe('Accessibility Tests', () => {
 
     // Fields are identified by placeholder text at minimum
     await expect(page.getByPlaceholder('笔记标题')).toBeVisible();
-    await expect(page.getByPlaceholder(/开始记录您的想法/)).toBeVisible();
+    await expect(page.getByRole('textbox', { name: '笔记内容' })).toBeVisible();
   });
 });
