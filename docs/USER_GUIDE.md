@@ -164,7 +164,7 @@
 
 ## 更多功能
 
-- **AI 生成笔记**（`/models`，需登录）：先选择「接口类型」——OpenAI Chat Completions（含各类兼容接口）、OpenAI Responses、Google Gemini 或 DeepSeek，再填写接口地址、模型名称和 API Key（选 Gemini / DeepSeek / Responses 会预填官方地址），然后在右侧输入问题，回复会保存为一篇新笔记（`Ctrl/Cmd+Enter` 发送）。请求由浏览器直接发往你填写的地址，不经过 QCNOTE 服务器；API Key 加密保存在本机。目标服务需要允许浏览器跨域访问（CORS）；如果某个服务不允许，可以自己搭一个转发代理，把代理地址填到「API 地址」里。
+- **AI 生成笔记**（`/models`，需登录）：先选择「接口类型」——OpenAI Chat Completions（含各类兼容接口）、OpenAI Responses、Google Gemini generateContent、Google Gemini Interactions 或 DeepSeek，再填写接口地址、模型名称和 API Key（选 Gemini / Gemini Interactions / DeepSeek / Responses 会预填官方地址），然后在右侧输入问题，回复会保存为一篇新笔记（`Ctrl/Cmd+Enter` 发送）。请求由浏览器直接发往你填写的地址，不经过 QCNOTE 服务器；API Key 加密保存在本机。目标服务需要允许浏览器跨域访问（CORS）；如果某个服务不允许，可以自己搭一个转发代理，把代理地址填到「API 地址」里。
 - **笔记检索**（同在 `/models` 页，需登录）：用内置本地模型按语义找出最相关的笔记段落，不调用上面的 AI 服务，笔记内容不会离开浏览器；首次使用需下载模型并为笔记建立索引。
 - **叠界迷宫与排行榜**（`/diejie`、`/leaderboard`）：每天一张全站相同的迷宫（另有不计榜的自由练习）：先有 5 秒光源记路线，熄灭后凭记忆走出去。成绩 = 用时 + 罚时（撞树 +3 秒，回光 +4 秒，最多 2 次），越低越好；登录后的成绩计入当天排行榜，每天 0 点（UTC+8）重置。
 - **推送通知**：允许通知后可以收到官方消息；在“个人资料”里随时订阅或取消。订阅属于当前浏览器，换设备需要重新订阅。

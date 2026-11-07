@@ -4,7 +4,8 @@
  * 注意"接口类型"指的是请求/响应的格式，而不是公司：DeepSeek 用的就是 OpenAI Chat Completions
  * 格式，单独列出来只是为了预填它的地址和模型名，减少用户配置出错。
  */
-export type AIProvider = 'openai-chat' | 'openai-responses' | 'gemini' | 'deepseek';
+export type AIProvider =
+  'openai-chat' | 'openai-responses' | 'gemini' | 'gemini-interactions' | 'deepseek';
 
 export const DEFAULT_AI_PROVIDER: AIProvider = 'openai-chat';
 
@@ -23,6 +24,7 @@ export const AI_PROVIDER_ORDER: AIProvider[] = [
   'openai-chat',
   'openai-responses',
   'gemini',
+  'gemini-interactions',
   'deepseek',
 ];
 
@@ -45,12 +47,22 @@ export const AI_PROVIDERS: Record<AIProvider, AIProviderPreset> = {
       'OpenAI 目前推荐新项目使用的格式。这里只发送文本，并设置 store=false，让 OpenAI 不保存这次请求。',
   },
   gemini: {
-    label: 'Google Gemini',
+    label: 'Google Gemini generateContent',
     defaultEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
     endpointPlaceholder: 'https://generativelanguage.googleapis.com/v1beta',
     endpointHint: '填写 API 基础地址即可，会自动拼上 /models/模型名:generateContent',
     modelPlaceholder: '例如：gemini-3.5-flash',
     description: '使用 Gemini 的 generateContent 接口，API Key 通过请求头发送，不会出现在网址里。',
+  },
+  'gemini-interactions': {
+    label: 'Google Gemini Interactions',
+    defaultEndpoint: 'https://generativelanguage.googleapis.com/v1beta/interactions',
+    endpointPlaceholder: 'https://generativelanguage.googleapis.com/v1beta/interactions',
+    endpointHint:
+      '填写完整的 Interactions 接口地址，通常以 /interactions 结尾；只填基础地址时会自动补上 /interactions',
+    modelPlaceholder: '例如：gemini-3.5-flash',
+    description:
+      'Gemini 较新的 Interactions API（目前仍为 Beta）。API Key 通过请求头发送，并设置 store=false，让 Google 不保存这次交互。',
   },
   deepseek: {
     label: 'DeepSeek',

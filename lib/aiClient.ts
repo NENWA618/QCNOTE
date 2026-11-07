@@ -3,7 +3,8 @@
  *
  * API Key 全程只存在于本地（见 aiSettings.ts）和这一次请求里，QCNOTE 服务器
  * 不会看到它。支持的接口格式见 aiProviders.ts：
- * OpenAI Chat Completions（含兼容接口）、OpenAI Responses、Google Gemini、DeepSeek。
+ * OpenAI Chat Completions（含兼容接口）、OpenAI Responses、Google Gemini、
+ * Google Gemini Interactions、DeepSeek。
  */
 import { DEFAULT_AI_PROVIDER, type AIProvider } from './aiProviders';
 
@@ -32,6 +33,12 @@ function buildGeminiUrl(apiEndpoint: string, modelName: string): string {
   return `${apiEndpoint.replace(/\/+$/, '')}/models/${encodeURIComponent(model)}:generateContent`;
 }
 
+/** Interactions 的地址不含模型名；只填了基础地址时补上 /interactions */
+function buildGeminiInteractionsUrl(apiEndpoint: string): string {
+  const base = apiEndpoint.replace(/\/+$/, '');
+  return /\/interactions$/.test(base) ? base : `${base}/interactions`;
+}
+
 /** 按接口格式组装请求。纯函数，不发网络请求。 */
 export function buildAIRequest({
   apiEndpoint,
@@ -47,6 +54,13 @@ export function buildAIRequest({
         // Key 放请求头而不是 ?key= 查询参数，避免它出现在 URL、浏览器历史和各类日志里
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: { contents: [{ role: 'user', parts: [{ text: prompt }] }] },
+      };
+    case 'gemini-interactions':
+      return {
+        url: buildGeminiInteractionsUrl(apiEndpoint),
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        // 与 Responses 一样，Interactions 默认会在服务端保存交互；这里明确关闭
+        body: { model: modelName, input: prompt, store: false },
       };
     case 'openai-responses':
       return {
@@ -119,11 +133,44 @@ function extractGeminiText(data: unknown): string {
     .join('');
 }
 
+/**
+ * Interactions 的响应有两种结构：
+ * - 新结构：steps[] 中 type 为 model_output 的步骤，其 content[] 里的 text 是答案
+ *   （思考、工具调用等是别的 step 类型，自然被跳过）；
+ * - 旧结构：扁平的 outputs[]，其中 type 为 text 的项是答案（thought 等是别的类型）。
+ * 两种都解析，这样无论服务端默认哪种结构都能用，也不必发送会触发额外跨域预检的版本头。
+ */
+function extractGeminiInteractionsText(data: unknown): string {
+  if (!isObject(data)) return '';
+  const parts: string[] = [];
+  if (Array.isArray(data.steps)) {
+    for (const step of data.steps) {
+      if (!isObject(step) || step.type !== 'model_output' || !Array.isArray(step.content)) continue;
+      for (const part of step.content) {
+        if (isObject(part) && part.type === 'text' && typeof part.text === 'string') {
+          parts.push(part.text);
+        }
+      }
+    }
+    if (parts.length > 0) return parts.join('');
+  }
+  if (Array.isArray(data.outputs)) {
+    for (const item of data.outputs) {
+      if (isObject(item) && item.type === 'text' && typeof item.text === 'string') {
+        parts.push(item.text);
+      }
+    }
+  }
+  return parts.join('');
+}
+
 /** 从响应中取出文本；取不到时返回空串，由调用方根据情况给出具体错误 */
 export function extractAIText(provider: AIProvider, data: unknown): string {
   switch (provider) {
     case 'gemini':
       return extractGeminiText(data);
+    case 'gemini-interactions':
+      return extractGeminiInteractionsText(data);
     case 'openai-responses':
       return extractResponsesText(data);
     case 'deepseek':
@@ -149,6 +196,13 @@ function explainEmptyResponse(provider: AIProvider, data: unknown): string {
         return `Gemini 没有返回内容（结束原因：${reason}）。`;
       }
     }
+    if (provider === 'gemini-interactions') {
+      const error = isObject(data.error) ? data.error : undefined;
+      if (error && typeof error.message === 'string') return `接口返回错误：${error.message}`;
+      if (typeof data.status === 'string' && data.status !== 'completed') {
+        return `Gemini 没有返回内容（状态：${data.status}）。`;
+      }
+    }
     if (provider === 'openai-responses') {
       const error = isObject(data.error) ? data.error : undefined;
       if (error && typeof error.message === 'string') return `接口返回错误：${error.message}`;
@@ -163,6 +217,7 @@ function explainEmptyResponse(provider: AIProvider, data: unknown): string {
     deepseek: 'choices[0].message.content',
     'openai-responses': 'output[].content[].text',
     gemini: 'candidates[0].content.parts[].text',
+    'gemini-interactions': 'steps[].content[].text 或 outputs[].text',
   };
   return `响应格式不符合预期（未找到 ${expected[provider]}）。请确认「接口类型」与你填写的地址一致。`;
 }

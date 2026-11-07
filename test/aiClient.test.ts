@@ -123,6 +123,51 @@ describe('extractAIText', () => {
     expect(extractAIText('openai-responses', { output_text: '直接给的' })).toBe('直接给的');
   });
 
+  it('Gemini Interactions：Key 放请求头，store=false，基础地址自动补 /interactions', () => {
+    const req = buildAIRequest({
+      ...base,
+      provider: 'gemini-interactions',
+      apiEndpoint: 'https://g.test/v1beta/',
+      modelName: 'gemini-3.5-flash',
+    });
+    expect(req.url).toBe('https://g.test/v1beta/interactions');
+    expect(req.headers['x-goog-api-key']).toBe(base.apiKey);
+    expect(req.headers.Authorization).toBeUndefined();
+    expect(req.body).toEqual({ model: 'gemini-3.5-flash', input: base.prompt, store: false });
+
+    const full = buildAIRequest({
+      ...base,
+      provider: 'gemini-interactions',
+      apiEndpoint: 'https://g.test/v1beta/interactions',
+      modelName: 'm',
+    });
+    expect(full.url).toBe('https://g.test/v1beta/interactions');
+  });
+
+  it('Gemini Interactions：新旧两种响应结构都能解析，跳过思考步骤', () => {
+    const steps = {
+      steps: [
+        { type: 'thought', summary: [{ type: 'text', text: '思考' }] },
+        {
+          type: 'model_output',
+          content: [
+            { type: 'text', text: '答案一' },
+            { type: 'text', text: '答案二' },
+          ],
+        },
+      ],
+    };
+    expect(extractAIText('gemini-interactions', steps)).toBe('答案一答案二');
+    const legacy = {
+      outputs: [
+        { type: 'thought', summary: '思考' },
+        { type: 'text', text: '旧结构答案' },
+      ],
+    };
+    expect(extractAIText('gemini-interactions', legacy)).toBe('旧结构答案');
+    expect(extractAIText('gemini-interactions', {})).toBe('');
+  });
+
   it('Gemini：拼接所有 parts，跳过 thought 思考摘要', () => {
     const data = {
       candidates: [

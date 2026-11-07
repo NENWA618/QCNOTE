@@ -71,7 +71,7 @@ describe('Models 页：接口类型', () => {
   });
   afterEach(() => cleanup());
 
-  it('默认是 Chat Completions，四种类型都可选', async () => {
+  it('默认是 Chat Completions，五种类型都可选', async () => {
     await renderLoaded();
     const select = field('接口类型') as HTMLSelectElement;
     expect(select.value).toBe('openai-chat');
@@ -79,6 +79,7 @@ describe('Models 页：接口类型', () => {
       'openai-chat',
       'openai-responses',
       'gemini',
+      'gemini-interactions',
       'deepseek',
     ]);
   });
@@ -92,6 +93,16 @@ describe('Models 页：接口类型', () => {
     );
     expect((field('模型名称') as HTMLInputElement).placeholder).toContain('deepseek-v4-flash');
     expect(screen.getByText(/已于 2026-07-24 弃用/)).toBeTruthy();
+  });
+
+  it('切换到 Gemini Interactions：自动填入 /interactions 官方地址', async () => {
+    await renderLoaded();
+    await userEvent.selectOptions(field('接口类型'), 'gemini-interactions');
+
+    expect((field('API 地址') as HTMLInputElement).value).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/interactions',
+    );
+    expect((field('模型名称') as HTMLInputElement).placeholder).toContain('gemini-3.5-flash');
   });
 
   it('在不同类型之间切换时，上一个类型的默认地址会被替换', async () => {
