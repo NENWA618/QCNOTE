@@ -25,7 +25,7 @@ function makeNote(id: string, title: string, content: string, updatedAt = 1): No
 const VOCAB = ['苹果', '香蕉', 'python', 'react', '睡眠'];
 function fakeVector(text: string): number[] {
   const lower = text.toLowerCase();
-  const v = VOCAB.map((w) => (lower.includes(w) ? 1 : 0));
+  const v: number[] = VOCAB.map((w) => (lower.includes(w) ? 1 : 0));
   v.push(0.05);
   const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
   return v.map((x) => x / norm);

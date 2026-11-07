@@ -25,7 +25,7 @@ import type { RagCache } from '../lib/rag';
 
 const VOCAB = ['苹果', '香蕉'];
 function fakeVector(text: string): number[] {
-  const v = VOCAB.map((w) => (text.includes(w) ? 1 : 0));
+  const v: number[] = VOCAB.map((w) => (text.includes(w) ? 1 : 0));
   v.push(0.05);
   const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
   return v.map((x) => x / norm);
