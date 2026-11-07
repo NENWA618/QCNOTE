@@ -2,6 +2,7 @@ import Utils from './utils';
 import IDB from './idb';
 import logger from './logger';
 import Indexer, { type SemanticCacheStore, type SemanticEmbeddingCache } from './indexer';
+import type { RagCache, RagCacheStore } from './rag';
 import { type QCDb, UNDECRYPTABLE_MARKER } from '../qcruntime/qcnote-runtime';
 import { downloadJSON, readFileAsText } from './storage/backupFile';
 import { LOCKED_MESSAGE, NoteStorageError } from './storage/errors';
@@ -62,7 +63,7 @@ export { NOTES_DB_RETRY_MS } from './storage/notesDb';
  * user. The mechanics live in ./storage/*; this class owns the per-user
  * namespace and makes sure every mutation goes through the write lock.
  */
-export class NoteStorage implements SemanticCacheStore {
+export class NoteStorage implements SemanticCacheStore, RagCacheStore {
   storageKeyPrefix = STORAGE_KEY_PREFIX;
   storageKey!: string;
   settingsKey!: string;
@@ -466,6 +467,24 @@ export class NoteStorage implements SemanticCacheStore {
 
   async saveSemanticCache(cache: SemanticEmbeddingCache): Promise<void> {
     await IDB.setItem(this.semanticCacheKey(), await this.sealForUser(cache));
+  }
+
+  private ragCacheKey(): string {
+    return this.getNamespacedKey('RAG_CACHE', this.currentUserId);
+  }
+
+  /** 笔记分块向量缓存（RAG 检索用）。和语义缓存一样按用户存放，登录用户加密。 */
+  async loadRagCache(): Promise<RagCache | null> {
+    try {
+      return await this.unsealForUser<RagCache>(await IDB.getItem(this.ragCacheKey()));
+    } catch (e) {
+      console.warn('[NoteStorage] loadRagCache failed', e);
+      return null;
+    }
+  }
+
+  async saveRagCache(cache: RagCache): Promise<void> {
+    await IDB.setItem(this.ragCacheKey(), await this.sealForUser(cache));
   }
 
   private syncBaseKey(provider: SyncProvider): string {
@@ -886,6 +905,7 @@ export class NoteStorage implements SemanticCacheStore {
       this.syncBaseKey('webdav'),
       this.syncBaseKey('onedrive'),
       this.semanticCacheKey(),
+      this.ragCacheKey(),
     ];
 
     try {

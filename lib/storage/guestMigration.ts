@@ -133,6 +133,7 @@ async function clearGuestNamespace(host: GuestMigrationHost): Promise<void> {
     guestKey('SYNC_BASE_WEBDAV'),
     guestKey('SYNC_BASE_ONEDRIVE'),
     guestKey('SEMANTIC_CACHE'),
+    guestKey('RAG_CACHE'),
   ];
 
   const moves: [string, string, () => Promise<void>][] = [

@@ -18,7 +18,7 @@
 | 标签、分类、文字着色            | 列表、日历、时间线、知识图谱四种视图             | WebDAV / OneDrive 三方合并同步，可加密同步文件 |
 | 版本历史，可对比与恢复          | 按标签、分类筛选，多种排序                       | 一键导出 / 导入 JSON 备份                      |
 
-另外还有：个人主页与公开笔记、AI 生成笔记（接入任意 OpenAI 兼容接口）、Web Push 推送、叠界迷宫排行榜、网页剪藏扩展、深色模式、PWA 离线。
+另外还有：个人主页与公开笔记、AI 生成笔记（支持 OpenAI Chat Completions / Responses、Gemini、DeepSeek 及兼容接口）、本地笔记检索、Web Push 推送、叠界迷宫排行榜、网页剪藏扩展、深色模式、PWA 离线。
 
 详细用法见 **[使用指南](docs/USER_GUIDE.md)**。
 

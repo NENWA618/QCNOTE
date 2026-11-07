@@ -8,8 +8,11 @@
  */
 import idb from './idb';
 import type { NoteStorage } from './storage';
+import { DEFAULT_AI_PROVIDER, normalizeAIProvider, type AIProvider } from './aiProviders';
 
 export interface AISettings {
+  /** 接口格式；早期版本保存的设置没有这个字段，读取时按 openai-chat 处理 */
+  provider: AIProvider;
   apiEndpoint: string;
   modelName: string;
   apiKey: string;
@@ -17,6 +20,7 @@ export interface AISettings {
 }
 
 interface StoredAISettings {
+  provider?: AIProvider;
   apiEndpoint: string;
   modelName: string;
   apiKeyEncrypted: string; // base64: salt + iv + ciphertext
@@ -109,7 +113,8 @@ export async function getAISettings(
   const stored = await idb.getItem<unknown>(getRecordKey(userId));
   if (!stored) return null;
   if (userId) {
-    return storage.unsealForCurrentUser<AISettings>(stored);
+    const settings = await storage.unsealForCurrentUser<AISettings>(stored);
+    return settings ? { ...settings, provider: normalizeAIProvider(settings.provider) } : settings;
   }
 
   const guest = stored as StoredAISettings;
@@ -120,6 +125,7 @@ export async function getAISettings(
     console.warn('[aiSettings] failed to decrypt API key', e);
   }
   return {
+    provider: normalizeAIProvider(guest.provider),
     apiEndpoint: guest.apiEndpoint,
     modelName: guest.modelName,
     apiKey,
@@ -135,6 +141,7 @@ async function writeAISettings(
   const record = userId
     ? await storage.sealForCurrentUser(settings)
     : ({
+        provider: settings.provider,
         apiEndpoint: settings.apiEndpoint,
         modelName: settings.modelName,
         apiKeyEncrypted: settings.apiKey ? await encryptApiKey(settings.apiKey) : '',
@@ -146,12 +153,20 @@ async function writeAISettings(
 /** False if the settings couldn't be saved (check storage.notesDbLocked for why). */
 export async function saveAISettings(
   userId: string | null,
-  settings: { apiEndpoint: string; modelName: string; apiKey: string },
+  settings: { apiEndpoint: string; modelName: string; apiKey: string; provider?: AIProvider },
   storage: NoteStorage,
 ): Promise<boolean> {
   try {
     assertStorageUser(storage, userId);
-    await writeAISettings(userId, { ...settings, updatedAt: Date.now() }, storage);
+    await writeAISettings(
+      userId,
+      {
+        ...settings,
+        provider: settings.provider ?? DEFAULT_AI_PROVIDER,
+        updatedAt: Date.now(),
+      },
+      storage,
+    );
     return true;
   } catch (e) {
     console.warn('[aiSettings] saveAISettings failed', e);

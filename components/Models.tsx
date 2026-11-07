@@ -2,10 +2,17 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { getAISettings, saveAISettings, clearAISettings } from '../lib/aiSettings';
-import { callChatCompletion } from '../lib/aiClient';
+import { callAI } from '../lib/aiClient';
+import {
+  AI_PROVIDERS,
+  AI_PROVIDER_ORDER,
+  DEFAULT_AI_PROVIDER,
+  type AIProvider,
+} from '../lib/aiProviders';
 import NoteStorage, { NoteStorageError, initWindowStorage } from '../lib/storage';
 import { confirmDialog } from '../lib/dialog';
 import { isImeComposing } from '../lib/ime';
+import NoteRetrievalPanel from './NoteRetrievalPanel';
 
 const LOCKED_HINT =
   '当前设备未解锁，无法读取或保存 API Key。请先打开「笔记」页完成设备验证后再回来。';
@@ -22,6 +29,7 @@ type SessionUserWithId = {
 };
 
 interface ModelFields {
+  provider: AIProvider;
   apiEndpoint: string;
   modelName: string;
   apiKey: string;
@@ -32,7 +40,12 @@ interface Status {
   text: string;
 }
 
-const EMPTY_FIELDS: ModelFields = { apiEndpoint: '', modelName: '', apiKey: '' };
+const EMPTY_FIELDS: ModelFields = {
+  provider: DEFAULT_AI_PROVIDER,
+  apiEndpoint: '',
+  modelName: '',
+  apiKey: '',
+};
 
 const panelClass =
   'bg-white/95 dark:bg-dark-surface rounded-2xl border border-primary-light/40 dark:border-dark-border p-5 sm:p-6';
@@ -106,6 +119,7 @@ const AIModelSettings: React.FC = () => {
       }
       if (cancelled) return;
       const loaded = {
+        provider: settings?.provider ?? DEFAULT_AI_PROVIDER,
         apiEndpoint: settings?.apiEndpoint ?? '',
         modelName: settings?.modelName ?? '',
         apiKey: settings?.apiKey ?? '',
@@ -133,7 +147,26 @@ const AIModelSettings: React.FC = () => {
     if (status?.type === 'success') setStatus(null);
   };
 
+  const preset = AI_PROVIDERS[fields.provider];
+
+  // 切换接口类型：地址为空，或者还是上一个类型的默认地址时，换成新类型的默认地址；
+  // 用户自己改过的地址（比如代理）不会被覆盖。
+  const handleProviderChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const next = event.target.value as AIProvider;
+    setFields((prev) => {
+      const prevDefault = AI_PROVIDERS[prev.provider].defaultEndpoint;
+      const keepEndpoint = prev.apiEndpoint.trim() !== '' && prev.apiEndpoint !== prevDefault;
+      return {
+        ...prev,
+        provider: next,
+        apiEndpoint: keepEndpoint ? prev.apiEndpoint : AI_PROVIDERS[next].defaultEndpoint,
+      };
+    });
+    if (status?.type === 'success') setStatus(null);
+  };
+
   const dirty =
+    fields.provider !== saved.provider ||
     fields.apiEndpoint !== saved.apiEndpoint ||
     fields.modelName !== saved.modelName ||
     fields.apiKey !== saved.apiKey;
@@ -151,6 +184,7 @@ const AIModelSettings: React.FC = () => {
     setSaving(true);
     setStatus(null);
     const next = {
+      provider: fields.provider,
       apiEndpoint: fields.apiEndpoint.trim(),
       modelName: fields.modelName.trim(),
       apiKey: fields.apiKey.trim(),
@@ -201,7 +235,8 @@ const AIModelSettings: React.FC = () => {
     setGenerateError(null);
 
     try {
-      const content = await callChatCompletion({
+      const content = await callAI({
+        provider: fields.provider,
         apiEndpoint: fields.apiEndpoint.trim(),
         apiKey: fields.apiKey.trim(),
         modelName: fields.modelName.trim(),
@@ -238,8 +273,8 @@ const AIModelSettings: React.FC = () => {
       <div className="min-w-0">
         <h1 className="text-2xl sm:text-3xl font-bold text-ink dark:text-dark-text">AI 模型接入</h1>
         <p className="mt-1 text-sm sm:text-base text-text-light max-w-2xl">
-          接入 OpenAI 兼容的外部 AI 服务，用来生成笔记。API Key 仅加密存储在本设备，不会上传到
-          QCNOTE 服务器。
+          接入 OpenAI、Gemini、DeepSeek 或其他 OpenAI 兼容的外部 AI 服务，用来生成笔记。API Key
+          仅加密存储在本设备，不会上传到 QCNOTE 服务器。
         </p>
       </div>
       {!loading && (
@@ -281,7 +316,7 @@ const AIModelSettings: React.FC = () => {
         <form onSubmit={handleSave} className={panelClass} noValidate>
           <h2 className="text-lg font-semibold text-ink dark:text-dark-text">接口配置</h2>
           <p className="mt-1 mb-5 text-sm text-text-light">
-            支持 OpenAI Chat Completions 格式的接口，目标服务需允许浏览器跨域访问（CORS）
+            浏览器直接调用你选择的服务，目标服务需允许浏览器跨域访问（CORS）
           </p>
 
           {status && (
@@ -295,6 +330,28 @@ const AIModelSettings: React.FC = () => {
 
           <div className="space-y-5">
             <div>
+              <label htmlFor="ai-provider" className={labelClass}>
+                接口类型
+              </label>
+              <select
+                id="ai-provider"
+                value={fields.provider}
+                onChange={handleProviderChange}
+                aria-describedby="ai-provider-hint"
+                className="input py-2 text-sm"
+              >
+                {AI_PROVIDER_ORDER.map((id) => (
+                  <option key={id} value={id}>
+                    {AI_PROVIDERS[id].label}
+                  </option>
+                ))}
+              </select>
+              <p id="ai-provider-hint" className="mt-1 text-xs text-text-light">
+                {preset.description}
+              </p>
+            </div>
+
+            <div>
               <label htmlFor="ai-endpoint" className={labelClass}>
                 API 地址
               </label>
@@ -307,7 +364,7 @@ const AIModelSettings: React.FC = () => {
                 spellCheck={false}
                 value={fields.apiEndpoint}
                 onChange={setField('apiEndpoint')}
-                placeholder="https://api.openai.com/v1/chat/completions"
+                placeholder={preset.endpointPlaceholder}
                 aria-invalid={endpointInvalid}
                 aria-describedby="ai-endpoint-hint"
                 className="input py-2 text-sm"
@@ -316,9 +373,7 @@ const AIModelSettings: React.FC = () => {
                 id="ai-endpoint-hint"
                 className={`mt-1 text-xs ${endpointInvalid ? 'text-red-600 dark:text-red-400' : 'text-text-light'}`}
               >
-                {endpointInvalid
-                  ? '请输入以 http:// 或 https:// 开头的地址'
-                  : '填写完整的 Chat Completions 接口地址，通常以 /chat/completions 结尾'}
+                {endpointInvalid ? '请输入以 http:// 或 https:// 开头的地址' : preset.endpointHint}
               </p>
             </div>
 
@@ -334,7 +389,7 @@ const AIModelSettings: React.FC = () => {
                 spellCheck={false}
                 value={fields.modelName}
                 onChange={setField('modelName')}
-                placeholder="例如：gpt-4o-mini"
+                placeholder={preset.modelPlaceholder}
                 className="input py-2 text-sm"
               />
             </div>
@@ -467,8 +522,11 @@ const AIModelSettings: React.FC = () => {
         </form>
       </div>
 
+      <NoteRetrievalPanel getStorage={() => storageFor(sessionUserId)} />
+
       <p className="mt-6 text-xs text-text-light">
-        笔记的语义搜索用的是内置本地模型，与这里的配置无关，可在「笔记」页搜索框旁开关。
+        笔记检索和「笔记」页的语义搜索用的都是内置本地模型，与上面的 AI 接口配置无关；
+        只有「生成笔记」会把你输入的内容发给你配置的 AI 服务。
       </p>
     </div>
   );

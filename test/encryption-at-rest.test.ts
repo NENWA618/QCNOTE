@@ -230,6 +230,20 @@ describe('encryption at rest for a signed-in user', () => {
       expect(await getAISettings(userId, storage)).toMatchObject(settings);
     });
 
+    it('keeps the provider across save and load', async () => {
+      expect(await saveAISettings(userId, { ...settings, provider: 'gemini' }, storage)).toBe(true);
+      expect((await getAISettings(userId, storage))?.provider).toBe('gemini');
+    });
+
+    it('treats settings saved before providers existed as OpenAI Chat Completions', async () => {
+      // 旧版本保存的记录没有 provider 字段
+      await IDB.setItem(
+        `qcnote:ai-settings:${userId}`,
+        await storage.sealForCurrentUser({ ...settings, updatedAt: 1 }),
+      );
+      expect((await getAISettings(userId, storage))?.provider).toBe('openai-chat');
+    });
+
     it('ignores a record that is not sealed', async () => {
       // a device-key record like a guest's, under the signed-in user's key
       const guestLike = new NoteStorage();
@@ -299,6 +313,18 @@ describe('guest secrets', () => {
     expect(stored.password.startsWith('encrypted:')).toBe(true);
     expect(stored.encryptionKey.startsWith('encrypted:')).toBe(true);
     expect((await guest.getWebDAVConfigAsync())?.encryptionKey).toBe('GUEST-SYNC-KEY');
+  });
+
+  it('keeps a guest AI provider and defaults old guest records to Chat Completions', async () => {
+    const guest = new NoteStorage();
+    const base = { apiEndpoint: 'https://ai.test', modelName: 'm', apiKey: 'K' };
+    expect(await saveAISettings(null, { ...base, provider: 'deepseek' }, guest)).toBe(true);
+    expect((await getAISettings(null, guest))?.provider).toBe('deepseek');
+
+    const stored = (await IDB.getItem('qcnote:ai-settings:GUEST')) as Record<string, unknown>;
+    delete stored.provider;
+    await IDB.setItem('qcnote:ai-settings:GUEST', stored);
+    expect((await getAISettings(null, guest))?.provider).toBe('openai-chat');
   });
 
   it('still encrypts a guest AI API key with the device key', async () => {

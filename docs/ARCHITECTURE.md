@@ -51,27 +51,28 @@
 
 ### 2.1 `lib/` 主要模块
 
-| 模块                                                                       | 职责                                                                                       |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `storage.ts`                                                               | `NoteStorage`：笔记的唯一读写入口，负责命名空间、加锁、加密存储、同步编排                  |
-| `storage/notesDb.ts`、`storage/writeLock.ts`                               | 笔记库连接（解锁、重试、访客库）；写锁与用户代际                                           |
-| `storage/noteOps.ts`、`storage/noteSchema.ts`                              | 新建 / 更新笔记（版本、情感）、导入合并、统计；笔记库的字段加密表                          |
-| `storage/keyValueStore.ts`、`storage/syncConfig.ts`、`storage/sealing.ts`  | 键值存储（IndexedDB，退回 localStorage）；同步配置的加密读写；密封值格式                   |
-| `storage/guestMigration.ts`                                                | 登录后把访客的笔记、设置、同步配置迁入账号                                                 |
-| `storage/syncEngine.ts`、`storage/syncRunner.ts`、`storage/remoteSync.ts`  | 三方合并（纯函数 `threeWayMerge`、`noteSyncHash`）；一次同步往返；WebDAV / OneDrive 传输层 |
-| `storage/deviceSession.ts`                                                 | 设备会话令牌、向后端换取金库密钥（KEK）                                                    |
-| `storage/crypto.ts`                                                        | PBKDF2 + AES-GCM 文本加密（同步文件、访客的同步凭据）                                      |
-| `storage/linkGraph.ts`、`storage/types.ts`                                 | 双链 / 反向链接计算；类型定义                                                              |
-| `hooks/useDeviceVerification.ts`                                           | 登录后获取设备会话令牌的流程，令牌通过 `BroadcastChannel` 在同源标签页间共享               |
-| `indexer.ts`、`vector.ts`、`utils/search.ts`                               | Lunr 全文索引、词频向量、搜索语法解析                                                      |
-| `embeddings.ts`、`embeddings.worker.ts`                                    | 语义搜索，在 Worker 里用 `@huggingface/transformers` 推理                                  |
-| `webdavSyncManager.ts`                                                     | WebDAV 定时自动同步                                                                        |
-| `aiClient.ts`、`aiSettings.ts`                                             | 调用用户配置的 OpenAI 兼容接口；AI 设置加密保存在本地                                      |
-| `clipImport.ts`                                                            | 解析并校验网页剪藏扩展传来的数据                                                           |
-| `publicNotes.ts`、`pushNotification.ts`                                    | 公开笔记的发布 / 取消发布；Web Push 订阅                                                   |
-| `api-client.ts`、`backend-proxy.ts`、`csrfProtection.ts`、`authCookies.ts` | 后端访问、代理、CSRF、Cookie 命名                                                          |
-| `env-config.ts`                                                            | 前端环境变量校验；生产环境拒绝弱的 `NEXTAUTH_SECRET`                                       |
-| `sentiment.ts`、`logger.ts`、`idb.ts`                                      | 情感分析、日志、通用 IndexedDB 键值助手                                                    |
+| 模块                                                                       | 职责                                                                                                        |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `storage.ts`                                                               | `NoteStorage`：笔记的唯一读写入口，负责命名空间、加锁、加密存储、同步编排                                   |
+| `storage/notesDb.ts`、`storage/writeLock.ts`                               | 笔记库连接（解锁、重试、访客库）；写锁与用户代际                                                            |
+| `storage/noteOps.ts`、`storage/noteSchema.ts`                              | 新建 / 更新笔记（版本、情感）、导入合并、统计；笔记库的字段加密表                                           |
+| `storage/keyValueStore.ts`、`storage/syncConfig.ts`、`storage/sealing.ts`  | 键值存储（IndexedDB，退回 localStorage）；同步配置的加密读写；密封值格式                                    |
+| `storage/guestMigration.ts`                                                | 登录后把访客的笔记、设置、同步配置迁入账号                                                                  |
+| `storage/syncEngine.ts`、`storage/syncRunner.ts`、`storage/remoteSync.ts`  | 三方合并（纯函数 `threeWayMerge`、`noteSyncHash`）；一次同步往返；WebDAV / OneDrive 传输层                  |
+| `storage/deviceSession.ts`                                                 | 设备会话令牌、向后端换取金库密钥（KEK）                                                                     |
+| `storage/crypto.ts`                                                        | PBKDF2 + AES-GCM 文本加密（同步文件、访客的同步凭据）                                                       |
+| `storage/linkGraph.ts`、`storage/types.ts`                                 | 双链 / 反向链接计算；类型定义                                                                               |
+| `hooks/useDeviceVerification.ts`                                           | 登录后获取设备会话令牌的流程，令牌通过 `BroadcastChannel` 在同源标签页间共享                                |
+| `indexer.ts`、`vector.ts`、`utils/search.ts`                               | Lunr 全文索引、词频向量、搜索语法解析                                                                       |
+| `embeddings.ts`、`embeddings.worker.ts`                                    | 语义搜索，在 Worker 里用 `@huggingface/transformers` 推理                                                   |
+| `webdavSyncManager.ts`                                                     | WebDAV 定时自动同步                                                                                         |
+| `aiClient.ts`、`aiProviders.ts`、`aiSettings.ts`                           | 调用用户配置的 AI 接口（OpenAI Chat Completions / Responses、Gemini、DeepSeek）；AI 设置加密保存在本地      |
+| `rag.ts`、`hooks/useRagSearch.ts`                                          | 纯前端 RAG 检索：笔记分块、块级本地 embedding、top-k 召回；向量缓存按用户加密，全程不联网（除首次下载模型） |
+| `clipImport.ts`                                                            | 解析并校验网页剪藏扩展传来的数据                                                                            |
+| `publicNotes.ts`、`pushNotification.ts`                                    | 公开笔记的发布 / 取消发布；Web Push 订阅                                                                    |
+| `api-client.ts`、`backend-proxy.ts`、`csrfProtection.ts`、`authCookies.ts` | 后端访问、代理、CSRF、Cookie 命名                                                                           |
+| `env-config.ts`                                                            | 前端环境变量校验；生产环境拒绝弱的 `NEXTAUTH_SECRET`                                                        |
+| `sentiment.ts`、`logger.ts`、`idb.ts`                                      | 情感分析、日志、通用 IndexedDB 键值助手                                                                     |
 
 ## 3. 笔记存储
 
