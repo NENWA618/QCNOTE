@@ -25,7 +25,7 @@
     "@huggingface/transformers": "^4.3.2",
     "@lezer/highlight": "^1.2.5",
     "axios": "^1.21.0",
-    "jose": "^6.2.13",
+    "jose": "^6.2.15",
     "katex": "^0.19.1",
     "lunr": "^2.3.9",
     "mermaid": "^12.2.0",
