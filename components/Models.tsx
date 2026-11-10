@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { getAISettings, saveAISettings, clearAISettings } from '../lib/aiSettings';
-import { callAI } from '../lib/aiClient';
+import { generateNote } from '../lib/aiClient';
 import {
   AI_PROVIDERS,
   AI_PROVIDER_ORDER,
@@ -235,7 +235,7 @@ const AIModelSettings: React.FC = () => {
     setGenerateError(null);
 
     try {
-      const content = await callAI({
+      const { title, content } = await generateNote({
         provider: fields.provider,
         apiEndpoint: fields.apiEndpoint.trim(),
         apiKey: fields.apiKey.trim(),
@@ -245,7 +245,8 @@ const AIModelSettings: React.FC = () => {
 
       const storage = await storageFor(sessionUserId);
       await storage.addNoteAsync({
-        title: `AI 回复 - ${text.slice(0, 20)}`,
+        // 模型/正文给不出标题时，退回原来的模板
+        title: title || `AI 回复 - ${text.slice(0, 20)}`,
         content,
         category: 'AI',
         tags: ['ai-generated'],

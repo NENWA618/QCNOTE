@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   getAISettings: vi.fn(),
   saveAISettings: vi.fn(),
   clearAISettings: vi.fn(),
-  callAI: vi.fn(),
+  generateNote: vi.fn(),
   addNoteAsync: vi.fn(),
 }));
 
@@ -24,7 +24,7 @@ vi.mock('../lib/aiSettings', () => ({
   saveAISettings: mocks.saveAISettings,
   clearAISettings: mocks.clearAISettings,
 }));
-vi.mock('../lib/aiClient', () => ({ callAI: mocks.callAI }));
+vi.mock('../lib/aiClient', () => ({ generateNote: mocks.generateNote }));
 vi.mock('../lib/dialog', () => ({ confirmDialog: vi.fn(async () => true) }));
 vi.mock('../lib/embeddings', () => ({
   embedTexts: vi.fn(),
@@ -170,19 +170,23 @@ describe('Models 页：接口类型', () => {
       apiKey: 'k',
       updatedAt: 1,
     });
-    mocks.callAI.mockResolvedValue('回复内容');
+    mocks.generateNote.mockResolvedValue({ title: '问候', content: '回复内容' });
     mocks.addNoteAsync.mockResolvedValue(undefined);
     await renderLoaded();
 
     await userEvent.type(screen.getByLabelText('输入你想问的内容'), '你好');
     await userEvent.click(screen.getByRole('button', { name: '生成并保存为笔记' }));
 
-    await waitFor(() => expect(mocks.callAI).toHaveBeenCalled());
-    expect(mocks.callAI.mock.calls[0][0]).toMatchObject({
+    await waitFor(() => expect(mocks.generateNote).toHaveBeenCalled());
+    expect(mocks.generateNote.mock.calls[0][0]).toMatchObject({
       provider: 'deepseek',
       modelName: 'deepseek-v4-flash',
       prompt: '你好',
     });
     expect(await screen.findByText('回复内容')).toBeTruthy();
+    expect(mocks.addNoteAsync.mock.calls[0][0]).toMatchObject({
+      title: '问候',
+      content: '回复内容',
+    });
   });
 });
