@@ -113,7 +113,7 @@ describe('结构化请求不改动提问', () => {
 });
 
 describe('generateNote', () => {
-  const fetchMock = vi.fn();
+  const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
   beforeEach(() => {
     fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
@@ -142,7 +142,10 @@ describe('generateNote', () => {
       .mockResolvedValueOnce(rejected(400))
       .mockResolvedValueOnce(chatOk('<think>x</think>## 问候\n你好'));
     expect(await generateNote(base)).toEqual({ title: '问候', content: '## 问候\n你好' });
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body).response_format).toBeUndefined();
+    const fallbackBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body)) as {
+      response_format?: unknown;
+    };
+    expect(fallbackBody.response_format).toBeUndefined();
   });
 
   it('401 等其他错误不重试，直接抛出', async () => {
