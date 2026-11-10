@@ -1,7 +1,6 @@
 import Utils from './utils';
 import IDB from './idb';
 import logger from './logger';
-import Indexer, { type SemanticCacheStore, type SemanticEmbeddingCache } from './indexer';
 import type { RagCache, RagCacheStore } from './rag';
 import { type QCDb, UNDECRYPTABLE_MARKER } from '../qcruntime/qcnote-runtime';
 import { downloadJSON, readFileAsText } from './storage/backupFile';
@@ -63,7 +62,7 @@ export { NOTES_DB_RETRY_MS } from './storage/notesDb';
  * user. The mechanics live in ./storage/*; this class owns the per-user
  * namespace and makes sure every mutation goes through the write lock.
  */
-export class NoteStorage implements SemanticCacheStore, RagCacheStore {
+export class NoteStorage implements RagCacheStore {
   storageKeyPrefix = STORAGE_KEY_PREFIX;
   storageKey!: string;
   settingsKey!: string;
@@ -449,31 +448,19 @@ export class NoteStorage implements SemanticCacheStore, RagCacheStore {
     });
   }
 
-  private semanticCacheKey(): string {
+  /**
+   * 旧版「整篇笔记一个向量」的语义搜索缓存。现在语义搜索和段落检索共用块向量缓存
+   * （见 ragCacheKey），这个键不再被读取，只保留键名用来清理老用户遗留的数据。
+   */
+  private legacySemanticCacheKey(): string {
     return this.getNamespacedKey('SEMANTIC_CACHE', this.currentUserId);
-  }
-
-  /** Per-user, sealed for signed-in users (embeddings reveal what notes are about). */
-  async loadSemanticCache(): Promise<SemanticEmbeddingCache | null> {
-    try {
-      return await this.unsealForUser<SemanticEmbeddingCache>(
-        await IDB.getItem(this.semanticCacheKey()),
-      );
-    } catch (e) {
-      console.warn('[NoteStorage] loadSemanticCache failed', e);
-      return null;
-    }
-  }
-
-  async saveSemanticCache(cache: SemanticEmbeddingCache): Promise<void> {
-    await IDB.setItem(this.semanticCacheKey(), await this.sealForUser(cache));
   }
 
   private ragCacheKey(): string {
     return this.getNamespacedKey('RAG_CACHE', this.currentUserId);
   }
 
-  /** 笔记分块向量缓存（RAG 检索用）。和语义缓存一样按用户存放，登录用户加密。 */
+  /** 笔记分块向量缓存（语义搜索和段落检索共用）。按用户存放，登录用户加密。 */
   async loadRagCache(): Promise<RagCache | null> {
     try {
       return await this.unsealForUser<RagCache>(await IDB.getItem(this.ragCacheKey()));
@@ -485,6 +472,12 @@ export class NoteStorage implements SemanticCacheStore, RagCacheStore {
 
   async saveRagCache(cache: RagCache): Promise<void> {
     await IDB.setItem(this.ragCacheKey(), await this.sealForUser(cache));
+    // 新缓存已经写好，顺手清掉旧版语义缓存（读不到它了，留着只是占空间）。失败无所谓，下次保存再试。
+    try {
+      await IDB.deleteItem(this.legacySemanticCacheKey());
+    } catch (e) {
+      console.warn('[NoteStorage] unable to remove legacy semantic cache', e);
+    }
   }
 
   private syncBaseKey(provider: SyncProvider): string {
@@ -685,7 +678,6 @@ export class NoteStorage implements SemanticCacheStore, RagCacheStore {
       );
     }
 
-    Indexer.invalidateIndex();
     return next;
   }
 
@@ -904,9 +896,9 @@ export class NoteStorage implements SemanticCacheStore, RagCacheStore {
       this.conflictsKey,
       this.syncBaseKey('webdav'),
       this.syncBaseKey('onedrive'),
-      this.semanticCacheKey(),
-      this.ragCacheKey(),
     ];
+    // 向量缓存不走 kv 抽象，总是直接写在 IndexedDB 里，所以不论当前用哪种存储都要从那里删
+    const vectorCacheKeys = [this.legacySemanticCacheKey(), this.ragCacheKey()];
 
     try {
       const notesDb = await this.ensureNotesDb();
@@ -923,6 +915,13 @@ export class NoteStorage implements SemanticCacheStore, RagCacheStore {
       }
     } else {
       keysToRemove.forEach((key) => localStorage.removeItem(key));
+    }
+    for (const key of vectorCacheKeys) {
+      try {
+        await IDB.deleteItem(key);
+      } catch (e) {
+        logger.warn('[NoteStorage] clearAllAsync failed to clear vector cache', e);
+      }
     }
     this.notesDb.close();
     this.init();

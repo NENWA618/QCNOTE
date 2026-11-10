@@ -12,7 +12,6 @@ import {
 import NoteStorage, { NoteStorageError, initWindowStorage } from '../lib/storage';
 import { confirmDialog } from '../lib/dialog';
 import { isImeComposing } from '../lib/ime';
-import NoteRetrievalPanel from './NoteRetrievalPanel';
 
 const LOCKED_HINT =
   '当前设备未解锁，无法读取或保存 API Key。请先打开「笔记」页完成设备验证后再回来。';
@@ -523,10 +522,8 @@ const AIModelSettings: React.FC = () => {
         </form>
       </div>
 
-      <NoteRetrievalPanel getStorage={() => storageFor(sessionUserId)} />
-
       <p className="mt-6 text-xs text-text-light">
-        笔记检索和「笔记」页的语义搜索用的都是内置本地模型，与上面的 AI 接口配置无关；
+        「笔记」页的语义搜索和段落检索用的都是内置本地模型，与上面的 AI 接口配置无关；
         只有「生成笔记」会把你输入的内容发给你配置的 AI 服务。
       </p>
     </div>

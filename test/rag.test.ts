@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   chunkNote,
   estimateTokens,
+  findNotesByMeaning,
   retrieveChunks,
   type RagCache,
   type RagCacheStore,
@@ -261,5 +262,81 @@ describe('retrieveChunks', () => {
     const noteTexts = embed.mock.calls.flatMap((c) => c[0]).filter((t) => t.includes('\n'));
     const unique = new Set(noteTexts);
     expect(noteTexts.length).toBe(unique.size);
+  });
+});
+
+describe('findNotesByMeaning', () => {
+  const notes = [
+    makeNote('both', '水果杂谈', '苹果和香蕉都很好吃。'),
+    makeNote('apple', '苹果', '只讲苹果。'),
+    makeNote('code', '编程笔记', '学习 Python 的基础语法。'),
+  ];
+
+  it('返回相关笔记的 id，按相关度从高到低，无关笔记不出现', async () => {
+    const ids = await findNotesByMeaning('苹果', notes, makeStore(), { embed: makeEmbed() });
+    expect(ids).toEqual(['apple', 'both']);
+  });
+
+  it('笔记的得分取它最相关的那一块：长笔记里只有一小节相关也能找到', async () => {
+    const long = makeNote(
+      'long',
+      '杂记',
+      '# 编程\nPython 笔记。\n\n# 前端\nReact 笔记。\n\n# 水果\n今天吃了苹果。\n\n# 睡眠\n睡得很好。',
+    );
+    const ids = await findNotesByMeaning('苹果', [long, notes[2]], makeStore(), {
+      embed: makeEmbed(),
+    });
+    expect(ids).toEqual(['long']);
+  });
+
+  it('低于阈值的笔记被丢弃，阈值可调', async () => {
+    const strict = await findNotesByMeaning('苹果', notes, makeStore(), {
+      embed: makeEmbed(),
+      threshold: 0.9,
+    });
+    expect(strict).toEqual(['apple']);
+    expect(await findNotesByMeaning('睡眠', notes, makeStore(), { embed: makeEmbed() })).toEqual(
+      [],
+    );
+  });
+
+  it('空查询或空笔记池直接返回空，且不触发 embedding', async () => {
+    const embed = makeEmbed();
+    expect(await findNotesByMeaning('  ', notes, makeStore(), { embed })).toEqual([]);
+    expect(await findNotesByMeaning('苹果', [], makeStore(), { embed })).toEqual([]);
+    expect(embed).not.toHaveBeenCalled();
+  });
+
+  it('和 retrieveChunks 共用同一份块向量缓存：先检索段落，再找笔记不会重新算笔记', async () => {
+    const store = makeStore();
+    await retrieveChunks('苹果', notes, store, { embed: makeEmbed() });
+
+    const embed = makeEmbed();
+    const ids = await findNotesByMeaning('香蕉', notes, store, { embed });
+
+    expect(ids).toContain('both');
+    // 只有问题本身被 embedding，笔记的块向量全部命中缓存
+    expect(embed).toHaveBeenCalledTimes(1);
+    expect(embed.mock.calls[0][0]).toEqual(['香蕉']);
+  });
+
+  it('反过来也一样：先找笔记建好的索引，段落检索直接复用', async () => {
+    const store = makeStore();
+    await findNotesByMeaning('苹果', notes, store, { embed: makeEmbed() });
+
+    const embed = makeEmbed();
+    const hits = await retrieveChunks('苹果', notes, store, { embed });
+
+    expect(hits.length).toBeGreaterThan(0);
+    expect(embed).toHaveBeenCalledTimes(1);
+  });
+
+  it('不在候选池里的笔记会从缓存清掉', async () => {
+    const store = makeStore();
+    await findNotesByMeaning('苹果', notes, store, { embed: makeEmbed() });
+    expect(Object.keys(store.peek() ?? {}).sort()).toEqual(['apple', 'both', 'code']);
+
+    await findNotesByMeaning('苹果', [notes[0]], store, { embed: makeEmbed() });
+    expect(Object.keys(store.peek() ?? {})).toEqual(['both']);
   });
 });

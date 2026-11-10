@@ -1,5 +1,4 @@
 import IDB from '../idb';
-import Indexer from '../indexer';
 import type { QCDb } from '../../qcruntime/qcnote-runtime';
 import type { KeyValueStore } from './keyValueStore';
 import { normalizeNote } from './linkGraph';
@@ -51,7 +50,6 @@ export async function absorbLegacyGuestNotes(
   const incoming = legacy.filter((n) => !existingIds.has(n.id)).map((n) => normalizeNote(n));
   if (incoming.length > 0) {
     await db.bulkWrite(store, incoming, []);
-    Indexer.invalidateIndex();
   }
   await kv.writeStoredValue(legacyKey, []);
 }

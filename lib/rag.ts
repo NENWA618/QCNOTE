@@ -5,8 +5,10 @@
  * 全程在浏览器内完成：复用 embeddings.ts 的本地 Worker 模型，
  * 笔记内容不会发往任何服务器，也不会调用任何外部 AI 接口。
  *
- * 和 indexer.getSemanticMatches 的区别：那里是"整篇笔记一个向量"，适合找笔记；
- * 这里是"一篇笔记多个向量"，适合找段落，长笔记不会因为内容太杂而被稀释。
+ * 这是应用里唯一的一套本地向量索引：一篇笔记对应多个块向量。
+ * - retrieveChunks：返回最相关的段落（「段落」视图用）；
+ * - findNotesByMeaning：返回最相关的笔记（侧边栏「语义搜索」用，取每篇笔记里得分最高的块）。
+ * 两者共用同一份块向量缓存，长笔记不会因为内容太杂而被稀释。
  */
 import type { NoteItem } from './storage';
 import { embedTexts, cosineSimilarity } from './embeddings';
@@ -317,20 +319,26 @@ export function retrieveChunks(
   return runExclusive(() => doRetrieve(trimmed, notes, cacheStore, options));
 }
 
-async function doRetrieve(
+interface PreparedIndex {
+  plan: { note: NoteItem; chunks: RagChunk[] }[];
+  cache: RagCache;
+  queryVector: number[] | undefined;
+}
+
+/**
+ * 保证 notes 的块向量都在缓存里（只重算新增或改动过的笔记），并算出 query 的向量。
+ * 两种检索共用它，所以建索引的行为（进度、中断续算、清理已删除笔记）只有一份。
+ */
+async function prepareIndex(
   query: string,
   notes: NoteItem[],
   cacheStore: RagCacheStore,
   options: RetrieveOptions,
-): Promise<RagHit[]> {
+): Promise<PreparedIndex> {
   const maxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
   const overlapTokens = options.overlapTokens ?? DEFAULT_OVERLAP_TOKENS;
-  const topK = options.topK ?? 5;
-  const threshold = options.threshold ?? 0.35;
-  const maxPerNote = options.maxPerNote ?? 2;
   const embed = options.embed ?? embedTexts;
   const sig = chunkSignature(maxTokens, Math.min(overlapTokens, maxTokens - 1));
-
   const cache: RagCache = (await cacheStore.loadRagCache()) ?? {};
   const plan = notes.map((note) => ({
     note,
@@ -421,6 +429,20 @@ async function doRetrieve(
   if (dirty) await saveQuietly(cacheStore, cache);
 
   const [queryVector] = await embed([query]);
+  return { plan, cache, queryVector };
+}
+
+async function doRetrieve(
+  query: string,
+  notes: NoteItem[],
+  cacheStore: RagCacheStore,
+  options: RetrieveOptions,
+): Promise<RagHit[]> {
+  const topK = options.topK ?? 5;
+  const threshold = options.threshold ?? 0.35;
+  const maxPerNote = options.maxPerNote ?? 2;
+
+  const { plan, cache, queryVector } = await prepareIndex(query, notes, cacheStore, options);
   if (!queryVector) return [];
 
   const scored: RagHit[] = [];
@@ -456,6 +478,60 @@ async function doRetrieve(
   return hits;
 }
 
+/**
+ * 侧边栏「语义搜索」用的笔记级匹配阈值。
+ * 比段落检索（0.35）高：这里是在已有关键词结果之外再追加笔记，宁缺毋滥。
+ * 这是经验值，没有用真实模型调过；觉得追加的结果太杂或太少，就调这里。
+ */
+export const NOTE_MATCH_THRESHOLD = 0.45;
+
+export interface MatchNotesOptions extends ChunkOptions {
+  threshold?: number;
+  onProgress?: (progress: RagIndexProgress) => void;
+  embed?: (texts: string[]) => Promise<number[][]>;
+}
+
+/**
+ * 按意思找笔记：返回得分超过阈值的笔记 id，按相关度从高到低。
+ * 笔记的得分 = 它所有块里与 query 最相似的那一块。
+ * 和 retrieveChunks 共用块向量缓存，所以 notes 同样应传入完整的候选池。
+ */
+export function findNotesByMeaning(
+  query: string,
+  notes: NoteItem[],
+  cacheStore: RagCacheStore,
+  options: MatchNotesOptions = {},
+): Promise<string[]> {
+  const trimmed = query.trim();
+  if (!trimmed || notes.length === 0) return Promise.resolve([]);
+  return runExclusive(() => doFindNotes(trimmed, notes, cacheStore, options));
+}
+
+async function doFindNotes(
+  query: string,
+  notes: NoteItem[],
+  cacheStore: RagCacheStore,
+  options: MatchNotesOptions,
+): Promise<string[]> {
+  const threshold = options.threshold ?? NOTE_MATCH_THRESHOLD;
+  const { plan, cache, queryVector } = await prepareIndex(query, notes, cacheStore, options);
+  if (!queryVector) return [];
+
+  const scored: { id: string; score: number }[] = [];
+  for (const { note } of plan) {
+    const vectors = cache[note.id]?.vectors;
+    if (!vectors) continue;
+    let best = -Infinity;
+    for (const vector of vectors) {
+      if (!vector || vector.length !== queryVector.length) continue;
+      best = Math.max(best, cosineSimilarity(queryVector, vector));
+    }
+    if (best >= threshold) scored.push({ id: note.id, score: best });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored.map((s) => s.id);
+}
+
 async function saveQuietly(store: RagCacheStore, cache: RagCache): Promise<void> {
   try {
     await store.saveRagCache(cache);
@@ -465,6 +541,6 @@ async function saveQuietly(store: RagCacheStore, cache: RagCache): Promise<void>
   }
 }
 
-const Rag = { chunkNote, estimateTokens, retrieveChunks };
+const Rag = { chunkNote, estimateTokens, retrieveChunks, findNotesByMeaning };
 
 export default Rag;

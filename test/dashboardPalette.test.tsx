@@ -67,6 +67,19 @@ describe('Dashboard 命令面板', () => {
     );
   });
 
+  it('“按段落找笔记”命令切到段落视图', async () => {
+    render(<Dashboard />);
+    await screen.findByRole('heading', { name: '笔记管理' });
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    fireEvent.click(await screen.findByRole('option', { name: '按段落找笔记' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '段落' })).toHaveAttribute('aria-pressed', 'true'),
+    );
+    expect(screen.getByRole('heading', { name: '按段落找' })).toBeInTheDocument();
+    expect(screen.getByLabelText('输入你想在笔记里查找的内容')).toBeInTheDocument();
+  });
+
   it('Ctrl+S 保存后编辑器保持打开，输入的内容不丢，“未保存”消失', async () => {
     render(<Dashboard />);
     await screen.findByRole('heading', { name: '笔记管理' });

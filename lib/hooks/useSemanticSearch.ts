@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import Indexer, { type SemanticCacheStore } from '../indexer';
+import { findNotesByMeaning, type RagCacheStore } from '../rag';
 import { isSemanticSearchAvailable, onEmbeddingProgress } from '../embeddings';
 import type { NoteItem } from '../storage';
 
@@ -21,7 +21,7 @@ interface UseSemanticSearchOptions {
   notes: NoteItem[];
   viewingTrash: boolean;
   /** Where embeddings are cached (the current user's NoteStorage); null disables search. */
-  cacheStore: SemanticCacheStore | null;
+  cacheStore: RagCacheStore | null;
 }
 
 /**
@@ -61,7 +61,7 @@ export function useSemanticSearch({
     const timer = window.setTimeout(async () => {
       try {
         const pool = notes.filter((n) => (viewingTrash ? true : !n.isDeleted));
-        const ids = await Indexer.getSemanticMatches(query, pool, cacheStore);
+        const ids = await findNotesByMeaning(query, pool, cacheStore);
         if (!cancelled) {
           setResult((prev) => ({ ...base, ids, status: 'ready', progress: prev?.progress ?? 0 }));
         }

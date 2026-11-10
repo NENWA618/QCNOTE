@@ -50,6 +50,31 @@ describe('NoteStorage', () => {
     }
   });
 
+  describe('chunk vector cache', () => {
+    it('saves and loads the cache, and drops the legacy per-note semantic cache', async () => {
+      const legacyKey = storage['legacySemanticCacheKey']();
+      await IDB.setItem(legacyKey, { n1: { updatedAt: 1, vector: [0.1, 0.2] } });
+
+      const cache = { n1: { updatedAt: 1, sig: 'v1:100:15', vectors: [[0.1, 0.2]] } };
+      await storage.saveRagCache(cache);
+
+      expect(await storage.loadRagCache()).toEqual(cache);
+      expect(await IDB.getItem(legacyKey)).toBeUndefined();
+    });
+
+    it('clearAllAsync removes both the chunk cache and any legacy cache', async () => {
+      const legacyKey = storage['legacySemanticCacheKey']();
+      await IDB.setItem(legacyKey, { n1: { updatedAt: 1, vector: [0.1] } });
+      await storage.saveRagCache({ n1: { updatedAt: 1, sig: 's', vectors: [[0.1]] } });
+      await IDB.setItem(legacyKey, { n1: { updatedAt: 1, vector: [0.1] } });
+
+      await storage.clearAllAsync();
+
+      expect(await storage.loadRagCache()).toBeNull();
+      expect(await IDB.getItem(legacyKey)).toBeUndefined();
+    });
+  });
+
   describe('addNote', () => {
     it('should create a new note with default values', async () => {
       const note = await storage.addNoteAsync({ title: 'Test Note', content: 'Test content' });

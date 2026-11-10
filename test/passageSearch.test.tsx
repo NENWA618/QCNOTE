@@ -11,13 +11,8 @@ const embeddings = vi.hoisted(() => ({
 }));
 
 vi.mock('../lib/embeddings', () => embeddings);
-vi.mock('next/link', () => ({
-  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href}>{children}</a>
-  ),
-}));
 
-import NoteRetrievalPanel from '../components/NoteRetrievalPanel';
+import PassageSearch from '../components/PassageSearch';
 import { NoteStorageError } from '../lib/storage';
 import type NoteStorage from '../lib/storage';
 import type { NoteItem } from '../lib/storage';
@@ -59,8 +54,11 @@ function makeStorage(notes: NoteItem[] | Error) {
   } as unknown as NoteStorage;
 }
 
-describe('NoteRetrievalPanel', () => {
+describe('PassageSearch', () => {
+  const onOpenNote = vi.fn();
+
   beforeEach(() => {
+    onOpenNote.mockReset();
     embeddings.embedTexts.mockReset();
     embeddings.embedTexts.mockImplementation(async (texts: string[]) => texts.map(fakeVector));
     embeddings.isSemanticSearchAvailable.mockReturnValue(true);
@@ -72,7 +70,7 @@ describe('NoteRetrievalPanel', () => {
       note('n1', '水果笔记', '# 苹果\n今天吃了苹果。\n\n# 香蕉\n香蕉也不错。'),
       note('n2', '无关', '完全无关的内容'),
     ]);
-    render(<NoteRetrievalPanel getStorage={async () => storage} />);
+    render(<PassageSearch getStorage={async () => storage} onOpenNote={onOpenNote} />);
 
     await userEvent.type(screen.getByLabelText('输入你想在笔记里查找的内容'), '苹果');
     await userEvent.click(screen.getByRole('button', { name: '检索' }));
@@ -89,7 +87,7 @@ describe('NoteRetrievalPanel', () => {
       note('n1', '已删除', '苹果苹果', { isDeleted: true }),
       note('n2', '正常', '苹果在这里'),
     ]);
-    render(<NoteRetrievalPanel getStorage={async () => storage} />);
+    render(<PassageSearch getStorage={async () => storage} onOpenNote={onOpenNote} />);
 
     await userEvent.type(screen.getByLabelText('输入你想在笔记里查找的内容'), '苹果{Enter}');
 
@@ -99,7 +97,7 @@ describe('NoteRetrievalPanel', () => {
 
   it('没有相关内容时给出提示', async () => {
     const storage = makeStorage([note('n1', '编程', '学习 Python')]);
-    render(<NoteRetrievalPanel getStorage={async () => storage} />);
+    render(<PassageSearch getStorage={async () => storage} onOpenNote={onOpenNote} />);
 
     await userEvent.type(screen.getByLabelText('输入你想在笔记里查找的内容'), '香蕉{Enter}');
 
@@ -107,15 +105,29 @@ describe('NoteRetrievalPanel', () => {
   });
 
   it('空输入时检索按钮不可点，不会触发 embedding', async () => {
-    render(<NoteRetrievalPanel getStorage={async () => makeStorage([])} />);
+    render(<PassageSearch getStorage={async () => makeStorage([])} onOpenNote={onOpenNote} />);
     const button = screen.getByRole('button', { name: '检索' }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     expect(embeddings.embedTexts).not.toHaveBeenCalled();
   });
 
-  it('设备未解锁时提示先去笔记页验证', async () => {
+  it('点击结果标题会打开对应的笔记', async () => {
+    const storage = makeStorage([
+      note('n1', '水果笔记', '# 苹果\n今天吃了苹果。'),
+      note('n2', '蔬菜笔记', '没有相关内容'),
+    ]);
+    render(<PassageSearch getStorage={async () => storage} onOpenNote={onOpenNote} />);
+
+    await userEvent.type(screen.getByLabelText('输入你想在笔记里查找的内容'), '苹果{Enter}');
+    await userEvent.click(await screen.findByRole('button', { name: '打开笔记：水果笔记' }));
+
+    expect(onOpenNote).toHaveBeenCalledTimes(1);
+    expect(onOpenNote).toHaveBeenCalledWith('n1');
+  });
+
+  it('设备未解锁时提示先完成设备验证', async () => {
     const storage = makeStorage(new NoteStorageError('locked', 'locked'));
-    render(<NoteRetrievalPanel getStorage={async () => storage} />);
+    render(<PassageSearch getStorage={async () => storage} onOpenNote={onOpenNote} />);
 
     await userEvent.type(screen.getByLabelText('输入你想在笔记里查找的内容'), '苹果{Enter}');
 
@@ -126,7 +138,7 @@ describe('NoteRetrievalPanel', () => {
   it('模型加载失败时展示错误', async () => {
     embeddings.embedTexts.mockRejectedValue(new Error('模型下载失败'));
     const storage = makeStorage([note('n1', '水果', '苹果')]);
-    render(<NoteRetrievalPanel getStorage={async () => storage} />);
+    render(<PassageSearch getStorage={async () => storage} onOpenNote={onOpenNote} />);
 
     await userEvent.type(screen.getByLabelText('输入你想在笔记里查找的内容'), '苹果{Enter}');
 
@@ -143,7 +155,7 @@ describe('NoteRetrievalPanel', () => {
         }),
     );
     const storage = makeStorage([note('n1', '水果', '苹果')]);
-    render(<NoteRetrievalPanel getStorage={async () => storage} />);
+    render(<PassageSearch getStorage={async () => storage} onOpenNote={onOpenNote} />);
 
     await userEvent.type(screen.getByLabelText('输入你想在笔记里查找的内容'), '苹果{Enter}');
 
@@ -160,7 +172,7 @@ describe('NoteRetrievalPanel', () => {
 
   it('浏览器不支持 Worker 时禁用并提示', () => {
     embeddings.isSemanticSearchAvailable.mockReturnValue(false);
-    render(<NoteRetrievalPanel getStorage={async () => makeStorage([])} />);
+    render(<PassageSearch getStorage={async () => makeStorage([])} onOpenNote={onOpenNote} />);
     expect(screen.getByRole('alert').textContent).toContain('不支持 Web Worker');
     expect((screen.getByLabelText('输入你想在笔记里查找的内容') as HTMLInputElement).disabled).toBe(
       true,

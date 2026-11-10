@@ -145,7 +145,9 @@ describe('encryption at rest for a signed-in user', () => {
       createdAt: 1,
     };
     expect(await storage.setConflictsAsync([conflict])).toBe(true);
-    await storage.saveSemanticCache({ [note.id]: { updatedAt: 1, vector: [0.123456789] } });
+    await storage.saveRagCache({
+      [note.id]: { updatedAt: 1, sig: 'test', vectors: [[0.123456789]] },
+    });
     // a successful push records a sync base
     expect(
       await storage.pushToWebDAVAsync({
@@ -170,7 +172,7 @@ describe('encryption at rest for a signed-in user', () => {
     expect((await storage.getWebDAVConfigAsync())?.encryptionKey).toBe('SECRET-DAV-SYNC-KEY');
     expect((await storage.getOneDriveConfigAsync())?.accessToken).toBe('SECRET-ONEDRIVE-TOKEN');
     expect((await storage.getConflictsAsync())[0].remote.content).toBe('SECRET-CONFLICT-REMOTE');
-    expect((await storage.loadSemanticCache())?.[note.id].vector).toEqual([0.123456789]);
+    expect((await storage.loadRagCache())?.[note.id].vectors).toEqual([[0.123456789]]);
   });
 
   it('encrypts plaintext fields left by older versions when the database opens', async () => {

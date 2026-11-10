@@ -1,25 +1,27 @@
 import React, { useState } from 'react';
-import Link from 'next/link';
 import NoteStorage, { NoteStorageError } from '../lib/storage';
 import { useRagSearch, type RagSource } from '../lib/hooks/useRagSearch';
 import { isImeComposing } from '../lib/ime';
 
-const LOCKED_NOTES_HINT = '当前设备未解锁，无法读取笔记。请先打开「笔记」页完成设备验证后再回来。';
+const LOCKED_NOTES_HINT =
+  '当前设备未解锁，无法读取笔记。请先按页面顶部的提示完成设备验证，再重试。';
 
 const panelClass =
   'bg-white/95 dark:bg-dark-surface rounded-2xl border border-primary-light/40 dark:border-dark-border p-5 sm:p-6';
 
-interface NoteRetrievalPanelProps {
+interface PassageSearchProps {
   /** 取得当前用户的 NoteStorage（同时作为笔记来源和块向量缓存） */
   getStorage: () => Promise<NoteStorage>;
+  /** 点击某条结果时打开它所属的笔记 */
+  onOpenNote: (noteId: string) => void;
 }
 
 /**
- * 笔记检索：纯前端 RAG 检索。
- * 在本机用内置模型把问题与笔记片段做语义匹配，返回最相关的段落。
- * 不依赖、也不会调用页面上配置的外部 AI 服务。
+ * 段落检索：纯前端 RAG 检索。
+ * 在本机用内置模型把问题与笔记片段做语义匹配，返回最相关的段落，点击即可打开原笔记。
+ * 不会调用任何外部 AI 服务。
  */
-const NoteRetrievalPanel: React.FC<NoteRetrievalPanelProps> = ({ getStorage }) => {
+const PassageSearch: React.FC<PassageSearchProps> = ({ getStorage, onOpenNote }) => {
   const [question, setQuestion] = useState('');
 
   const loadSource = async (): Promise<RagSource> => {
@@ -61,12 +63,12 @@ const NoteRetrievalPanel: React.FC<NoteRetrievalPanelProps> = ({ getStorage }) =
   }
 
   return (
-    <section className={`${panelClass} mt-6`} aria-labelledby="note-retrieval-title">
-      <h2 id="note-retrieval-title" className="text-lg font-semibold text-ink dark:text-dark-text">
-        笔记检索
+    <section className={panelClass} aria-labelledby="passage-search-title">
+      <h2 id="passage-search-title" className="text-lg font-semibold text-ink dark:text-dark-text">
+        按段落找
       </h2>
       <p className="mt-1 mb-5 text-sm text-text-light">
-        🔒 完全在本设备上完成：用内置本地模型按语义找出最相关的笔记段落，不会调用上面的 AI
+        🔒 完全在本设备上完成：用内置本地模型按语义找出最相关的笔记段落，不会调用任何 AI
         服务，笔记内容不会离开浏览器。
       </p>
 
@@ -141,7 +143,14 @@ const NoteRetrievalPanel: React.FC<NoteRetrievalPanelProps> = ({ getStorage }) =
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                   <p className="min-w-0 text-sm font-medium text-ink dark:text-dark-text break-words">
-                    {hit.noteTitle || '无标题'}
+                    <button
+                      type="button"
+                      onClick={() => onOpenNote(hit.noteId)}
+                      aria-label={`打开笔记：${hit.noteTitle || '无标题'}`}
+                      className="text-left font-medium underline-offset-2 hover:underline focus-visible:underline"
+                    >
+                      {hit.noteTitle || '无标题'}
+                    </button>
                     {hit.heading && (
                       <span className="font-normal text-text-light"> › {hit.heading}</span>
                     )}
@@ -159,17 +168,10 @@ const NoteRetrievalPanel: React.FC<NoteRetrievalPanelProps> = ({ getStorage }) =
               </li>
             ))}
           </ol>
-          <p className="mt-3 text-xs text-text-light">
-            想打开原笔记？到{' '}
-            <Link href="/dashboard" className="underline underline-offset-2">
-              笔记页
-            </Link>{' '}
-            搜索标题即可。
-          </p>
         </div>
       )}
     </section>
   );
 };
 
-export default NoteRetrievalPanel;
+export default PassageSearch;

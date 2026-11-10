@@ -4,6 +4,7 @@ import { signOut, useSession } from 'next-auth/react';
 import Layout from '../components/Layout';
 import Sidebar from '../components/Sidebar';
 import NoteList from '../components/NoteList';
+import PassageSearch from '../components/PassageSearch';
 import NoteEditor from '../components/NoteEditor';
 import { usePublishedNotes } from '../lib/publicNotes';
 import DashboardToolbar, { SUB_VIEWS, type DashboardView } from '../components/DashboardToolbar';
@@ -392,6 +393,22 @@ const Dashboard: React.FC = () => {
     setIsPreview(false);
   };
 
+  /** 段落检索的结果只带笔记 id；这里取回完整笔记再打开 */
+  const handleOpenNoteById = (id: string) => {
+    const target = notes.find((n) => n.id === id);
+    if (!target) {
+      showNotification('找不到这篇笔记，它可能刚被删除或被同步更新了', 4000, 'error');
+      return;
+    }
+    handleEditNote(target);
+  };
+
+  const getPassageStorage = useCallback(async (): Promise<NoteStorage> => {
+    const s = storageRef.current;
+    if (!s) throw new Error('存储尚未就绪，请稍后重试');
+    return s;
+  }, []);
+
   /** 返回 false 表示保存失败（编辑器据此继续显示“未保存”） */
   const handleSaveNote = async (options?: { keepOpen?: boolean }): Promise<boolean> => {
     const s = storageRef.current;
@@ -762,6 +779,13 @@ const Dashboard: React.FC = () => {
         run: go('list'),
       },
       {
+        id: 'passages',
+        label: '按段落找笔记',
+        icon: '🔎',
+        keywords: 'passages search rag 检索 段落 语义 问',
+        run: go('passages'),
+      },
+      {
         id: 'calendar',
         label: '切换到日历视图',
         icon: '📅',
@@ -1024,6 +1048,8 @@ const Dashboard: React.FC = () => {
                 onRestore={handleRestoreNote}
                 onPermanentlyDelete={handlePermanentlyDeleteNote}
               />
+            ) : viewMode === 'passages' ? (
+              <PassageSearch getStorage={getPassageStorage} onOpenNote={handleOpenNoteById} />
             ) : viewMode === 'calendar' ? (
               <Calendar notes={notes} onSelectNote={handleEditNote} />
             ) : viewMode === 'timeline' ? (
