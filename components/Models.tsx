@@ -521,11 +521,6 @@ const AIModelSettings: React.FC = () => {
           )}
         </form>
       </div>
-
-      <p className="mt-6 text-xs text-text-light">
-        「笔记」页的语义搜索和段落检索用的都是内置本地模型，与上面的 AI 接口配置无关；
-        只有「生成笔记」会把你输入的内容发给你配置的 AI 服务。
-      </p>
     </div>
   );
 };

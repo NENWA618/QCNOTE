@@ -2,15 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { isImeComposing } from '../lib/ime';
 
 export type DashboardView =
-  | 'list'
-  | 'passages'
-  | 'calendar'
-  | 'timeline'
-  | 'graph'
-  | 'trash'
-  | 'conflicts'
-  | 'tags'
-  | 'cloud';
+  'list' | 'calendar' | 'timeline' | 'graph' | 'trash' | 'conflicts' | 'tags' | 'cloud';
 
 /** 二级页面：进入后工具栏左侧变为「← 返回」，返回进入前的视图 */
 export const SUB_VIEWS: DashboardView[] = ['trash', 'conflicts', 'tags', 'cloud'];
@@ -29,7 +21,6 @@ interface DashboardToolbarProps {
 
 const VIEWS: { key: DashboardView; icon: string; label: string }[] = [
   { key: 'list', icon: '📝', label: '列表' },
-  { key: 'passages', icon: '🔎', label: '段落' },
   { key: 'calendar', icon: '📅', label: '日历' },
   { key: 'timeline', icon: '📊', label: '时间线' },
   { key: 'graph', icon: '🧠', label: '图谱' },

@@ -89,6 +89,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "check-admin": "tsx scripts/check-admin.ts",
+    "tune-thresholds": "tsx scripts/tune-thresholds.ts",
     "deps:check": "syncpack lint",
     "deps:fix": "syncpack fix",
     "prepare": "husky"

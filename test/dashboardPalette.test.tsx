@@ -67,17 +67,32 @@ describe('Dashboard 命令面板', () => {
     );
   });
 
-  it('“按段落找笔记”命令切到段落视图', async () => {
+  it('顶栏不再有独立的“段落”视图', async () => {
     render(<Dashboard />);
     await screen.findByRole('heading', { name: '笔记管理' });
+    expect(screen.queryByRole('button', { name: '段落' })).toBeNull();
+  });
+
+  it('“语义搜索笔记”命令回到列表并聚焦侧边栏搜索框', async () => {
+    render(<Dashboard />);
+    await screen.findByRole('heading', { name: '笔记管理' });
+
+    // 先去别的视图，确认命令会切回列表
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-    fireEvent.click(await screen.findByRole('option', { name: '按段落找笔记' }));
+    fireEvent.click(await screen.findByRole('option', { name: '切换到日历视图' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '日历' })).toHaveAttribute('aria-pressed', 'true'),
+    );
+
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    fireEvent.click(await screen.findByRole('option', { name: '语义搜索笔记' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: '段落' })).toHaveAttribute('aria-pressed', 'true'),
+      expect(screen.getByRole('button', { name: '列表' })).toHaveAttribute('aria-pressed', 'true'),
     );
-    expect(screen.getByRole('heading', { name: '按段落找' })).toBeInTheDocument();
-    expect(screen.getByLabelText('输入你想在笔记里查找的内容')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('searchbox', { name: '搜索笔记' })).toHaveFocus());
+    // 不替用户开启语义搜索（那意味着下载模型）
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
   });
 
   it('Ctrl+S 保存后编辑器保持打开，输入的内容不丢，“未保存”消失', async () => {

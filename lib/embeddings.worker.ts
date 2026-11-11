@@ -7,8 +7,7 @@
  * （CSP script-src 已加入 'blob:'，onnxruntime-web 的 WASM 胶水代码走 blob: URL 加载。）
  */
 import { pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers';
-
-const MODEL_ID = 'Xenova/paraphrase-multilingual-MiniLM-L12-v2';
+import { EMBEDDING_MODEL_ID } from './embeddingModel';
 
 let extractorPromise: Promise<FeatureExtractionPipeline> | null = null;
 
@@ -30,7 +29,7 @@ function reportAggregatedProgress(): void {
 
 function getExtractor(): Promise<FeatureExtractionPipeline> {
   if (!extractorPromise) {
-    extractorPromise = pipeline('feature-extraction', MODEL_ID, {
+    extractorPromise = pipeline('feature-extraction', EMBEDDING_MODEL_ID, {
       progress_callback: (event: unknown) => {
         const e = event as { status?: string; file?: string; loaded?: number; total?: number };
         if (

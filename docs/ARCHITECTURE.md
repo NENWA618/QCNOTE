@@ -51,28 +51,28 @@
 
 ### 2.1 `lib/` 主要模块
 
-| 模块                                                                       | 职责                                                                                                                                                     |
-| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `storage.ts`                                                               | `NoteStorage`：笔记的唯一读写入口，负责命名空间、加锁、加密存储、同步编排                                                                                |
-| `storage/notesDb.ts`、`storage/writeLock.ts`                               | 笔记库连接（解锁、重试、访客库）；写锁与用户代际                                                                                                         |
-| `storage/noteOps.ts`、`storage/noteSchema.ts`                              | 新建 / 更新笔记（版本、情感）、导入合并、统计；笔记库的字段加密表                                                                                        |
-| `storage/keyValueStore.ts`、`storage/syncConfig.ts`、`storage/sealing.ts`  | 键值存储（IndexedDB，退回 localStorage）；同步配置的加密读写；密封值格式                                                                                 |
-| `storage/guestMigration.ts`                                                | 登录后把访客的笔记、设置、同步配置迁入账号                                                                                                               |
-| `storage/syncEngine.ts`、`storage/syncRunner.ts`、`storage/remoteSync.ts`  | 三方合并（纯函数 `threeWayMerge`、`noteSyncHash`）；一次同步往返；WebDAV / OneDrive 传输层                                                               |
-| `storage/deviceSession.ts`                                                 | 设备会话令牌、向后端换取金库密钥（KEK）                                                                                                                  |
-| `storage/crypto.ts`                                                        | PBKDF2 + AES-GCM 文本加密（同步文件、访客的同步凭据）                                                                                                    |
-| `storage/linkGraph.ts`、`storage/types.ts`                                 | 双链 / 反向链接计算；类型定义                                                                                                                            |
-| `hooks/useDeviceVerification.ts`                                           | 登录后获取设备会话令牌的流程，令牌通过 `BroadcastChannel` 在同源标签页间共享                                                                             |
-| `utils.ts`、`vector.ts`                                                    | `Utils.searchNotes`（Lunr 全文搜索）与搜索语法解析（`parseSearchQuery`）；词频向量（模糊匹配排序用）                                                     |
-| `embeddings.ts`、`embeddings.worker.ts`                                    | 语义搜索，在 Worker 里用 `@huggingface/transformers` 推理                                                                                                |
-| `webdavSyncManager.ts`                                                     | WebDAV 定时自动同步                                                                                                                                      |
-| `aiClient.ts`、`aiProviders.ts`、`aiSettings.ts`                           | 调用用户配置的 AI 接口（OpenAI Chat Completions / Responses、Gemini / Gemini Interactions、DeepSeek）；AI 设置加密保存在本地                             |
-| `rag.ts`、`hooks/useRagSearch.ts`、`hooks/useSemanticSearch.ts`            | 唯一的本地向量索引：笔记分块、块级本地 embedding。`retrieveChunks` 取段落，`findNotesByMeaning` 取笔记；向量缓存按用户加密，全程不联网（除首次下载模型） |
-| `clipImport.ts`                                                            | 解析并校验网页剪藏扩展传来的数据                                                                                                                         |
-| `publicNotes.ts`、`pushNotification.ts`                                    | 公开笔记的发布 / 取消发布；Web Push 订阅                                                                                                                 |
-| `api-client.ts`、`backend-proxy.ts`、`csrfProtection.ts`、`authCookies.ts` | 后端访问、代理、CSRF、Cookie 命名                                                                                                                        |
-| `env-config.ts`                                                            | 前端环境变量校验；生产环境拒绝弱的 `NEXTAUTH_SECRET`                                                                                                     |
-| `sentiment.ts`、`logger.ts`、`idb.ts`                                      | 情感分析、日志、通用 IndexedDB 键值助手                                                                                                                  |
+| 模块                                                                       | 职责                                                                                                                                                                                                    |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `storage.ts`                                                               | `NoteStorage`：笔记的唯一读写入口，负责命名空间、加锁、加密存储、同步编排                                                                                                                               |
+| `storage/notesDb.ts`、`storage/writeLock.ts`                               | 笔记库连接（解锁、重试、访客库）；写锁与用户代际                                                                                                                                                        |
+| `storage/noteOps.ts`、`storage/noteSchema.ts`                              | 新建 / 更新笔记（版本、情感）、导入合并、统计；笔记库的字段加密表                                                                                                                                       |
+| `storage/keyValueStore.ts`、`storage/syncConfig.ts`、`storage/sealing.ts`  | 键值存储（IndexedDB，退回 localStorage）；同步配置的加密读写；密封值格式                                                                                                                                |
+| `storage/guestMigration.ts`                                                | 登录后把访客的笔记、设置、同步配置迁入账号                                                                                                                                                              |
+| `storage/syncEngine.ts`、`storage/syncRunner.ts`、`storage/remoteSync.ts`  | 三方合并（纯函数 `threeWayMerge`、`noteSyncHash`）；一次同步往返；WebDAV / OneDrive 传输层                                                                                                              |
+| `storage/deviceSession.ts`                                                 | 设备会话令牌、向后端换取金库密钥（KEK）                                                                                                                                                                 |
+| `storage/crypto.ts`                                                        | PBKDF2 + AES-GCM 文本加密（同步文件、访客的同步凭据）                                                                                                                                                   |
+| `storage/linkGraph.ts`、`storage/types.ts`                                 | 双链 / 反向链接计算；类型定义                                                                                                                                                                           |
+| `hooks/useDeviceVerification.ts`                                           | 登录后获取设备会话令牌的流程，令牌通过 `BroadcastChannel` 在同源标签页间共享                                                                                                                            |
+| `utils.ts`、`vector.ts`                                                    | `Utils.searchNotes`（Lunr 全文搜索）与搜索语法解析（`parseSearchQuery`）；词频向量（模糊匹配排序用）                                                                                                    |
+| `embeddings.ts`、`embeddings.worker.ts`                                    | 语义搜索，在 Worker 里用 `@huggingface/transformers` 推理                                                                                                                                               |
+| `webdavSyncManager.ts`                                                     | WebDAV 定时自动同步                                                                                                                                                                                     |
+| `aiClient.ts`、`aiProviders.ts`、`aiSettings.ts`                           | 调用用户配置的 AI 接口（OpenAI Chat Completions / Responses、Gemini / Gemini Interactions、DeepSeek）；AI 设置加密保存在本地                                                                            |
+| `rag.ts`、`hooks/useSemanticSearch.ts`                                     | 唯一的本地向量索引：笔记分块、块级本地 embedding。`searchByMeaning` 一次查询同时取笔记和段落（另有只取其一的 `findNotesByMeaning`、`retrieveChunks`）；向量缓存按用户加密，全程不联网（除首次下载模型） |
+| `clipImport.ts`                                                            | 解析并校验网页剪藏扩展传来的数据                                                                                                                                                                        |
+| `publicNotes.ts`、`pushNotification.ts`                                    | 公开笔记的发布 / 取消发布；Web Push 订阅                                                                                                                                                                |
+| `api-client.ts`、`backend-proxy.ts`、`csrfProtection.ts`、`authCookies.ts` | 后端访问、代理、CSRF、Cookie 命名                                                                                                                                                                       |
+| `env-config.ts`                                                            | 前端环境变量校验；生产环境拒绝弱的 `NEXTAUTH_SECRET`                                                                                                                                                    |
+| `sentiment.ts`、`logger.ts`、`idb.ts`                                      | 情感分析、日志、通用 IndexedDB 键值助手                                                                                                                                                                 |
 
 ## 3. 笔记存储
 
@@ -152,7 +152,7 @@ user_vault_keys.wrapped_key            QCNOTE_NOTES_DB_<userId>__qcnote_meta__
 
 ```
 输入 → 解析语法 → Lunr 全文搜索 →（开启时）语义补充 → 合并 → 列表 / 图谱
-（另有独立入口：「段落」视图 → 块级向量检索 → 段落结果，见 5.3）
+（开启语义搜索后，同一个搜索词还会在列表上方给出「相关段落」面板，见 5.3）
 ```
 
 ### 5.1 全文搜索
@@ -168,13 +168,25 @@ user_vault_keys.wrapped_key            QCNOTE_NOTES_DB_<userId>__qcnote_meta__
 - 控制台上的开关，偏好存在 `localStorage`，**默认关闭**。
 - 开启后 `embeddings.worker.ts` 加载 `Xenova/paraphrase-multilingual-MiniLM-L12-v2`（多语言），模型只在首次开启时下载，进度通过 `onEmbeddingProgress` 回传。
 - 笔记被切成块（按 Markdown 标题分节、再按段落和句子切），每块一个向量，缓存在 `RAG_CACHE`（记录 `updatedAt` 和分块参数签名，只重算变化的笔记）；缓存按用户隔离，登录用户的缓存是 seal 过的。
-- 一篇笔记的得分取它所有块里与查询向量余弦相似度最高的那一块（`findNotesByMeaning`，阈值 `NOTE_MATCH_THRESHOLD` = 0.45，经验值），关键词没命中的语义结果追加在列表末尾。
+- 一次查询由 `searchByMeaning` 完成：只建一次索引、只算一次查询向量，再分别给笔记和段落打分。`useSemanticSearch` 随输入防抖（400ms）触发它，并同时返回两份结果。
+- 一篇笔记的得分取它所有块里与查询向量余弦相似度最高的那一块（阈值 `NOTE_MATCH_THRESHOLD` = 0.45）。关键词没命中、只因意思相近而被找到的笔记在列表里单独成组（「语义相关」），排在「关键词匹配」之后；两组各自按当前排序方式排序。没有这类笔记时列表不分组。
+- 候选池永远只含未删除的笔记，所以进出回收站视图不会让向量缓存被清掉再重建；回收站视图本身不显示搜索结果，因此该视图下不跑语义搜索。
 - 旧版「整篇笔记一个向量」的缓存（`SEMANTIC_CACHE`）已不再使用，下次保存向量缓存时会被删除。
 - 推理完全在本地。CSP 因此需要 `blob:` 和 `'wasm-unsafe-eval'`，原因见 [SECURITY.md](SECURITY.md#内容安全策略)。
 
-### 5.3 段落检索
+### 5.3 相关段落
 
-控制台的「段落」视图（命令面板里是「按段落找笔记」）。输入问题后手动提交（不随输入自动触发，因为首次会下载模型并为全部笔记建索引），`retrieveChunks` 返回最相关的块（默认最多 5 块、每篇笔记最多 2 块、相似度不低于 0.35），点击结果打开所属笔记。它和 5.2 共用同一份块向量缓存，两边谁先建好索引，另一边都直接复用。
+侧边栏搜索框是唯一的搜索入口：开启「语义搜索」（即同意下载模型）后，列表视图在笔记列表上方多出一个「相关段落」面板（`PassageResults`），命令面板里的「语义搜索笔记」只是回到列表并聚焦搜索框。面板只负责展示，数据来自 5.2 同一次 `searchByMeaning` 的 `hits`：最相关的块（默认最多 5 块、每篇笔记最多 2 块、相似度不低于 0.35），点击结果打开所属笔记。未开启语义搜索时面板不渲染，也不会触发模型下载或建索引；关键词结果即时显示，语义结果在模型就绪后异步补上，期间面板显示下载 / 建索引进度，并继续展示上一轮的结果。
+
+### 5.4 调阈值
+
+`PASSAGE_MATCH_THRESHOLD`（0.35）和 `NOTE_MATCH_THRESHOLD`（0.45）都是没用真实模型调过的经验值。要调，在自己的笔记上跑：
+
+```bash
+npm run tune-thresholds -- --notes 备份.json --cases 查询标注.json
+```
+
+`--notes` 是应用「导出数据」得到的备份，`--cases` 是标好“应该找到哪些笔记”的查询（可以含没有答案的查询，用来检验阈值挡不挡得住无关结果），格式见脚本开头的注释。脚本用和线上相同的模型（`lib/embeddingModel.ts`）、分块和 `searchByMeaning`，对一串阈值各跑一遍，输出精确率 / 召回率 / F1 和相关、无关笔记的得分分布，评估函数在 `lib/ragTuning.ts`。段落级指标按“段落所属笔记有没有被带出来”计算，不是段落粒度。把建议值填回 `lib/rag.ts` 后重新跑测试。
 
 ## 6. 同步
 

@@ -4,6 +4,7 @@ import {
   estimateTokens,
   findNotesByMeaning,
   retrieveChunks,
+  searchByMeaning,
   type RagCache,
   type RagCacheStore,
 } from '../lib/rag';
@@ -338,5 +339,93 @@ describe('findNotesByMeaning', () => {
 
     await findNotesByMeaning('苹果', [notes[0]], store, { embed: makeEmbed() });
     expect(Object.keys(store.peek() ?? {})).toEqual(['both']);
+  });
+});
+
+describe('searchByMeaning', () => {
+  const notes = [
+    makeNote('both', '水果杂谈', '苹果和香蕉都很好吃。'),
+    makeNote('apple', '苹果', '只讲苹果。'),
+    makeNote('code', '编程笔记', '学习 Python 的基础语法。'),
+  ];
+
+  it('一次查询同时返回笔记和段落，结果与两个单独的函数一致', async () => {
+    const both = await searchByMeaning('苹果', notes, makeStore(), { embed: makeEmbed() });
+    const ids = await findNotesByMeaning('苹果', notes, makeStore(), { embed: makeEmbed() });
+    const hits = await retrieveChunks('苹果', notes, makeStore(), { embed: makeEmbed() });
+
+    expect(both.noteIds).toEqual(ids);
+    expect(both.hits).toEqual(hits);
+    expect(both.noteIds.length).toBeGreaterThan(0);
+    expect(both.hits.length).toBeGreaterThan(0);
+  });
+
+  it('只做一次 query embedding：比分别调用两个函数少一次', async () => {
+    const store = makeStore();
+    const embed = makeEmbed();
+    await searchByMeaning('苹果', notes, store, { embed });
+    const queryCalls = embed.mock.calls.filter(
+      ([texts]) => texts.length === 1 && texts[0] === '苹果',
+    );
+    expect(queryCalls).toHaveLength(1);
+
+    // 索引已经建好：再来一次只剩 query 本身
+    const again = makeEmbed();
+    await searchByMeaning('苹果', notes, store, { embed: again });
+    expect(again).toHaveBeenCalledTimes(1);
+  });
+
+  it('笔记级和段落级阈值互相独立', async () => {
+    const strictNotes = await searchByMeaning('苹果', notes, makeStore(), {
+      embed: makeEmbed(),
+      noteThreshold: 0.9,
+    });
+    expect(strictNotes.noteIds).toEqual(['apple']);
+    expect(strictNotes.hits.length).toBeGreaterThan(1); // 段落阈值没受影响
+
+    const strictHits = await searchByMeaning('苹果', notes, makeStore(), {
+      embed: makeEmbed(),
+      threshold: 1.1, // 余弦相似度不可能达到，段落全被过滤
+    });
+    expect(strictHits.hits).toEqual([]);
+    expect(strictHits.noteIds.length).toBeGreaterThan(0); // 笔记阈值没受影响
+  });
+
+  it('段落选项（topK、maxPerNote）照常生效', async () => {
+    const { hits } = await searchByMeaning('苹果', notes, makeStore(), {
+      embed: makeEmbed(),
+      topK: 1,
+    });
+    expect(hits).toHaveLength(1);
+  });
+
+  it('空查询或空笔记池直接返回空，且不触发 embedding', async () => {
+    const embed = makeEmbed();
+    expect(await searchByMeaning('  ', notes, makeStore(), { embed })).toEqual({
+      noteIds: [],
+      hits: [],
+    });
+    expect(await searchByMeaning('苹果', [], makeStore(), { embed })).toEqual({
+      noteIds: [],
+      hits: [],
+    });
+    expect(embed).not.toHaveBeenCalled();
+  });
+
+  it('和另外两个函数共用同一份缓存', async () => {
+    const store = makeStore();
+    await retrieveChunks('苹果', notes, store, { embed: makeEmbed() });
+    const embed = makeEmbed();
+    const { noteIds } = await searchByMeaning('香蕉', notes, store, { embed });
+    expect(noteIds).toContain('both');
+    expect(embed).toHaveBeenCalledTimes(1);
+  });
+
+  it('索引进度回调照常触发', async () => {
+    const onProgress = vi.fn();
+    await searchByMeaning('苹果', notes, makeStore(), { embed: makeEmbed(), onProgress });
+    expect(onProgress).toHaveBeenCalled();
+    const last = onProgress.mock.calls.at(-1)![0];
+    expect(last.done).toBe(last.total);
   });
 });

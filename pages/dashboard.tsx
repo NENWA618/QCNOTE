@@ -4,7 +4,7 @@ import { signOut, useSession } from 'next-auth/react';
 import Layout from '../components/Layout';
 import Sidebar from '../components/Sidebar';
 import NoteList from '../components/NoteList';
-import PassageSearch from '../components/PassageSearch';
+import PassageResults from '../components/PassageResults';
 import NoteEditor from '../components/NoteEditor';
 import { usePublishedNotes } from '../lib/publicNotes';
 import DashboardToolbar, { SUB_VIEWS, type DashboardView } from '../components/DashboardToolbar';
@@ -258,66 +258,78 @@ const Dashboard: React.FC = () => {
 
   const {
     ids: semanticIds,
+    hits: semanticHits,
+    hitsQuery: semanticHitsQuery,
     status: semanticStatus,
     progress: semanticProgress,
+    indexProgress: semanticIndexProgress,
+    error: semanticError,
   } = useSemanticSearch({
-    enabled: semanticEnabled,
+    // 回收站视图不显示搜索结果，没必要为它跑模型
+    enabled: semanticEnabled && !viewingTrash,
     query: search,
     notes,
-    viewingTrash,
     cacheStore: storage,
   });
 
-  // Filtered and sorted notes
-  const filteredNotes = useMemo(() => {
-    let filtered = notes;
+  // Filtered and sorted notes. 开启语义搜索时，只因“意思相近”被找到的笔记单独成组，排在关键词命中的后面
+  const { filteredNotes, semanticOnlyIds } = useMemo(() => {
+    let pool = notes;
 
     // Exclude deleted notes from regular view
     if (!viewingTrash) {
-      filtered = filtered.filter((n) => !n.isDeleted);
+      pool = pool.filter((n) => !n.isDeleted);
     }
 
-    const preSearchPool = filtered;
+    let keywordMatches = pool;
+    let semanticExtras: NoteItem[] = [];
 
     // Search filter
     if (search) {
-      filtered = Utils.searchNotes(filtered, search);
+      keywordMatches = Utils.searchNotes(pool, search);
 
-      // Append semantic matches that keyword search missed (same-meaning, different wording)
+      // Semantic matches that keyword search missed (same meaning, different wording)
       if (semanticEnabled && semanticIds.length > 0) {
-        const existingIds = new Set(filtered.map((n) => n.id));
-        const semanticExtras = semanticIds
-          .map((id) => preSearchPool.find((n) => n.id === id))
+        const existingIds = new Set(keywordMatches.map((n) => n.id));
+        semanticExtras = semanticIds
+          .map((id) => pool.find((n) => n.id === id))
           .filter((n): n is NoteItem => n !== undefined && !existingIds.has(n.id));
-        filtered = [...filtered, ...semanticExtras];
       }
     }
 
-    // Category filter
-    if (category !== 'all' && !viewingTrash) {
-      filtered = filtered.filter((note) => note.category === category);
-    }
-
-    // Tag filter: 点卡片上的标签筛选，多个标签同时满足
-    if (selectedTags.length > 0 && !viewingTrash) {
-      filtered = filtered.filter((note) => selectedTags.every((t) => note.tags.includes(t)));
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'date':
-          return b.updatedAt - a.updatedAt;
-        case 'title':
-          return a.title.localeCompare(b.title);
-        case 'category':
-          return (a.category || '').localeCompare(b.category || '');
-        default:
-          return 0;
+    const narrow = (list: NoteItem[]) => {
+      let result = list;
+      // Category filter
+      if (category !== 'all' && !viewingTrash) {
+        result = result.filter((note) => note.category === category);
       }
-    });
+      // Tag filter: 点卡片上的标签筛选，多个标签同时满足
+      if (selectedTags.length > 0 && !viewingTrash) {
+        result = result.filter((note) => selectedTags.every((t) => note.tags.includes(t)));
+      }
+      return result;
+    };
 
-    return filtered;
+    const sorted = (list: NoteItem[]) =>
+      [...list].sort((a, b) => {
+        switch (sortBy) {
+          case 'date':
+            return b.updatedAt - a.updatedAt;
+          case 'title':
+            return a.title.localeCompare(b.title);
+          case 'category':
+            return (a.category || '').localeCompare(b.category || '');
+          default:
+            return 0;
+        }
+      });
+
+    const primary = sorted(narrow(keywordMatches));
+    const extras = sorted(narrow(semanticExtras));
+    return {
+      filteredNotes: [...primary, ...extras],
+      semanticOnlyIds: new Set(extras.map((n) => n.id)),
+    };
   }, [notes, search, category, selectedTags, sortBy, viewingTrash, semanticEnabled, semanticIds]);
 
   const relatedNotes = useMemo(() => {
@@ -402,12 +414,6 @@ const Dashboard: React.FC = () => {
     }
     handleEditNote(target);
   };
-
-  const getPassageStorage = useCallback(async (): Promise<NoteStorage> => {
-    const s = storageRef.current;
-    if (!s) throw new Error('存储尚未就绪，请稍后重试');
-    return s;
-  }, []);
 
   /** 返回 false 表示保存失败（编辑器据此继续显示“未保存”） */
   const handleSaveNote = async (options?: { keepOpen?: boolean }): Promise<boolean> => {
@@ -761,6 +767,21 @@ const Dashboard: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [paletteOpen]);
 
+  const semanticEnabledRef = useRef(semanticEnabled);
+  useEffect(() => {
+    semanticEnabledRef.current = semanticEnabled;
+  }, [semanticEnabled]);
+
+  /** 回到列表并聚焦侧边栏搜索框。语义搜索要用户先勾选（同意下载模型），这里不替他开启 */
+  const focusSearch = () => {
+    selectView('list');
+    // 命令面板关闭后再聚焦，免得焦点被收回
+    window.setTimeout(() => document.getElementById('sidebar-search')?.focus(), 0);
+    if (!semanticEnabledRef.current) {
+      showNotification('勾选搜索框下方的“语义搜索”后，才能按意思找到相关段落', 4000);
+    }
+  };
+
   const paletteCommands = useMemo<PaletteCommand[]>(() => {
     const go = (view: DashboardView) => () => selectView(view);
     return [
@@ -779,11 +800,11 @@ const Dashboard: React.FC = () => {
         run: go('list'),
       },
       {
-        id: 'passages',
-        label: '按段落找笔记',
+        id: 'semantic-search',
+        label: '语义搜索笔记',
         icon: '🔎',
-        keywords: 'passages search rag 检索 段落 语义 问',
-        run: go('passages'),
+        keywords: 'search semantic passages rag 搜索 检索 段落 语义 问',
+        run: focusSearch,
       },
       {
         id: 'calendar',
@@ -966,6 +987,7 @@ const Dashboard: React.FC = () => {
             onToggleSemantic={handleToggleSemantic}
             semanticStatus={semanticStatus}
             semanticProgress={semanticProgress}
+            semanticIndexProgress={semanticIndexProgress}
           />
 
           {/* Main Content（Layout 已经提供 <main>，这里不能再嵌套一个） */}
@@ -1048,8 +1070,6 @@ const Dashboard: React.FC = () => {
                 onRestore={handleRestoreNote}
                 onPermanentlyDelete={handlePermanentlyDeleteNote}
               />
-            ) : viewMode === 'passages' ? (
-              <PassageSearch getStorage={getPassageStorage} onOpenNote={handleOpenNoteById} />
             ) : viewMode === 'calendar' ? (
               <Calendar notes={notes} onSelectNote={handleEditNote} />
             ) : viewMode === 'timeline' ? (
@@ -1086,6 +1106,17 @@ const Dashboard: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
+                {semanticEnabled && search.trim() && (
+                  <PassageResults
+                    query={semanticHitsQuery}
+                    hits={semanticHits}
+                    status={semanticStatus}
+                    progress={semanticProgress}
+                    indexProgress={semanticIndexProgress}
+                    error={semanticError}
+                    onOpenNote={handleOpenNoteById}
+                  />
+                )}
                 <NoteList
                   notes={filteredNotes}
                   onEdit={handleEditNote}
@@ -1095,6 +1126,7 @@ const Dashboard: React.FC = () => {
                   onClearFilters={clearFilters}
                   onNewNote={handleNewNote}
                   selectedTags={selectedTags}
+                  semanticOnlyIds={semanticOnlyIds}
                 />
               </div>
             )}

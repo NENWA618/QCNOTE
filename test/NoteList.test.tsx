@@ -138,3 +138,60 @@ describe('NoteList empty states', () => {
     expect(onClearFilters).toHaveBeenCalled();
   });
 });
+
+describe('NoteList 语义相关分组', () => {
+  const notes = [
+    makeNote({ id: 'k1', title: '榴莲日记' }),
+    makeNote({ id: 's1', title: '水果季节', category: '生活' }),
+    makeNote({ id: 'k2', title: '榴莲酥食谱' }),
+    makeNote({ id: 's2', title: '热带风味', category: '生活' }),
+  ];
+  const props = { onEdit: vi.fn(), onTagClick: vi.fn() };
+  const titlesIn = (section: HTMLElement) =>
+    within(section)
+      .getAllByRole('heading', { level: 3 })
+      .map((h) => h.textContent);
+
+  it('没有语义笔记时不分组，和普通列表一样', () => {
+    const { rerender } = render(<NoteList notes={notes} {...props} />);
+    expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+
+    rerender(<NoteList notes={notes} {...props} semanticOnlyIds={new Set()} />);
+    expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+    expect(screen.getAllByRole('listitem')).toHaveLength(4);
+  });
+
+  it('有语义笔记时分成两组，各自保持传入的顺序', () => {
+    render(<NoteList notes={notes} {...props} semanticOnlyIds={new Set(['s1', 's2'])} />);
+
+    const keyword = screen.getByRole('region', { name: /关键词匹配/ });
+    const semantic = screen.getByRole('region', { name: /语义相关/ });
+    expect(keyword).toHaveTextContent('· 2 篇');
+    expect(semantic).toHaveTextContent('· 2 篇');
+    expect(titlesIn(keyword)).toEqual(['榴莲日记', '榴莲酥食谱']);
+    expect(titlesIn(semantic)).toEqual(['水果季节', '热带风味']);
+    expect(within(semantic).getByText(/没有出现搜索词，但意思相近/)).toBeInTheDocument();
+  });
+
+  it('只有语义笔记、没有关键词命中时，只显示“语义相关”一组', () => {
+    render(
+      <NoteList notes={[notes[1], notes[3]]} {...props} semanticOnlyIds={new Set(['s1', 's2'])} />,
+    );
+    expect(screen.queryByRole('region', { name: /关键词匹配/ })).toBeNull();
+    expect(screen.getByRole('region', { name: /语义相关/ })).toBeInTheDocument();
+  });
+
+  it('点语义相关的卡片同样能打开笔记', () => {
+    const onEdit = vi.fn();
+    render(
+      <NoteList
+        notes={notes}
+        onEdit={onEdit}
+        onTagClick={vi.fn()}
+        semanticOnlyIds={new Set(['s1'])}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '水果季节' }));
+    expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 's1' }));
+  });
+});

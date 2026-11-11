@@ -16,6 +16,11 @@ interface NoteListProps {
   onNewNote?: () => void;
   /** 当前选中的标签，卡片上对应的标签会高亮 */
   selectedTags?: string[];
+  /**
+   * 只因“意思相近”被找到的笔记（关键词没有命中）。非空时列表分成「关键词匹配」和「语义相关」两组，
+   * 让用户知道这些笔记为什么出现；为空或不传时和普通列表完全一样。
+   */
+  semanticOnlyIds?: ReadonlySet<string>;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -65,6 +70,7 @@ const NoteList: React.FC<NoteListProps> = ({
   onClearFilters,
   onNewNote,
   selectedTags = [],
+  semanticOnlyIds,
 }) => {
   if (notes.length === 0) {
     return (
@@ -94,9 +100,9 @@ const NoteList: React.FC<NoteListProps> = ({
     );
   }
 
-  return (
+  const renderCards = (list: NoteItem[]) => (
     <ul className="grid items-stretch gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {notes.map((note, index) => {
+      {list.map((note, index) => {
         const sentiment = note.sentimentCategory ? SENTIMENT[note.sentimentCategory] : null;
         const preview = toPlainPreview(note.content);
         const linkCount = note.links?.length || 0;
@@ -195,6 +201,35 @@ const NoteList: React.FC<NoteListProps> = ({
         );
       })}
     </ul>
+  );
+
+  const extras = semanticOnlyIds ? notes.filter((n) => semanticOnlyIds.has(n.id)) : [];
+  if (extras.length === 0) return renderCards(notes);
+
+  const primary = notes.filter((n) => !semanticOnlyIds!.has(n.id));
+  const groupTitle = 'mb-3 text-sm font-semibold text-ink dark:text-dark-text';
+  const groupCount = 'font-normal tabular-nums text-text-light';
+  return (
+    <div className="space-y-6">
+      {primary.length > 0 && (
+        <section aria-labelledby="note-group-keyword">
+          <h2 id="note-group-keyword" className={groupTitle}>
+            关键词匹配 <span className={groupCount}>· {primary.length} 篇</span>
+          </h2>
+          {renderCards(primary)}
+        </section>
+      )}
+      <section aria-labelledby="note-group-semantic">
+        <h2
+          id="note-group-semantic"
+          className="mb-1 text-sm font-semibold text-ink dark:text-dark-text"
+        >
+          语义相关 <span className={groupCount}>· {extras.length} 篇</span>
+        </h2>
+        <p className="mb-3 text-xs text-text-light">没有出现搜索词，但意思相近。</p>
+        {renderCards(extras)}
+      </section>
+    </div>
   );
 };
 

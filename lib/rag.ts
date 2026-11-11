@@ -6,9 +6,10 @@
  * 笔记内容不会发往任何服务器，也不会调用任何外部 AI 接口。
  *
  * 这是应用里唯一的一套本地向量索引：一篇笔记对应多个块向量。
- * - retrieveChunks：返回最相关的段落（「段落」视图用）；
- * - findNotesByMeaning：返回最相关的笔记（侧边栏「语义搜索」用，取每篇笔记里得分最高的块）。
- * 两者共用同一份块向量缓存，长笔记不会因为内容太杂而被稀释。
+ * - searchByMeaning：一次查询同时返回相关笔记和相关段落（搜索框「语义搜索」用）；
+ * - retrieveChunks：只要最相关的段落；
+ * - findNotesByMeaning：只要最相关的笔记（取每篇笔记里得分最高的块）。
+ * 三者共用同一份块向量缓存和同一套打分函数，长笔记不会因为内容太杂而被稀释。
  */
 import type { NoteItem } from './storage';
 import { embedTexts, cosineSimilarity } from './embeddings';
@@ -50,7 +51,7 @@ export interface ChunkOptions {
 export interface RetrieveOptions extends ChunkOptions {
   /** 最多返回多少块，默认 5 */
   topK?: number;
-  /** 相似度下限，低于它的块直接丢弃，默认 0.35 */
+  /** 相似度下限，低于它的块直接丢弃，默认 PASSAGE_MATCH_THRESHOLD（0.35） */
   threshold?: number;
   /** 同一篇笔记最多返回几块，避免一篇笔记占满结果，默认 2 */
   maxPerNote?: number;
@@ -438,12 +439,21 @@ async function doRetrieve(
   cacheStore: RagCacheStore,
   options: RetrieveOptions,
 ): Promise<RagHit[]> {
-  const topK = options.topK ?? 5;
-  const threshold = options.threshold ?? 0.35;
-  const maxPerNote = options.maxPerNote ?? 2;
-
   const { plan, cache, queryVector } = await prepareIndex(query, notes, cacheStore, options);
   if (!queryVector) return [];
+  return rankChunks(plan, cache, queryVector, options);
+}
+
+/** 给所有块打分，按相关度降序，并按 topK / 阈值 / 每篇上限筛选 */
+function rankChunks(
+  plan: PreparedIndex['plan'],
+  cache: RagCache,
+  queryVector: number[],
+  options: RetrieveOptions,
+): RagHit[] {
+  const topK = options.topK ?? 5;
+  const threshold = options.threshold ?? PASSAGE_MATCH_THRESHOLD;
+  const maxPerNote = options.maxPerNote ?? 2;
 
   const scored: RagHit[] = [];
   for (const { note, chunks } of plan) {
@@ -479,9 +489,16 @@ async function doRetrieve(
 }
 
 /**
- * 侧边栏「语义搜索」用的笔记级匹配阈值。
- * 比段落检索（0.35）高：这里是在已有关键词结果之外再追加笔记，宁缺毋滥。
- * 这是经验值，没有用真实模型调过；觉得追加的结果太杂或太少，就调这里。
+ * 「相关段落」面板用的段落级相似度下限：低于它的块直接丢弃。
+ * 这是经验值，没有用真实模型调过。要调，先用 scripts/tune-thresholds.ts 在自己的笔记上跑一遍，
+ * 再把结果填回这里。
+ */
+export const PASSAGE_MATCH_THRESHOLD = 0.35;
+
+/**
+ * 笔记级匹配阈值：在已有关键词结果之外再追加「语义相关」的笔记。
+ * 比段落级高，是因为列表里多出一篇无关笔记比面板里多出一段更扎眼，宁缺毋滥。
+ * 同样是没用真实模型调过的经验值，调法见 PASSAGE_MATCH_THRESHOLD。
  */
 export const NOTE_MATCH_THRESHOLD = 0.45;
 
@@ -513,10 +530,18 @@ async function doFindNotes(
   cacheStore: RagCacheStore,
   options: MatchNotesOptions,
 ): Promise<string[]> {
-  const threshold = options.threshold ?? NOTE_MATCH_THRESHOLD;
   const { plan, cache, queryVector } = await prepareIndex(query, notes, cacheStore, options);
   if (!queryVector) return [];
+  return rankNotes(plan, cache, queryVector, options.threshold ?? NOTE_MATCH_THRESHOLD);
+}
 
+/** 笔记的得分 = 它所有块里与 query 最相似的那一块；返回得分不低于阈值的笔记 id，按相关度降序 */
+function rankNotes(
+  plan: PreparedIndex['plan'],
+  cache: RagCache,
+  queryVector: number[],
+  threshold: number,
+): string[] {
   const scored: { id: string; score: number }[] = [];
   for (const { note } of plan) {
     const vectors = cache[note.id]?.vectors;
@@ -532,6 +557,49 @@ async function doFindNotes(
   return scored.map((s) => s.id);
 }
 
+export interface SearchByMeaningOptions extends RetrieveOptions {
+  /** 笔记级相似度下限，默认 NOTE_MATCH_THRESHOLD；段落级下限用 threshold */
+  noteThreshold?: number;
+}
+
+export interface SearchByMeaningResult {
+  /** 相关笔记的 id，按相关度降序（阈值 noteThreshold） */
+  noteIds: string[];
+  /** 相关段落，按相关度降序（阈值 threshold） */
+  hits: RagHit[];
+}
+
+/**
+ * 一次查询同时取回相关笔记和相关段落。
+ * 只建一次索引、只算一次 query 向量，再各自打分——比分别调用
+ * findNotesByMeaning 和 retrieveChunks 少一次 embedding 和一次排队。
+ * notes 同样应传入完整的候选池。
+ */
+export function searchByMeaning(
+  query: string,
+  notes: NoteItem[],
+  cacheStore: RagCacheStore,
+  options: SearchByMeaningOptions = {},
+): Promise<SearchByMeaningResult> {
+  const trimmed = query.trim();
+  if (!trimmed || notes.length === 0) return Promise.resolve({ noteIds: [], hits: [] });
+  return runExclusive(() => doSearchByMeaning(trimmed, notes, cacheStore, options));
+}
+
+async function doSearchByMeaning(
+  query: string,
+  notes: NoteItem[],
+  cacheStore: RagCacheStore,
+  options: SearchByMeaningOptions,
+): Promise<SearchByMeaningResult> {
+  const { plan, cache, queryVector } = await prepareIndex(query, notes, cacheStore, options);
+  if (!queryVector) return { noteIds: [], hits: [] };
+  return {
+    noteIds: rankNotes(plan, cache, queryVector, options.noteThreshold ?? NOTE_MATCH_THRESHOLD),
+    hits: rankChunks(plan, cache, queryVector, options),
+  };
+}
+
 async function saveQuietly(store: RagCacheStore, cache: RagCache): Promise<void> {
   try {
     await store.saveRagCache(cache);
@@ -541,6 +609,6 @@ async function saveQuietly(store: RagCacheStore, cache: RagCache): Promise<void>
   }
 }
 
-const Rag = { chunkNote, estimateTokens, retrieveChunks, findNotesByMeaning };
+const Rag = { chunkNote, estimateTokens, retrieveChunks, findNotesByMeaning, searchByMeaning };
 
 export default Rag;

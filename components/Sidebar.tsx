@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 
 import { useModKeyLabel } from '../lib/hooks/useModKeyLabel';
+import type { SemanticStatus } from '../lib/hooks/useSemanticSearch';
+import type { RagIndexProgress } from '../lib/rag';
 import type { Stats } from '../lib/storage';
 
 interface Props {
@@ -17,8 +19,9 @@ interface Props {
   onSortChange: (_value: string) => void;
   semanticEnabled?: boolean;
   onToggleSemantic?: () => void;
-  semanticStatus?: 'idle' | 'loading-model' | 'searching' | 'ready' | 'error';
+  semanticStatus?: SemanticStatus;
   semanticProgress?: number;
+  semanticIndexProgress?: RagIndexProgress | null;
 }
 
 const SORT_OPTIONS = [
@@ -44,6 +47,7 @@ const Sidebar: React.FC<Props> = ({
   onToggleSemantic,
   semanticStatus = 'idle',
   semanticProgress = 0,
+  semanticIndexProgress = null,
 }) => {
   const searchRef = useRef<HTMLInputElement>(null);
   const mod = useModKeyLabel();
@@ -155,6 +159,10 @@ const Sidebar: React.FC<Props> = ({
         {semanticEnabled && search && semanticStatus !== 'idle' && (
           <p className="mt-1 px-1 text-xs text-text-light" role="status">
             {semanticStatus === 'loading-model' && `下载模型中 ${semanticProgress.toFixed(0)}%`}
+            {semanticStatus === 'indexing' &&
+              (semanticIndexProgress
+                ? `正在建立索引 ${semanticIndexProgress.done} / ${semanticIndexProgress.total}`
+                : '正在建立索引...')}
             {semanticStatus === 'searching' && '正在语义搜索...'}
             {semanticStatus === 'ready' && '语义搜索就绪'}
             {semanticStatus === 'error' && '语义搜索出错，已回退到普通搜索'}
