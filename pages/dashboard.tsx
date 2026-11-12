@@ -272,6 +272,16 @@ const Dashboard: React.FC = () => {
     cacheStore: storage,
   });
 
+  // 用过搜索之后，笔记一变就在空闲时把受影响的索引分片补上，下一次搜索不必现场重建。
+  // 没搜索过的人不做这件事：建索引要占 CPU 和内存。
+  const [searchUsed, setSearchUsed] = useState(false);
+  if (!searchUsed && search.trim() !== '') setSearchUsed(true);
+  useEffect(() => {
+    if (!searchUsed) return;
+    // 和下面 filteredNotes 的候选池（非回收站视图）保持一致，缓存才能对上
+    return Utils.warmSearchIndex(notes.filter((n) => !n.isDeleted));
+  }, [searchUsed, notes]);
+
   // Filtered and sorted notes. 开启语义搜索时，只因“意思相近”被找到的笔记单独成组，排在关键词命中的后面
   const { filteredNotes, semanticOnlyIds } = useMemo(() => {
     let pool = notes;

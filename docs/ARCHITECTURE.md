@@ -157,9 +157,11 @@ user_vault_keys.wrapped_key            QCNOTE_NOTES_DB_<userId>__qcnote_meta__
 
 ### 5.1 全文搜索
 
-`Utils.searchNotes` 用 Lunr 为 `title`、`content`、`tags`、`category` 建索引。索引在每次搜索时按当前列表现建，不缓存、也不写入持久存储；Lunr 出错时退回逐词过滤。
+`Utils.searchNotes` 先用 `parseSearchQuery` 把查询解析成“若干组 OR、组内 AND”的条件：`title:`、`content:`、`tag:`、`category:`、`date:` 字段过滤，空格或 `AND` 连接，`OR` 分组，`NOT` 排除，英文双引号表示按原文匹配；字段和自由文本可以混写，未知的 `xxx:yyy` 当普通文字。
 
-语法（`parseSearchQuery`）：`title:`、`content:`、`tag:`、`category:`、`date:` 字段过滤，`AND / OR / NOT` 组合，以及日期范围。标签、分类、日期过滤在 Lunr 之外处理。
+每一项的判断是“子串出现，或 Lunr 词干命中”，Lunr 只负责词干匹配和相关度排序；日期、标签、分类和引号短语只走子串匹配。只有一个普通词的查询才会再叠加词袋相似度（`vector.ts`）做中文模糊回退，多词、带字段或 `NOT` 的查询不会。
+
+Lunr 索引不能增量更新，所以按笔记 id 哈希分成每片约 200 篇的小索引（分片数取 2 的幂），保存或删除一篇只重建它所在的那片；搜索时对每片分别查询再合并。每篇笔记的词袋向量和小写文本也有缓存，用标题和正文做有效性校验。这些缓存只在内存里，不写入持久存储；它们含有笔记正文的衍生数据，退出登录或锁定时应当调用 `Utils.clearSearchCaches()`。仪表盘在用户用过搜索之后，会在笔记变化、空闲时通过 `Utils.warmSearchIndex` 预建失效的分片。
 
 控制台在搜索之后再叠加分类筛选和标签筛选（点笔记卡片上的标签，多个标签需同时满足），最后排序。
 
