@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { getAISettings, saveAISettings, clearAISettings } from '../lib/aiSettings';
 import { generateNote } from '../lib/aiClient';
+import { DEFAULT_AI_ENDPOINT, type DefaultAIModel } from '../lib/defaultAI';
 import {
   AI_PROVIDERS,
   AI_PROVIDER_ORDER,
@@ -93,6 +94,11 @@ const AIModelSettings: React.FC = () => {
   const [status, setStatus] = useState<Status | null>(null);
   const [showKey, setShowKey] = useState(false);
 
+  // 站点默认模型（服务端用环境变量配置，Key 不会下发到浏览器）
+  const [defaultModels, setDefaultModels] = useState<DefaultAIModel[]>([]);
+  const [mode, setMode] = useState<'default' | 'custom'>('custom');
+  const [defaultModel, setDefaultModel] = useState('');
+
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -110,6 +116,16 @@ const AIModelSettings: React.FC = () => {
     void (async () => {
       let settings = null;
       let message: string | null = null;
+      let models: DefaultAIModel[] = [];
+      try {
+        const r = await fetch(DEFAULT_AI_ENDPOINT, { cache: 'no-store' });
+        const info = r.ok
+          ? ((await r.json()) as { available?: boolean; models?: DefaultAIModel[] })
+          : null;
+        if (info?.available && Array.isArray(info.models)) models = info.models;
+      } catch {
+        // 默认模型不可用时静默退回自定义接口
+      }
       try {
         settings = await getAISettings(sessionUserId, await storageFor(sessionUserId));
       } catch (e) {
@@ -123,6 +139,11 @@ const AIModelSettings: React.FC = () => {
         modelName: settings?.modelName ?? '',
         apiKey: settings?.apiKey ?? '',
       };
+      setDefaultModels(models);
+      setDefaultModel((prev) => (models.some((m) => m.id === prev) ? prev : (models[0]?.id ?? '')));
+      // 用户自己保存过接口就沿用；否则有默认模型时默认使用它
+      const hasCustom = !!(loaded.apiEndpoint || loaded.modelName || loaded.apiKey);
+      setMode(models.length > 0 && !hasCustom ? 'default' : 'custom');
       setFields(loaded);
       setSaved(loaded);
       setSavedAt(settings?.updatedAt ?? null);
@@ -170,11 +191,14 @@ const AIModelSettings: React.FC = () => {
     fields.modelName !== saved.modelName ||
     fields.apiKey !== saved.apiKey;
   const endpointInvalid = !!fields.apiEndpoint.trim() && !isHttpUrl(fields.apiEndpoint.trim());
-  const configured =
-    !!fields.apiEndpoint.trim() &&
-    !endpointInvalid &&
-    !!fields.modelName.trim() &&
-    !!fields.apiKey.trim();
+  const usingDefault = mode === 'default' && defaultModels.length > 0;
+  const needLogin = usingDefault && !sessionUserId;
+  const configured = usingDefault
+    ? !!defaultModel && !needLogin
+    : !!fields.apiEndpoint.trim() &&
+      !endpointInvalid &&
+      !!fields.modelName.trim() &&
+      !!fields.apiKey.trim();
   const hasSaved = !!(saved.apiEndpoint || saved.modelName || saved.apiKey);
 
   const handleSave = async (event: React.FormEvent) => {
@@ -234,13 +258,23 @@ const AIModelSettings: React.FC = () => {
     setGenerateError(null);
 
     try {
-      const { title, content } = await generateNote({
-        provider: fields.provider,
-        apiEndpoint: fields.apiEndpoint.trim(),
-        apiKey: fields.apiKey.trim(),
-        modelName: fields.modelName.trim(),
-        prompt: text,
-      });
+      const { title, content } = await generateNote(
+        usingDefault
+          ? {
+              provider: 'openai-chat',
+              apiEndpoint: DEFAULT_AI_ENDPOINT,
+              apiKey: '',
+              modelName: defaultModel,
+              prompt: text,
+            }
+          : {
+              provider: fields.provider,
+              apiEndpoint: fields.apiEndpoint.trim(),
+              apiKey: fields.apiKey.trim(),
+              modelName: fields.modelName.trim(),
+              prompt: text,
+            },
+      );
 
       const storage = await storageFor(sessionUserId);
       await storage.addNoteAsync({
@@ -280,16 +314,24 @@ const AIModelSettings: React.FC = () => {
       {!loading && (
         <span
           className={`inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${
-            hasSaved && !dirty && configured
+            (usingDefault ? configured : hasSaved && !dirty && configured)
               ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
               : 'bg-gray-100 text-gray-600 dark:bg-dark-surface-light dark:text-dark-text-secondary'
           }`}
         >
           <span
             aria-hidden="true"
-            className={`h-2 w-2 rounded-full ${hasSaved && !dirty && configured ? 'bg-green-500' : 'bg-gray-400'}`}
+            className={`h-2 w-2 rounded-full ${(usingDefault ? configured : hasSaved && !dirty && configured) ? 'bg-green-500' : 'bg-gray-400'}`}
           />
-          {hasSaved && !dirty && configured ? '已配置' : dirty ? '有未保存的更改' : '未配置'}
+          {usingDefault
+            ? configured
+              ? '使用默认模型'
+              : '需登录'
+            : hasSaved && !dirty && configured
+              ? '已配置'
+              : dirty
+                ? '有未保存的更改'
+                : '未配置'}
         </span>
       )}
     </div>
@@ -313,146 +355,214 @@ const AIModelSettings: React.FC = () => {
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         {/* 接口配置 */}
-        <form onSubmit={handleSave} className={panelClass} noValidate>
-          <h2 className="text-lg font-semibold text-ink dark:text-dark-text">接口配置</h2>
-          <p className="mt-1 mb-5 text-sm text-text-light">
-            浏览器直接调用你选择的服务，目标服务需允许浏览器跨域访问（CORS）
-          </p>
-
-          {status && (
-            <div
-              role={status.type === 'error' ? 'alert' : 'status'}
-              className={`mb-5 rounded-xl border p-3 text-sm ${statusClass(status)}`}
+        {usingDefault && (
+          <div className={panelClass}>
+            <div className="mb-4 flex gap-2" role="group" aria-label="接入方式">
+              <button type="button" className="btn btn-primary flex-1" aria-pressed="true">
+                站点默认模型
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary flex-1"
+                aria-pressed="false"
+                onClick={() => setMode('custom')}
+              >
+                自定义接口
+              </button>
+            </div>
+            <h2 className="text-lg font-semibold text-ink dark:text-dark-text">默认模型</h2>
+            <p className="mt-1 mb-5 text-sm text-text-light">
+              由站点提供，无需填写 API Key。请求经 QCNOTE 服务器转发，Key 不会出现在浏览器里。
+            </p>
+            {needLogin && (
+              <div
+                role="alert"
+                className={`mb-5 rounded-xl border p-3 text-sm ${statusClass({ type: 'error', text: '' })}`}
+              >
+                使用默认模型需要先登录。
+              </div>
+            )}
+            <label htmlFor="ai-default-model" className={labelClass}>
+              模型
+            </label>
+            <select
+              id="ai-default-model"
+              value={defaultModel}
+              onChange={(e) => setDefaultModel(e.target.value)}
+              className="input py-2 text-sm"
             >
-              {status.text}
-            </div>
-          )}
+              {defaultModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
-          <div className="space-y-5">
-            <div>
-              <label htmlFor="ai-provider" className={labelClass}>
-                接口类型
-              </label>
-              <select
-                id="ai-provider"
-                value={fields.provider}
-                onChange={handleProviderChange}
-                aria-describedby="ai-provider-hint"
-                className="input py-2 text-sm"
+        {!usingDefault && (
+          <form onSubmit={handleSave} className={panelClass} noValidate>
+            {defaultModels.length > 0 && (
+              <div className="mb-4 flex gap-2" role="group" aria-label="接入方式">
+                <button
+                  type="button"
+                  className="btn btn-secondary flex-1"
+                  aria-pressed="false"
+                  onClick={() => setMode('default')}
+                >
+                  站点默认模型
+                </button>
+                <button type="button" className="btn btn-primary flex-1" aria-pressed="true">
+                  自定义接口
+                </button>
+              </div>
+            )}
+            <h2 className="text-lg font-semibold text-ink dark:text-dark-text">接口配置</h2>
+            <p className="mt-1 mb-5 text-sm text-text-light">
+              浏览器直接调用你选择的服务，目标服务需允许浏览器跨域访问（CORS）
+            </p>
+
+            {status && (
+              <div
+                role={status.type === 'error' ? 'alert' : 'status'}
+                className={`mb-5 rounded-xl border p-3 text-sm ${statusClass(status)}`}
               >
-                {AI_PROVIDER_ORDER.map((id) => (
-                  <option key={id} value={id}>
-                    {AI_PROVIDERS[id].label}
-                  </option>
-                ))}
-              </select>
-              <p id="ai-provider-hint" className="mt-1 text-xs text-text-light">
-                {preset.description}
-              </p>
-            </div>
+                {status.text}
+              </div>
+            )}
 
-            <div>
-              <label htmlFor="ai-endpoint" className={labelClass}>
-                API 地址
-              </label>
-              <input
-                id="ai-endpoint"
-                type="url"
-                inputMode="url"
-                autoCapitalize="off"
-                autoComplete="off"
-                spellCheck={false}
-                value={fields.apiEndpoint}
-                onChange={setField('apiEndpoint')}
-                placeholder={preset.endpointPlaceholder}
-                aria-invalid={endpointInvalid}
-                aria-describedby="ai-endpoint-hint"
-                className="input py-2 text-sm"
-              />
-              <p
-                id="ai-endpoint-hint"
-                className={`mt-1 text-xs ${endpointInvalid ? 'text-red-600 dark:text-red-400' : 'text-text-light'}`}
-              >
-                {endpointInvalid ? '请输入以 http:// 或 https:// 开头的地址' : preset.endpointHint}
-              </p>
-            </div>
+            <div className="space-y-5">
+              <div>
+                <label htmlFor="ai-provider" className={labelClass}>
+                  接口类型
+                </label>
+                <select
+                  id="ai-provider"
+                  value={fields.provider}
+                  onChange={handleProviderChange}
+                  aria-describedby="ai-provider-hint"
+                  className="input py-2 text-sm"
+                >
+                  {AI_PROVIDER_ORDER.map((id) => (
+                    <option key={id} value={id}>
+                      {AI_PROVIDERS[id].label}
+                    </option>
+                  ))}
+                </select>
+                <p id="ai-provider-hint" className="mt-1 text-xs text-text-light">
+                  {preset.description}
+                </p>
+              </div>
 
-            <div>
-              <label htmlFor="ai-model" className={labelClass}>
-                模型名称
-              </label>
-              <input
-                id="ai-model"
-                type="text"
-                autoCapitalize="off"
-                autoComplete="off"
-                spellCheck={false}
-                value={fields.modelName}
-                onChange={setField('modelName')}
-                placeholder={preset.modelPlaceholder}
-                className="input py-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="ai-key" className={labelClass}>
-                API Key
-              </label>
-              <div className="relative">
+              <div>
+                <label htmlFor="ai-endpoint" className={labelClass}>
+                  API 地址
+                </label>
                 <input
-                  id="ai-key"
-                  type={showKey ? 'text' : 'password'}
+                  id="ai-endpoint"
+                  type="url"
+                  inputMode="url"
                   autoCapitalize="off"
                   autoComplete="off"
                   spellCheck={false}
-                  value={fields.apiKey}
-                  onChange={setField('apiKey')}
-                  placeholder="sk-..."
-                  className="input py-2 pr-16 text-sm font-mono"
+                  value={fields.apiEndpoint}
+                  onChange={setField('apiEndpoint')}
+                  placeholder={preset.endpointPlaceholder}
+                  aria-invalid={endpointInvalid}
+                  aria-describedby="ai-endpoint-hint"
+                  className="input py-2 text-sm"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowKey((v) => !v)}
-                  aria-pressed={showKey}
-                  aria-label={showKey ? '隐藏 API Key' : '显示 API Key'}
-                  className="absolute inset-y-0 right-1 my-auto h-9 rounded-full px-3 text-xs font-medium text-ink-pink hover:bg-primary-light dark:hover:bg-accent-pink/15"
+                <p
+                  id="ai-endpoint-hint"
+                  className={`mt-1 text-xs ${endpointInvalid ? 'text-red-600 dark:text-red-400' : 'text-text-light'}`}
                 >
-                  {showKey ? '隐藏' : '显示'}
-                </button>
+                  {endpointInvalid
+                    ? '请输入以 http:// 或 https:// 开头的地址'
+                    : preset.endpointHint}
+                </p>
               </div>
-              <p className="mt-1 text-xs text-text-light">🔒 用本设备的密钥加密后保存在本地</p>
-            </div>
-          </div>
 
-          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
-            {hasSaved && (
-              <button type="button" onClick={handleClear} className="btn btn-secondary">
-                清除
+              <div>
+                <label htmlFor="ai-model" className={labelClass}>
+                  模型名称
+                </label>
+                <input
+                  id="ai-model"
+                  type="text"
+                  autoCapitalize="off"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={fields.modelName}
+                  onChange={setField('modelName')}
+                  placeholder={preset.modelPlaceholder}
+                  className="input py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="ai-key" className={labelClass}>
+                  API Key
+                </label>
+                <div className="relative">
+                  <input
+                    id="ai-key"
+                    type={showKey ? 'text' : 'password'}
+                    autoCapitalize="off"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={fields.apiKey}
+                    onChange={setField('apiKey')}
+                    placeholder="sk-..."
+                    className="input py-2 pr-16 text-sm font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKey((v) => !v)}
+                    aria-pressed={showKey}
+                    aria-label={showKey ? '隐藏 API Key' : '显示 API Key'}
+                    className="absolute inset-y-0 right-1 my-auto h-9 rounded-full px-3 text-xs font-medium text-ink-pink hover:bg-primary-light dark:hover:bg-accent-pink/15"
+                  >
+                    {showKey ? '隐藏' : '显示'}
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-text-light">🔒 用本设备的密钥加密后保存在本地</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+              {hasSaved && (
+                <button type="button" onClick={handleClear} className="btn btn-secondary">
+                  清除
+                </button>
+              )}
+              <p className="text-xs text-text-light text-center sm:text-left sm:mr-auto">
+                {savedAt ? `上次保存：${new Date(savedAt).toLocaleString('zh-CN')}` : ''}
+              </p>
+              <button
+                type="submit"
+                className="btn btn-primary sm:min-w-[7rem]"
+                disabled={saving || !dirty || endpointInvalid}
+              >
+                {saving ? '保存中...' : '保存设置'}
               </button>
-            )}
-            <p className="text-xs text-text-light text-center sm:text-left sm:mr-auto">
-              {savedAt ? `上次保存：${new Date(savedAt).toLocaleString('zh-CN')}` : ''}
-            </p>
-            <button
-              type="submit"
-              className="btn btn-primary sm:min-w-[7rem]"
-              disabled={saving || !dirty || endpointInvalid}
-            >
-              {saving ? '保存中...' : '保存设置'}
-            </button>
-          </div>
-        </form>
+            </div>
+          </form>
+        )}
 
         {/* 对话 */}
         <form onSubmit={handleGenerate} className={`${panelClass} lg:sticky lg:top-24`}>
           <h2 className="text-lg font-semibold text-ink dark:text-dark-text">生成笔记</h2>
           <p className="mt-1 mb-5 text-sm text-text-light">
-            浏览器直接调用上面的 AI 服务（不经过 QCNOTE 服务器），回复会保存为一条新笔记。
+            {usingDefault
+              ? '通过 QCNOTE 服务器调用默认模型，回复会保存为一条新笔记。'
+              : '浏览器直接调用上面的 AI 服务（不经过 QCNOTE 服务器），回复会保存为一条新笔记。'}
           </p>
 
           {!configured && (
             <div className="mb-4 rounded-xl border border-dashed border-primary-dark/40 dark:border-dark-border p-3 text-sm text-text-light">
-              先填写 API 地址、模型名称和 API Key，才能开始生成。
+              {needLogin
+                ? '请先登录，再使用站点默认模型。'
+                : '先填写 API 地址、模型名称和 API Key，才能开始生成。'}
             </div>
           )}
 

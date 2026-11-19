@@ -7,6 +7,7 @@
  * Google Gemini Interactions、DeepSeek。
  */
 import { DEFAULT_AI_PROVIDER, type AIProvider } from './aiProviders';
+import { DEFAULT_AI_ENDPOINT } from './defaultAI';
 import { cleanAIContent, deriveTitleFromContent, parseStructuredNote } from './aiNote';
 
 export interface ChatCompletionParams {
@@ -166,7 +167,11 @@ export function buildAIRequest({
     default:
       return {
         url: apiEndpoint,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        headers: {
+          'Content-Type': 'application/json',
+          // 站点默认模型走同源代理，Key 在服务端，浏览器不带 Authorization
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
         body: {
           model: modelName,
           messages: [{ role: 'user', content: prompt }],
@@ -335,7 +340,8 @@ class AIHttpError extends Error {
 }
 
 function assertConfigured({ apiEndpoint, apiKey, modelName }: ChatCompletionParams) {
-  if (!apiEndpoint || !apiKey || !modelName) {
+  const usesDefault = apiEndpoint === DEFAULT_AI_ENDPOINT;
+  if (!apiEndpoint || (!apiKey && !usesDefault) || !modelName) {
     throw new Error('请先填写并保存 API 地址、API Key 和模型名称');
   }
 }
