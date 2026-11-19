@@ -31,7 +31,7 @@ interface EditorHeaderProps {
   onDelete: (id: string) => void;
 }
 
-const ACTIVE_TOGGLE = 'bg-ink dark:bg-accent-pink text-white';
+const ACTIVE_TOGGLE = 'btn-toggle-on bg-ink text-white';
 const SUSPENDED_TITLE = '你的个人主页和公开笔记已被管理员关闭';
 
 export const EditorHeader: React.FC<EditorHeaderProps> = ({

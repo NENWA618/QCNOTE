@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%E2%89%A520.9-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 
-在线体验：<https://qcnote.com>
+在线体验：<https://www.qcnote.com>
 
 ## 功能
 

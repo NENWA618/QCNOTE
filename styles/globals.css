@@ -992,13 +992,6 @@
     &::before {
       @apply absolute inset-0 bg-linear-to-br from-transparent via-primary-light to-accent-purple opacity-5 pointer-events-none;
     }
-
-    /* 顶部 1px 的高光边：让它读起来是“接住光线的实体卡片”，而不是一块平的矩形 */
-    &::after {
-      content: '';
-      @apply absolute inset-x-0 top-0 h-px pointer-events-none;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
-    }
   }
 
   /* ---- 表单 ---- */
@@ -1174,6 +1167,15 @@
     /* 否则上面的覆盖会连悬停反馈一起吃掉 */
     &:hover {
       @apply bg-dark-surface-light;
+    }
+  }
+
+  /* 切换按钮的“开启”态（预览 / 分屏）：粉底白字，和描边同色，与未开启态拉开差距 */
+  html.dark .btn-secondary.btn-toggle-on {
+    @apply bg-accent-pink text-white border-accent-pink;
+
+    &:hover {
+      @apply bg-accent-pink;
     }
   }
 
