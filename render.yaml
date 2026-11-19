@@ -1,0 +1,90 @@
+# Exported from Render on 2026-10-21, merged with repository deployment settings.
+version: "1"
+projects:
+  - name: QCNOTE
+    environments:
+      - name: Production
+        services:
+          - type: web
+            name: QCNOTE
+            runtime: node
+            repo: https://github.com/NENWA618/QCNOTE
+            plan: starter
+            region: singapore
+            rootDir: server
+            buildCommand: |
+              npm install
+              if [ -n "$ADMIN_CHECK_EMAIL" ]; then
+                npm run check-admin -- "$ADMIN_CHECK_EMAIL"
+              else
+                echo "ADMIN_CHECK_EMAIL not set, skipping admin check"
+              fi
+            startCommand: npm start
+            autoDeployTrigger: commit
+            envVars:
+              - key: NODE_VERSION
+                value: 24.22.1
+              - key: TRUST_PROXY_HOPS
+                value: 2
+              - key: NODE_ENV
+                value: production
+              - key: PORT
+                value: 10000
+              - key: TWA_SHA256_CERT_FINGERPRINTS
+                sync: false
+              - key: VAULT_MASTER_KEY
+                sync: false
+              - key: DEVICE_SESSION_SECRET
+                sync: false
+              - key: VAPID_PUBLIC
+                sync: false
+              - key: VAPID_PRIVATE
+                sync: false
+              - key: REDIS_URL
+                fromService:
+                  name: QCNOTE - Redis
+                  type: keyvalue
+                  property: connectionString
+              - key: NEXTAUTH_URL
+                sync: false
+              - key: NEXTAUTH_SECRET
+                sync: false
+              - key: GOOGLE_CLIENT_SECRET
+                sync: false
+              - key: GOOGLE_CLIENT_ID
+                sync: false
+              - key: GITHUB_CLIENT_SECRET
+                sync: false
+              - key: GITHUB_CLIENT_ID
+                sync: false
+              - key: DISCORD_CLIENT_SECRET
+                sync: false
+              - key: DISCORD_CLIENT_ID
+                sync: false
+              - key: DATABASE_URL
+                fromDatabase:
+                  name: QCNOTE - PostgreSQL
+                  property: connectionString
+              - key: BACKEND_URL
+                sync: false
+              - key: ADMIN_TOKEN
+                sync: false
+              - key: ADMIN_SET_EMAIL
+                sync: false
+              - key: ADMIN_CHECK_EMAIL
+                sync: false
+          - type: keyvalue
+            name: QCNOTE - Redis
+            plan: free
+            region: singapore
+            maxmemoryPolicy: volatile-ttl
+            ipAllowList: []
+        databases:
+          - name: QCNOTE - PostgreSQL
+            databaseName: note_postgresql
+            user: note_postgresql_user
+            plan: basic-256mb
+            region: singapore
+            ipAllowList: []
+            postgresMajorVersion: "18"
+            diskSizeGB: 1

@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+    paths-ignore:
+      - '.github/**'
+      - 'README.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '*.md'
+  pull_request:
+    branches: [ main, master ]
+    paths-ignore:
+      - '.github/**'
+      - 'README.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '*.md'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build, lint and test
+    runs-on: ubuntu-latest
+    env:
+      CI: 'true'
+      # 只有 CI 的临时环境才允许使用非生产强度的密钥（见 lib/env-config.ts）
+      ALLOW_INSECURE_SECRETS: 'true'
+      NODE_ENV: production
+      NEXTAUTH_SECRET: development-secret
+      NEXTAUTH_URL: https://www.qcnote.com
+    concurrency:
+      group: ci-${{ github.ref_name }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.1'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Restore Next.js cache
+        uses: actions/cache@v6
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-next-
+
+      - name: Install dependencies
+        env:
+          NPM_CONFIG_PRODUCTION: false
+        run: npm ci --include=dev
+
+      # Unit tests for the backend's routes and rate limiting import
+      # server/index.ts, which resolves fastify etc. from server/node_modules.
+      - name: Install backend dependencies
+        working-directory: server
+        # job 设了 NODE_ENV=production，不显式带上 dev 就装不到 @types/pg 等后端类型检查要用的包
+        run: npm ci --include=dev
+
+      - name: Audit dependencies (frontend)
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Audit dependencies (backend)
+        working-directory: server
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Check shared dependency versions (frontend vs backend)
+        run: npm run deps:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      # 根 tsconfig 排除了 server/，后端又用 tsx 运行（不做类型检查），这里单独检查
+      - name: Type check (backend)
+        run: npx tsc --noEmit -p server/tsconfig.server.json
+
+      - name: Type check (tests)
+        run: npx tsc --noEmit -p tsconfig.test.json
+
+      - name: Run unit tests
+        run: CI=true npm run test -- --run --reporter=dot
+
+      - name: Build production bundle
+        run: npm run build
+
+      # 生产 CSP 不允许内联脚本，Next 升级若又往 HTML 里内联启动代码，页面会卡在加载界面
+      - name: Check prerendered HTML for CSP-blocked inline scripts
+        run: node scripts/check-inline-scripts.mjs
+
+      - name: Upload build artifact
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: next-build
+          path: .next
+
+  e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+    env:
+      CI: 'true'
+      # 只有 CI 的临时环境才允许使用非生产强度的密钥（见 lib/env-config.ts）
+      ALLOW_INSECURE_SECRETS: 'true'
+      NODE_ENV: production
+      NEXTAUTH_SECRET: development-secret
+      NEXTAUTH_URL: https://www.qcnote.com
+    needs: build
+    concurrency:
+      group: e2e-${{ github.ref_name }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.1'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        env:
+          NPM_CONFIG_PRODUCTION: false
+        run: npm ci --include=dev
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-ms-playwright-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-ms-playwright-
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e -- --project=chromium --reporter=dot
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+
+

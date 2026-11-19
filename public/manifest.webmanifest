@@ -1,0 +1,22 @@
+{
+  "name": "QCNOTE - 个人笔记",
+  "short_name": "QCNOTE",
+  "description": "隐私优先、离线优先的个人笔记应用",
+  "lang": "zh-CN",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#c8b8c8",
+  "theme_color": "#c8b8c8",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "/images/icons/note_icon_192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/images/icons/note_icon_512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/images/icons/note_icon_maskable_512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "我的笔记", "url": "/dashboard", "icons": [{ "src": "/images/icons/note_icon_192.png", "sizes": "192x192" }] }
+  ]
+}

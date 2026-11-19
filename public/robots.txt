@@ -1,0 +1,25 @@
+User-agent: *
+Allow: /
+Allow: /api/sitemap.xml
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /*.json$
+Disallow: /server/
+Crawl-delay: 1
+
+# Google Bot specific rules
+User-agent: Googlebot
+Allow: /
+Allow: /api/sitemap.xml
+Disallow: /api/
+Disallow: /dashboard
+
+# Bing Bot specific rules
+User-agent: Bingbot
+Allow: /
+Allow: /api/sitemap.xml
+Disallow: /api/
+Disallow: /dashboard
+
+# Sitemap（由后端 /api/sitemap.xml 动态生成）
+Sitemap: https://www.qcnote.com/api/sitemap.xml

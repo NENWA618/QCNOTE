@@ -1,0 +1,41 @@
+version: 2
+updates:
+  # npm：前端（/）和后端（/server）是两个独立的包（Render 以 server 为 rootDir 部署），
+  # 但共用依赖必须同版本。用 directories + group-by: dependency-name 让同一依赖在两个目录里的升级合并成一个 PR，
+  # CI 里的 `syncpack lint` 负责兜底检查。
+  - package-ecosystem: "npm"
+    directories:
+      - "/"
+      - "/server"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      # group-by: dependency-name 把同名依赖在 / 和 /server 里的升级合成一个 PR，
+      # 不需要手写共用依赖清单；只出现在一个目录的依赖仍是各自一个 PR
+      by-name:
+        group-by: dependency-name
+        patterns:
+          - "*"
+    reviewers:
+      - "NENWA618"
+    assignees:
+      - "NENWA618"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "NENWA618"
+    assignees:
+      - "NENWA618"
+    commit-message:
+      prefix: "ci"
+      include: "scope"

@@ -1,0 +1,311 @@
+import logger from './logger';
+import type { NoteStorage, WebDAVConfig } from './storage';
+import type { SyncStatus } from './storage/types';
+
+export type { SyncStatus };
+
+export type SyncDirection = 'push' | 'pull' | 'both';
+
+export class WebDAVSyncManager {
+  private storage: NoteStorage | null = null;
+  private syncInterval: ReturnType<typeof setInterval> | null = null;
+  // The sync running now, if any; settles (never rejects) when it ends.
+  private currentSync: Promise<void> | null = null;
+  private lastSyncTime: number | null = null;
+  private lastSyncStatus: 'success' | 'failure' | 'pending' | 'idle' = 'idle';
+  private lastSyncError: string | null = null;
+  private nextSyncTime: number | null = null;
+  private statusChangeCallbacks: Array<(status: SyncStatus) => void> = [];
+  // storage.userGeneration when auto-sync started: the config it captured
+  // belongs to that session's user, so a later user switch stops it.
+  private autoSyncGeneration: number | null = null;
+  // Bumped by every start() and stop(), so a start() still awaiting its
+  // first sync knows not to schedule an interval any more.
+  private startRun = 0;
+
+  constructor(storage: NoteStorage) {
+    this.storage = storage;
+  }
+
+  /**
+   * Start auto-sync with the given configuration
+   */
+  async start(config: WebDAVConfig, direction: SyncDirection = 'both'): Promise<void> {
+    if (!config.autoSyncEnabled || !config.syncInterval || config.syncInterval <= 0) {
+      logger.warn('[WebDAVSyncManager] Auto-sync not enabled or invalid interval');
+      return;
+    }
+
+    if (this.syncInterval) {
+      logger.warn('[WebDAVSyncManager] Sync already running, stopping previous');
+      this.stop();
+    }
+
+    logger.info(`[WebDAVSyncManager] Starting auto-sync with interval ${config.syncInterval}ms`);
+
+    const generation = this.storage?.userGeneration ?? null;
+    this.autoSyncGeneration = generation;
+    const run = ++this.startRun;
+
+    // Run first sync immediately
+    await this.executeSync(config, direction);
+
+    // Superseded by stop() or a newer start() during the first sync: that
+    // one owns the schedule now.
+    if (run !== this.startRun) return;
+    // The user may have switched during the first sync
+    if (!this.isSameSession(generation)) {
+      this.autoSyncGeneration = null;
+      return;
+    }
+
+    // Schedule subsequent syncs
+    this.syncInterval = setInterval(() => {
+      if (!this.isSameSession(generation)) {
+        logger.info('[WebDAVSyncManager] User changed, stopping auto-sync');
+        this.stop();
+        return;
+      }
+      void this.executeSync(config, direction);
+    }, config.syncInterval);
+  }
+
+  private isSameSession(generation: number | null): boolean {
+    return generation === this.autoSyncGeneration && generation === this.storage?.userGeneration;
+  }
+
+  /**
+   * Stop auto-sync
+   */
+  stop(): void {
+    this.startRun++;
+    this.autoSyncGeneration = null;
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+      this.syncInterval = null;
+      logger.info('[WebDAVSyncManager] Auto-sync stopped');
+    }
+    this.nextSyncTime = null;
+    this.notifyStatusChange();
+  }
+
+  /**
+   * Execute a single sync operation, unless one is already running
+   */
+  private executeSync(config: WebDAVConfig, direction: SyncDirection = 'both'): Promise<void> {
+    if (!this.storage || this.currentSync) {
+      return Promise.resolve();
+    }
+    const sync = this.runSyncOnce(config, direction).finally(() => {
+      this.currentSync = null;
+    });
+    this.currentSync = sync;
+    return sync;
+  }
+
+  private async runSyncOnce(config: WebDAVConfig, direction: SyncDirection): Promise<void> {
+    if (!this.storage) return;
+
+    this.lastSyncStatus = 'pending';
+    this.lastSyncError = null;
+    this.notifyStatusChange();
+
+    // `config` (credentials included) belongs to the user signed in now.
+    // Once that changes, nothing below may touch the new user's store.
+    const storage = this.storage;
+    const generation = storage.userGeneration;
+    const sameUser = () => storage.userGeneration === generation;
+
+    try {
+      logger.info(`[WebDAVSyncManager] Starting sync (direction: ${direction})`);
+
+      const encrypt = Boolean(config.encryptionKey);
+      if (direction === 'both') {
+        // One merge-then-conditional-upload round trip. (Pushing first and
+        // pulling after would overwrite other devices' changes before they
+        // were ever read.)
+        if (!(await this.storage.syncWithWebDAVAsync(config, encrypt))) {
+          throw new Error('Sync with WebDAV failed');
+        }
+        logger.info('[WebDAVSyncManager] Sync completed successfully');
+      } else if (direction === 'push') {
+        if (!(await this.storage.pushToWebDAVAsync(config, encrypt))) {
+          throw new Error('Push to WebDAV failed');
+        }
+        logger.info('[WebDAVSyncManager] Push completed successfully');
+      } else {
+        if (!(await this.storage.pullFromWebDAVAsync(config, encrypt))) {
+          throw new Error('Pull from WebDAV failed');
+        }
+        logger.info('[WebDAVSyncManager] Pull completed successfully');
+      }
+
+      if (direction !== 'push') {
+        // Handle conflicts if auto-resolution is configured
+        if (config.conflictStrategy && config.conflictStrategy !== 'manual' && sameUser()) {
+          await this.resolveConflicts(config.conflictStrategy);
+        }
+      }
+
+      this.lastSyncTime = Date.now();
+      this.lastSyncStatus = 'success';
+      this.lastSyncError = null;
+
+      await this.saveSyncStatus(generation, {
+        lastSyncTime: this.lastSyncTime,
+        lastSyncStatus: 'success',
+        lastSyncError: undefined,
+      });
+      logger.info('[WebDAVSyncManager] Sync completed successfully');
+    } catch (error) {
+      this.lastSyncStatus = 'failure';
+      this.lastSyncError = error instanceof Error ? error.message : String(error);
+
+      await this.saveSyncStatus(generation, {
+        lastSyncTime: Date.now(),
+        lastSyncStatus: 'failure',
+        lastSyncError: this.lastSyncError,
+      }).catch((e) => logger.error('[WebDAVSyncManager] Saving sync status failed:', e));
+      logger.error('[WebDAVSyncManager] Sync failed:', error);
+    } finally {
+      this.calculateNextSyncTime(config.syncInterval || 0);
+      this.notifyStatusChange();
+    }
+  }
+
+  /**
+   * Records the outcome on the saved config. Only the status fields are
+   * written: the config this sync ran with may be an unsaved form state or
+   * one the user has since replaced, and saving it would overwrite theirs.
+   */
+  private async saveSyncStatus(
+    generation: number,
+    status: Pick<WebDAVConfig, 'lastSyncTime' | 'lastSyncStatus' | 'lastSyncError'>,
+  ): Promise<void> {
+    const storage = this.storage;
+    if (!storage) return;
+    // Saving under another user would hand them this session's credentials
+    await storage.runIfSameUser(generation, async () => {
+      const saved = await storage.getWebDAVConfigAsync();
+      if (saved) await storage.setWebDAVConfigAsync({ ...saved, ...status });
+    });
+  }
+
+  /**
+   * Manually trigger a sync
+   */
+  async syncNow(config: WebDAVConfig, direction: SyncDirection = 'both'): Promise<boolean> {
+    if (!this.storage) {
+      return false;
+    }
+
+    try {
+      // Wait out a sync already running (auto-sync, or an earlier click),
+      // then run this one: skipping it would report a failure that never
+      // happened and miss whatever changed after that sync read the notes.
+      while (this.currentSync) await this.currentSync;
+      await this.executeSync(config, direction);
+      return this.lastSyncStatus === 'success';
+    } catch (error) {
+      logger.error('[WebDAVSyncManager] Manual sync failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Resolve conflicts automatically based on strategy
+   */
+  private async resolveConflicts(strategy: 'prefer-local' | 'prefer-remote'): Promise<void> {
+    if (!this.storage) return;
+
+    try {
+      const conflicts = await this.storage.getConflictsAsync();
+
+      for (const conflict of conflicts) {
+        if (strategy === 'prefer-local') {
+          // Keep the note as it is now: conflict.local is a snapshot from
+          // when the conflict was found and would undo later edits.
+          await this.storage.dismissConflictAsync(conflict.id);
+        } else {
+          await this.storage.resolveConflictAsync(conflict.id, conflict.remote);
+        }
+      }
+
+      if (conflicts.length > 0) {
+        logger.info(
+          `[WebDAVSyncManager] Resolved ${conflicts.length} conflicts using ${strategy} strategy`,
+        );
+      }
+    } catch (error) {
+      logger.error('[WebDAVSyncManager] Error resolving conflicts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate next sync time
+   */
+  private calculateNextSyncTime(interval: number): void {
+    if (interval > 0) {
+      this.nextSyncTime = Date.now() + interval;
+    }
+  }
+
+  /**
+   * Get current sync status
+   */
+  getStatus(): SyncStatus {
+    return {
+      isRunning: this.syncInterval !== null,
+      lastSyncTime: this.lastSyncTime,
+      lastSyncStatus: this.lastSyncStatus,
+      lastSyncError: this.lastSyncError,
+      nextSyncTime: this.nextSyncTime,
+    };
+  }
+
+  /**
+   * Subscribe to status changes
+   */
+  onStatusChange(callback: (status: SyncStatus) => void): () => void {
+    this.statusChangeCallbacks.push(callback);
+    // Return unsubscribe function
+    return () => {
+      const index = this.statusChangeCallbacks.indexOf(callback);
+      if (index > -1) {
+        this.statusChangeCallbacks.splice(index, 1);
+      }
+    };
+  }
+
+  /**
+   * Notify all subscribers of status change
+   */
+  private notifyStatusChange(): void {
+    const status = this.getStatus();
+    this.statusChangeCallbacks.forEach((callback) => {
+      try {
+        callback(status);
+      } catch (error) {
+        logger.error('[WebDAVSyncManager] Error in status change callback:', error);
+      }
+    });
+  }
+
+  /**
+   * Update sync configuration
+   */
+  async updateConfig(newConfig: WebDAVConfig): Promise<void> {
+    if (!this.storage) return;
+
+    // The running interval captured the old config (credentials, path,
+    // interval): restart it whenever the config is saved, not only when
+    // auto-sync is switched on or off.
+    this.stop();
+    if (newConfig.autoSyncEnabled) {
+      await this.start(newConfig);
+    }
+  }
+}
+
+export default WebDAVSyncManager;

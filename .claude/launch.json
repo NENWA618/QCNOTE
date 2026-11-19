@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "qcnote-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "qcnote-prod-local",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "Object.assign(process.env,{ALLOW_INSECURE_SECRETS:'true',NEXTAUTH_SECRET:'development-secret',NEXTAUTH_URL:'http://localhost:3100'});process.argv=[process.argv[0],'next','start','-p','3100'];require('next/dist/bin/next')"
+      ],
+      "port": 3100
+    }
+  ]
+}
