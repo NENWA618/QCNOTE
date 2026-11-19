@@ -127,6 +127,20 @@
     --ink-pink: #9d3a66; /* accent-pink 的文字版，白底约 6.5:1 */
     --ink-purple: #6d5f8f; /* accent-purple 的文字版，白底约 5.7:1 */
 
+    /* ---- README 横幅配色：笔记纸底图 + 节点网络 + 渐变“墨水” ---- */
+    --paper-a: #fdf1f6;
+    --paper-b: #f6e0e7;
+    --paper-c: #e4d3ee;
+    --paper-line: rgba(95, 79, 98, 0.075);
+    --paper-margin: rgba(214, 92, 142, 0.28);
+    --net-link: rgba(120, 92, 160, 0.22);
+    --net-dot: #9a7cc4;
+    --ink-1: #e0609a;
+    --ink-2: #9a66d8;
+    --ink-3: #5b8be0;
+    --ink-glow: rgba(176, 110, 224, 0.4);
+    --scrim: rgba(253, 241, 246, 0.82);
+
     /* 阴影层级：每个“浮起”的表面从这里取一档，而不是各自写 box-shadow。
        带粉色的暖阴影与强调色保持一致，比通用灰色更有层次。 */
     --shadow-1: 0 1px 2px rgba(154, 52, 107, 0.1);
@@ -167,6 +181,20 @@
     --ink: var(--color-primary-dark);
     --ink-pink: var(--color-accent-pink);
     --ink-purple: var(--color-accent-purple);
+
+    /* 横幅原色 */
+    --paper-a: #2a1f3f;
+    --paper-b: #17121f;
+    --paper-c: #0e0b14;
+    --paper-line: rgba(255, 255, 255, 0.045);
+    --paper-margin: rgba(255, 158, 203, 0.16);
+    --net-link: rgba(185, 166, 232, 0.2);
+    --net-dot: #cdbcf5;
+    --ink-1: #ff9ecb;
+    --ink-2: #c79bff;
+    --ink-3: #8ab6ff;
+    --ink-glow: rgba(199, 155, 255, 0.5);
+    --scrim: rgba(23, 18, 31, 0.78);
     /* 粉色阴影在深色表面上几乎不可见 —— 换成黑色深度加一点点强调色光晕 */
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
     --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(232, 121, 165, 0.06);
@@ -186,12 +214,22 @@
     @apply scroll-smooth;
   }
 
+  /* 底色：横幅同款径向渐变。固定在视口，长页面滚动时背景不拉伸 */
   body {
-    @apply bg-linear-to-br from-primary-light via-primary-medium to-purple-200 text-ink;
+    @apply text-ink;
+    min-height: 100vh;
+    background-color: var(--paper-b);
+    background-image: radial-gradient(
+      ellipse 75% 100% at 50% 48%,
+      var(--paper-a),
+      var(--paper-b) 60%,
+      var(--paper-c)
+    );
+    background-attachment: fixed;
   }
 
   html.dark body {
-    @apply bg-linear-to-br from-dark-bg via-dark-surface to-dark-surface-light text-dark-text;
+    @apply text-dark-text;
   }
 
   header {
@@ -264,7 +302,65 @@
 @layer components {
   /* ---- 页面布局 ---- */
   .app-shell {
-    @apply min-h-screen bg-linear-to-br from-primary-light via-primary-medium to-purple-200 dark:bg-none dark:bg-dark-bg text-ink dark:text-dark-text;
+    @apply min-h-screen text-ink dark:text-dark-text;
+  }
+
+  /* ---- 全站底图（PageBackground）：横线笔记纸 + 粉色页边线 + 节点网络 ---- */
+  .page-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+    /* 横线：28px 一行，与横幅一致 */
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 27px,
+      var(--paper-line) 27px,
+      var(--paper-line) 28px
+    );
+  }
+  /* 页边线 */
+  .page-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: clamp(0.75rem, 7.5vw, 6rem);
+    width: 1px;
+    background: var(--paper-margin);
+  }
+  .page-bg-net {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.8;
+    transition: opacity 0.4s ease;
+  }
+  /* 首页 Hero 自带一张更亮的网络，底图这张退到背景里，避免两层叠在一起 */
+  body:has(.immersive-hero) .page-bg-net {
+    opacity: 0.25;
+  }
+
+  .net-links line {
+    stroke: var(--net-link);
+    stroke-width: 1;
+  }
+  .net-dot {
+    fill: var(--net-dot);
+    opacity: 0.3;
+    animation: netTwinkle var(--dur, 8s) ease-in-out var(--delay, 0s) infinite;
+  }
+  @keyframes netTwinkle {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 0.85;
+    }
   }
 
   .page-container {
@@ -293,64 +389,70 @@
     z-index: -1;
     pointer-events: none;
   }
-
-  .hero-orb {
-    position: absolute;
-    border-radius: 9999px;
-    filter: blur(70px);
-    opacity: 0.75;
-    animation: heroDrift 18s ease-in-out infinite alternate;
-  }
-  .hero-orb-pink {
-    width: 36rem;
-    height: 36rem;
-    top: -10rem;
-    left: -8rem;
-    background: radial-gradient(circle, var(--color-accent-pink), transparent 68%);
-  }
-  .hero-orb-purple {
-    width: 40rem;
-    height: 40rem;
-    right: -12rem;
-    bottom: -14rem;
-    background: radial-gradient(circle, var(--color-accent-purple), transparent 68%);
-    animation-duration: 24s;
-    animation-delay: -6s;
-  }
-  .hero-orb-rose {
-    width: 22rem;
-    height: 22rem;
-    top: 35%;
-    left: 55%;
-    background: radial-gradient(circle, #f3b6cf, transparent 68%);
-    opacity: 0.5;
-    animation-duration: 20s;
-    animation-delay: -12s;
-  }
-  html.dark .hero-orb {
-    opacity: 0.32;
-  }
-
-  .hero-grid {
+  /* 中心辉光：对应横幅径向渐变里最亮的那一团 */
+  .hero-bg::before {
+    content: '';
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(rgba(95, 79, 98, 0.22) 1px, transparent 1.5px);
-    background-size: 28px 28px;
-    -webkit-mask-image: radial-gradient(ellipse at center, #000 20%, transparent 72%);
-    mask-image: radial-gradient(ellipse at center, #000 20%, transparent 72%);
+    background: radial-gradient(ellipse 60% 55% at 50% 48%, var(--ink-glow), transparent 70%);
+    opacity: 0.35;
   }
-  html.dark .hero-grid {
-    background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1.5px);
+  html.dark .hero-bg::before {
+    opacity: 0.28;
+  }
+  .hero-net {
+    position: absolute;
+    inset: -3%;
+    width: 106%;
+    height: 106%;
+    /* 鼠标视差（--mx/--my 由 HeroSection 写入） */
+    transform: translate3d(calc(var(--mx) * -16px), calc(var(--my) * -12px), 0);
+    transition: transform 0.5s ease-out;
+  }
+  .hero-ink {
+    opacity: 0.9;
+  }
+  .hero-core {
+    fill: #fff;
+  }
+  html:not(.dark) .hero-core {
+    fill: var(--ink-2);
+  }
+  .hero-pulse {
+    transform-box: fill-box;
+    transform-origin: center;
+    opacity: 0.4;
+    animation: heroPulse 4.6s cubic-bezier(0.45, 0, 0.55, 1) var(--delay, 0s) infinite;
+  }
+  @keyframes heroPulse {
+    0%,
+    100% {
+      transform: scale(0.8);
+      opacity: 0.25;
+    }
+    50% {
+      transform: scale(1.7);
+      opacity: 0.7;
+    }
+  }
+  .hero-card-icon {
+    opacity: 0.55;
+  }
+  .hero-card-icon rect {
+    fill: var(--paper-a);
+    stroke: var(--net-dot);
+    stroke-opacity: 0.7;
+  }
+  .hero-card-icon line {
+    stroke: var(--net-dot);
+    stroke-width: 1.2;
+    stroke-linecap: round;
+  }
+  .hero-card-icon .hci-pink {
+    stroke: var(--ink-1);
+    stroke-width: 1.4;
   }
 
-  @keyframes heroDrift {
-    from {
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-    to {
-      transform: translate3d(4rem, 3rem, 0) scale(1.15);
-    }
-  }
   @keyframes heroFloat {
     from {
       translate: 0 -0.5rem;
@@ -444,6 +546,104 @@
     flex-direction: column;
     align-items: center;
     max-width: 56rem;
+    padding: 1.5rem 1.25rem;
+  }
+  /* 文字底下的柔和遮罩：网络再亮，也不影响阅读 */
+  .hero-content::before {
+    content: '';
+    position: absolute;
+    inset: -3rem -4rem;
+    z-index: -1;
+    background: radial-gradient(ellipse at center, var(--scrim) 25%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* [[ ]]：两层嵌套的方括号，墨水渐变 + 光晕 */
+  .hero-bracket {
+    position: absolute;
+    top: -0.5rem;
+    bottom: -0.5rem;
+    width: 1rem;
+    border: 2px solid;
+    border-image: linear-gradient(to bottom, var(--ink-1), var(--ink-2), var(--ink-3)) 1;
+    filter: drop-shadow(0 0 8px var(--ink-glow));
+    pointer-events: none;
+  }
+  .hero-bracket::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border: inherit;
+    border-image: inherit;
+  }
+  .hero-bracket-l {
+    left: -0.25rem;
+    border-right: 0;
+  }
+  .hero-bracket-l::before {
+    border-right: 0;
+    transform: translateX(0.55rem);
+  }
+  .hero-bracket-r {
+    right: -0.25rem;
+    border-left: 0;
+  }
+  .hero-bracket-r::before {
+    border-left: 0;
+    transform: translateX(-0.55rem);
+  }
+  @media (min-width: 1024px) {
+    .hero-bracket-l {
+      left: -2.5rem;
+    }
+    .hero-bracket-r {
+      right: -2.5rem;
+    }
+  }
+
+  /* 右括号指向左括号的虚线“链接弧” */
+  .hero-link-arc {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -2.1rem;
+    width: 100%;
+    height: 1.9rem;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .hero-link-arc path {
+    fill: none;
+    stroke: var(--ink-2);
+    stroke-width: 1.4;
+    stroke-dasharray: 2 7;
+    stroke-linecap: round;
+    opacity: 0.8;
+  }
+  .hero-link-tip {
+    position: absolute;
+    left: -0.4rem;
+    top: -0.55rem;
+    width: 0.65rem;
+    height: 0.6rem;
+    pointer-events: none;
+  }
+  .hero-link-tip path {
+    fill: none;
+    stroke: var(--ink-1);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  @media (min-width: 1024px) {
+    .hero-link-arc {
+      left: -2rem;
+      right: -2rem;
+      width: auto;
+    }
+    .hero-link-tip {
+      left: -2.45rem;
+    }
   }
 
   .hero-reveal {
@@ -476,11 +676,18 @@
   }
   .hero-title-accent {
     white-space: nowrap;
-    background: linear-gradient(100deg, var(--ink-pink), var(--ink-purple) 60%, var(--ink-pink));
+    background: linear-gradient(
+      100deg,
+      var(--ink-1),
+      var(--ink-2) 40%,
+      var(--ink-3) 70%,
+      var(--ink-1)
+    );
     background-size: 200% auto;
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 16px var(--ink-glow));
     animation: heroShine 8s linear infinite;
   }
   @keyframes heroShine {

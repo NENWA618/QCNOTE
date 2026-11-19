@@ -1,12 +1,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useRef } from 'react';
+import HeroNetwork from './HeroNetwork';
 
 const HIGHLIGHTS = ['Markdown + KaTeX', '双向链接', '知识图谱', '本地加密'];
 
 /**
  * 首页全屏沉浸式 Hero。
- * 背景光斑、漂浮卡片均为装饰（aria-hidden）；视差只改 CSS 变量，不触发 React 重渲染。
+ * 背景沿用 README 横幅：节点网络 + 渐变“墨水”光晕，标题外包一对 [[ ]]。
+ * 背景、漂浮卡片均为装饰（aria-hidden）；视差只改 CSS 变量，不触发 React 重渲染。
  */
 const HeroSection: React.FC = () => {
   const ref = useRef<HTMLElement>(null);
@@ -32,12 +34,9 @@ const HeroSection: React.FC = () => {
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
     >
-      {/* 背景：流动光斑 + 点阵 */}
+      {/* 背景：中心辉光 + 节点网络（横幅同款） */}
       <div className="hero-bg" aria-hidden="true">
-        <span className="hero-orb hero-orb-pink" />
-        <span className="hero-orb hero-orb-purple" />
-        <span className="hero-orb hero-orb-rose" />
-        <span className="hero-grid" />
+        <HeroNetwork />
       </div>
 
       {/* 漂浮的笔记卡片（仅大屏） */}
@@ -97,6 +96,21 @@ const HeroSection: React.FC = () => {
 
       {/* 主内容 */}
       <div className="hero-content">
+        {/* [[ ]] 双链括号，以及右括号指向左括号的虚线链接弧（横幅的字标造型） */}
+        <span className="hero-bracket hero-bracket-l" aria-hidden="true" />
+        <span className="hero-bracket hero-bracket-r" aria-hidden="true" />
+        <svg
+          className="hero-link-arc"
+          viewBox="0 0 100 24"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path d="M100 24 C 100 -14, 0 -14, 0 24" vectorEffect="non-scaling-stroke" />
+        </svg>
+        <svg className="hero-link-tip" viewBox="0 0 10 9" aria-hidden="true">
+          <path d="M1 1 L5 7 L9 1" />
+        </svg>
+
         <div className="hero-reveal" style={{ ['--i' as string]: 0 }}>
           <span className="hero-badge">
             <Image
