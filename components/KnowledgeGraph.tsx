@@ -104,10 +104,14 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({ notes, onSelectN
     const positions: Map<string, { x: number; y: number }> = new Map();
     const velocities: Map<string, { vx: number; vy: number }> = new Map();
     const pad = 30;
-    visibleNodes.forEach((node) => {
+    // 初始位置：按黄金角螺旋均匀铺开（确定性，不重叠，每次刷新布局一致）
+    const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+    const maxR = Math.max(1, Math.min(width, height) / 2 - pad);
+    visibleNodes.forEach((node, i) => {
+      const r = maxR * Math.sqrt((i + 0.5) / visibleNodes.length);
       positions.set(node.id, {
-        x: pad + Math.random() * Math.max(1, width - pad * 2),
-        y: pad + Math.random() * Math.max(1, height - pad * 2),
+        x: width / 2 + r * Math.cos(i * GOLDEN_ANGLE) * (width / Math.min(width, height)),
+        y: height / 2 + r * Math.sin(i * GOLDEN_ANGLE) * (height / Math.min(width, height)),
       });
       velocities.set(node.id, { vx: 0, vy: 0 });
     });

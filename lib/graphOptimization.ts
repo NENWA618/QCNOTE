@@ -106,6 +106,58 @@ export class SimplifiedSimulation {
         }
       });
 
+      // Repulsive force between nodes (keeps unlinked notes spread out)
+      const n = nodes.length;
+      const area = canvasWidth * canvasHeight;
+      // Ideal spacing: roughly the space each node would get if evenly spread
+      const spacing = Math.min(140, Math.max(36, Math.sqrt(area / Math.max(1, n)) * 0.9));
+      if (n <= 400) {
+        for (let i = 0; i < n; i++) {
+          const p1 = positions.get(nodes[i].id);
+          const v1 = velocities.get(nodes[i].id);
+          if (!p1 || !v1) continue;
+          for (let j = i + 1; j < n; j++) {
+            const p2 = positions.get(nodes[j].id);
+            const v2 = velocities.get(nodes[j].id);
+            if (!p2 || !v2) continue;
+            let dx = p2.x - p1.x;
+            let dy = p2.y - p1.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 0.01) {
+              // Exactly overlapping: nudge in a deterministic direction
+              dx = Math.cos(i + j);
+              dy = Math.sin(i + j);
+              dist = 1;
+            }
+            if (dist < spacing * 2.5) {
+              // Stronger push when closer than the ideal spacing (collision)
+              const push =
+                dist < spacing
+                  ? (spacing - dist) * 0.5 + 2
+                  : ((spacing * spacing) / (dist * dist)) * 2;
+              const fx = (push * dx) / dist;
+              const fy = (push * dy) / dist;
+              v1.vx -= fx;
+              v1.vy -= fy;
+              v2.vx += fx;
+              v2.vy += fy;
+            }
+          }
+        }
+      }
+
+      // Gentle pull toward the center so isolated nodes don't drift to the edges
+      const cx = canvasWidth / 2;
+      const cy = canvasHeight / 2;
+      nodes.forEach((node) => {
+        const pos = positions.get(node.id);
+        const vel = velocities.get(node.id);
+        if (pos && vel) {
+          vel.vx += (cx - pos.x) * 0.002;
+          vel.vy += (cy - pos.y) * 0.002;
+        }
+      });
+
       // Apply node damping and update positions
       nodes.forEach((node) => {
         const pos = positions.get(node.id);
