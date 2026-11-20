@@ -879,6 +879,18 @@ const Dashboard: React.FC = () => {
   }, []);
 
   const hasFilters = !!search || category !== 'all' || selectedTags.length > 0;
+  // 筛选条件（侧栏的搜索 / 分类 + 卡片上点出的标签）对这几个浏览视图生效；
+  // 标签管理、回收站、冲突、云同步是管理类页面，要面对全部数据，不受影响
+  const filterApplies =
+    viewMode === 'list' ||
+    viewMode === 'calendar' ||
+    viewMode === 'timeline' ||
+    viewMode === 'graph';
+  // 图谱不删节点，只把没命中的淡化：保留笔记之间的连接关系，也不会每输入一个字就重新布局
+  const graphHighlightIds = useMemo(
+    () => (hasFilters ? new Set(filteredNotes.map((n) => n.id)) : undefined),
+    [hasFilters, filteredNotes],
+  );
   const clearFilters = () => {
     setSearch('');
     setCategory('all');
@@ -1027,7 +1039,7 @@ const Dashboard: React.FC = () => {
                 >
                   笔记管理
                 </h1>
-                {viewMode === 'list' && (
+                {filterApplies && (viewMode === 'list' || hasFilters) && (
                   <span className="text-sm tabular-nums text-text-light">
                     {hasFilters
                       ? `${filteredNotes.length} / ${stats.totalNotes} 篇`
@@ -1049,7 +1061,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* 当前的标签筛选 */}
-            {viewMode === 'list' && selectedTags.length > 0 && (
+            {filterApplies && selectedTags.length > 0 && (
               <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
                 <span className="text-text-light">标签筛选：</span>
                 {selectedTags.map((tag) => (
@@ -1081,11 +1093,15 @@ const Dashboard: React.FC = () => {
                 onPermanentlyDelete={handlePermanentlyDeleteNote}
               />
             ) : viewMode === 'calendar' ? (
-              <Calendar notes={notes} onSelectNote={handleEditNote} />
+              <Calendar notes={filteredNotes} onSelectNote={handleEditNote} />
             ) : viewMode === 'timeline' ? (
-              <Timeline notes={notes} onSelectNote={handleEditNote} />
+              <Timeline notes={filteredNotes} onSelectNote={handleEditNote} />
             ) : viewMode === 'graph' ? (
-              <KnowledgeGraph notes={notes} onSelectNote={handleEditNote} />
+              <KnowledgeGraph
+                notes={notes}
+                highlightIds={graphHighlightIds}
+                onSelectNote={handleEditNote}
+              />
             ) : viewMode === 'tags' ? (
               <TagManager
                 notes={notes}

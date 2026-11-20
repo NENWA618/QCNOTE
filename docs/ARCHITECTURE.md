@@ -62,6 +62,7 @@
 | `storage/deviceSession.ts`                                                 | 设备会话令牌、向后端换取金库密钥（KEK）                                                                                                                                                                 |
 | `storage/crypto.ts`                                                        | PBKDF2 + AES-GCM 文本加密（同步文件、访客的同步凭据）                                                                                                                                                   |
 | `storage/linkGraph.ts`、`storage/types.ts`                                 | 双链 / 反向链接计算；类型定义                                                                                                                                                                           |
+| `graphData.ts`、`graphLayout.ts`、`graphOptimization.ts`                   | 知识图谱的纯逻辑：边去重（`buildGraphData`）、布局状态（`GraphLayout`）、力导向计算（`SimplifiedSimulation`）                                                                                           |
 | `hooks/useDeviceVerification.ts`                                           | 登录后获取设备会话令牌的流程，令牌通过 `BroadcastChannel` 在同源标签页间共享                                                                                                                            |
 | `utils.ts`、`vector.ts`                                                    | `Utils.searchNotes`（Lunr 全文搜索）与搜索语法解析（`parseSearchQuery`）；词频向量（模糊匹配排序用）                                                                                                    |
 | `embeddings.ts`、`embeddings.worker.ts`                                    | 语义搜索，在 Worker 里用 `@huggingface/transformers` 推理                                                                                                                                               |
@@ -271,11 +272,13 @@ WebDAV 的自动同步设置（开关、间隔、冲突策略）在“保存配�
 | `NoteEditor`                     | Markdown 编辑与预览、KaTeX、Mermaid、双链、文字着色、版本历史、发布 / 取消发布；有未保存的更改时关闭前确认                                             |
 | `note-editor/MarkdownCodeEditor` | 正文编辑器（CodeMirror 6）：受控文本 + 选区；加粗 / 斜体 / 链接 / 列表续写 / Tab 缩进复用 `lib/markdownEditing` 的纯函数；`[[` 补全弹层仍由 React 渲染 |
 | `MermaidDiagram`                 | 把 ` ```mermaid ` 代码块渲染成图：`securityLevel: 'strict'`，SVG 放进 `<img>` 的 data URI 隔离，动态加载                                               |
-| `Calendar`、`Timeline`           | 按最后修改日期的热力图（点日期列出当天笔记）；按月、按天分组的时间线                                                                                   |
-| `KnowledgeGraph`                 | 节点是笔记、边是 `[[双链]]`；节点多时按重要度做 LOD 裁剪，力导向布局绘制到 Canvas，布局稳定后停止动画                                                  |
+| `Calendar`、`Timeline`           | 按最后修改日期的热力图（点日期列出当天笔记）；按月、按天分组的时间线；二者都跟随列表的筛选                                                             |
+| `KnowledgeGraph`                 | 节点是笔记、边是 `[[双链]]`；力导向布局画到 Canvas，可缩放、平移、拖动节点，悬停 / 选中时高亮邻居；筛选时淡化没命中的节点                              |
 | `TagManager`                     | 标签云与列表、重命名、删除、按“带有所选标签的笔记”批量增删标签                                                                                         |
 | `Conflicts`、`Trash`             | 同步冲突逐条选择；回收站                                                                                                                               |
 | `WebDAVSync`、`OneDriveSync`     | 同步设置面板；结果在面板内提示                                                                                                                         |
+
+知识图谱的几个约定：每条引用只画一条线（正向链接与反向链接合并去重），互相引用画双箭头；悬空链接和自引用不生成边也不计入节点大小。筛选通过 `highlightIds` 只改变透明度，不改变节点和连线，所以输入搜索词不会触发重新布局；Calendar / Timeline 则直接收到已筛选的笔记。超过 2000 个节点时按链接数裁剪并在界面上提示，不再悄悄隐藏。标签管理、回收站、冲突、云同步是管理类页面，不受筛选影响。
 
 编辑器打开时记录内容快照，以此判断有没有未保存的更改；标签输入框保留原始文本，只在解析出的标签变化时回写，所以能正常输入逗号。
 
@@ -382,12 +385,12 @@ WebDAV 的自动同步设置（开关、间隔、冲突策略）在“保存配�
 - 路由级代码分割；`PushNotificationPrompt` 用 `next/dynamic` 按需加载；存储层（含 Lunr）只在 `/dashboard`、`/models` 加载；语义搜索的模型和 Worker 只在开启后加载。
 - 搜索索引在内存中缓存，笔记不变时复用；embedding 持久缓存，只重算变化的笔记。
 - 加解密在 Worker 中进行，不阻塞界面。
-- 知识图谱按设备像素比绘制，布局稳定约 180 帧后停止动画，之后只在悬停、点击、尺寸或主题变化时重绘。
+- 知识图谱按设备像素比绘制。斥力用均匀网格做邻域查询（近似 O(n)，没有节点数上限）；首屏同步计算不超过约 80ms，之后每帧的布局计算不超过约 8ms，大图靠动画帧逐步收敛。布局靠温度（alpha）按迭代次数冷却，冷却完自动停止动画，之后只在悬停、点击、缩放、平移、尺寸或主题变化时重绘。后台同步、编辑正文不改变节点和连线，不会触发重新布局；新增或删除笔记时按 id 保留旧位置，只给新节点安排位置并轻微回温。
 - 后端：PostgreSQL 连接池、Redis 缓存资料、`@fastify/rate-limit` 限流。
 
 ## 11. 测试与持续集成
 
-- **单元测试**（Vitest + jsdom + `fake-indexeddb`，`test/`）：存储完整性（`storage-integrity`）、静态加密（`encryption-at-rest`：写入带标记的内容后导出全部 IndexedDB 和 `localStorage`，确认找不到标记）、同步引擎（`syncEngine`：合并规则表 + 两台设备对接内存 WebDAV 服务器）、剪藏解析、公开笔记、推送、安全加固、限流等。`vitest.config.ts` 目前排除了 `Calendar`、`KnowledgeGraph`、`NoteList` 三个过时的组件测试。
+- **单元测试**（Vitest + jsdom + `fake-indexeddb`，`test/`）：存储完整性（`storage-integrity`）、静态加密（`encryption-at-rest`：写入带标记的内容后导出全部 IndexedDB 和 `localStorage`，确认找不到标记）、同步引擎（`syncEngine`：合并规则表 + 两台设备对接内存 WebDAV 服务器）、剪藏解析、公开笔记、推送、安全加固、限流等。知识图谱有 `graphData`、`graphLayout`、`graphOptimization`、`KnowledgeGraph` 四组测试。`vitest.config.ts` 只排除 Playwright 的 E2E 用例（`e2e/**/*.spec.ts`），组件测试都会运行。
 - **E2E**（Playwright + axe-core，`e2e/`）：首页、控制台主要流程，以及首页和控制台没有 critical 级的无障碍问题。
 - **CI**（`.github/workflows/ci.yml`）：前后端 `npm audit`（高危）、lint、`tsc --noEmit`、单元测试、生产构建；E2E 是独立任务。
 - **Lighthouse CI**（`lighthouse.yml`）：性能低于 0.9 报错，无障碍低于 0.9 警告。
