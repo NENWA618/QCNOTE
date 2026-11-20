@@ -23,7 +23,7 @@ export default function AdminPage({ userRole }: AdminPageProps) {
           />
         </Head>
         <Layout>
-          <div className="min-h-[calc(100vh-14rem)] flex items-center justify-center px-4">
+          <div className="min-h-[calc(100svh-9rem)] flex items-center justify-center px-4">
             <div className="text-center">
               <h1 className="text-3xl font-bold text-ink dark:text-white mb-4">访问被拒绝</h1>
               <p className="text-text-light dark:text-dark-text-secondary mb-4">您没有管理员权限</p>

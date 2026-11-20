@@ -17,7 +17,7 @@ export default function SignIn({ providers }: SignInProps) {
         <meta name="description" content="登录 QCNOTE 访问你的笔记和个人主页。" />
       </Head>
       <Layout>
-        <div className="min-h-[calc(100vh-14rem)] flex items-center justify-center px-4">
+        <div className="min-h-[calc(100svh-9rem)] flex items-center justify-center px-4">
           <div className="max-w-md w-full space-y-8">
             <div className="text-center">
               <Link href="/" className="flex items-center justify-center gap-3 mb-8">

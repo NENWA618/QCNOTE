@@ -28,7 +28,7 @@ export default function ModelsPage() {
             <span className="sr-only">加载中…</span>
           </div>
         ) : !userId ? (
-          <div className="min-h-[calc(100vh-14rem)] flex items-center justify-center px-4">
+          <div className="min-h-[calc(100svh-9rem)] flex items-center justify-center px-4">
             <div className="text-center">
               <h1 className="text-2xl sm:text-3xl font-bold text-ink dark:text-white mb-3">
                 请先登录

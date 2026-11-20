@@ -369,6 +369,12 @@
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
   }
 
+  /* 所有页面的内容区至少占满 header 以下的一屏（与首页 Hero 同口径：header 约 5rem），
+     这样未滚动前看不到页脚；内容更长时照常向下撑开。 */
+  .app-shell > main {
+    min-height: calc(100svh - 5rem);
+  }
+
   /* ---- 首页全屏沉浸式 Hero ----
      header 是 sticky 且约 5rem 高，所以 Hero 取剩余视口高度，header 下方刚好一屏。 */
   .immersive-hero {
